@@ -245,11 +245,13 @@ function renderBusinessView() {
                 <div style="background: #fdfdfd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h5 style="margin: 0; color: #2c3e50;">Quality & Rework Analysis</h5>
-                        <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
-                                     color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
-                                     padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
-                            ${us.rework.missingTimesheet > 0 ? `⚠️ ${us.rework.missingTimesheet} Bugs missing Timesheet` : '✅ All bugs recorded'}
-                        </span>
+                <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
+             color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
+             padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
+    ${us.rework.missingTimesheet > 0 
+        ? `⚠️ ${us.rework.missingTimesheet} Bugs missing Timesheet` // هذا السطر يعرض الرقم بجانب النص
+        : '✅ All bugs recorded'}
+</span>
                     </div>
 
                     <div style="display: flex; gap: 20px; align-items: center;">
@@ -377,6 +379,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
