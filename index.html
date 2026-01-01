@@ -1,32 +1,32 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام تحليل اليوزر استوري</title>
+    <title>User Story Analysis System</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
 <body>
     <header>
-        <h1>لوحة تحكم تحليل الإنتاجية</h1>
+        <h1>Productivity Analysis Dashboard</h1>
         <div class="upload-section">
             <input type="file" id="csvFile" accept=".csv">
-            <button onclick="handleUpload()">تحليل البيانات</button>
+            <button onclick="handleUpload()">Analyze Data</button>
         </div>
     </header>
 
     <nav>
-        <button onclick="showView('business-view')">عرض بزنس ايريا</button>
-        <button onclick="showView('team-view')">عرض الفريق</button>
-        <button onclick="showView('people-view')">عرض الأشخاص</button>
-        <button onclick="showView('not-tested-view')">غير المختبر (Not Tested)</button>
-        <button onclick="showView('holidays-view')">إدارة العطلات</button>
+        <button onclick="showView('business-view')">Business Area View</button>
+        <button onclick="showView('team-view')">Team View</button>
+        <button onclick="showView('people-view')">People View</button>
+        <button onclick="showView('not-tested-view')">Not Tested</button>
+        <button onclick="showView('holidays-view')">Manage Holidays</button>
     </nav>
 
     <main id="content">
         <div id="welcome-msg" class="view">
-            <p>يرجى رفع ملف الـ CSV لبدء التحليل.</p>
+            <p>Please upload a CSV file to begin the analysis.</p>
         </div>
 
         <div id="business-view" class="view" style="display:none;"></div>
@@ -35,9 +35,9 @@
         <div id="not-tested-view" class="view" style="display:none;"></div>
         
         <div id="holidays-view" class="view" style="display:none;">
-            <h3>تحديد العطلات الرسمية</h3>
+            <h3>Define Public Holidays</h3>
             <input type="date" id="holidayPicker">
-            <button onclick="addHoliday()">إضافة عطلة</button>
+            <button onclick="addHoliday()">Add Holiday</button>
             <ul id="holidaysList"></ul>
         </div>
     </main>
