@@ -201,11 +201,19 @@ function renderBusinessView() {
                         </tbody>
                     </table>
 
-                    <h5 style="margin: 10px 0;">Tasks Timeline:</h5>
+                    <h5 style="margin: 10px 0;">Tasks Timeline & Schedule:</h5>
                     <table style="font-size: 0.85em; width: 100%;">
                         <thead>
                             <tr style="background:#eee;">
-                                <th>ID</th><th>Activity</th><th>Est</th><th>Exp. Start</th><th>Exp. End</th><th>Act. Start</th><th>TS Total</th><th>Dev %</th>
+                                <th>ID</th>
+                                <th>Task Name</th>
+                                <th>Activity</th>
+                                <th>Est</th>
+                                <th>Exp. Start</th>
+                                <th>Exp. End</th>
+                                <th>Act. Start</th>
+                                <th>TS Total</th>
+                                <th>Dev %</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -216,6 +224,7 @@ function renderBusinessView() {
                                 return `
                                 <tr>
                                     <td>${t['ID']}</td>
+                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
                                     <td>${t['Activity']}</td>
                                     <td>${est}</td>
                                     <td>${formatDate(t.expectedStart)}</td>
@@ -333,3 +342,4 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
