@@ -11,6 +11,7 @@ body {
     background-color: var(--bg);
     margin: 0;
     padding: 0;
+    text-align: left; /* Standard LTR */
 }
 
 header {
@@ -74,3 +75,11 @@ table th {
 }
 
 .alert-red { color: var(--danger); font-weight: bold; }
+
+.stat-box {
+    background: white;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 5px solid var(--secondary);
+    min-width: 150px;
+}
