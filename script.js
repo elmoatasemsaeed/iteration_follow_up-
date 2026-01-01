@@ -2,7 +2,7 @@ let rawData = [];
 let processedStories = [];
 let holidays = JSON.parse(localStorage.getItem('holidays') || "[]");
 
-// إعداد العطلات
+// Holiday Setup
 function addHoliday() {
     const h = document.getElementById('holidayPicker').value;
     if(h && !holidays.includes(h)) {
@@ -17,10 +17,16 @@ function renderHolidays() {
     list.innerHTML = holidays.map(h => `<li>${h} <button onclick="removeHoliday('${h}')">X</button></li>`).join('');
 }
 
-// معالجة الملف عند الرفع
+function removeHoliday(date) {
+    holidays = holidays.filter(h => h !== date);
+    localStorage.setItem('holidays', JSON.stringify(holidays));
+    renderHolidays();
+}
+
+// Handle Upload
 function handleUpload() {
     const file = document.getElementById('csvFile').files[0];
-    if (!file) return alert("اختر ملف أولاً");
+    if (!file) return alert("Please select a file first");
 
     Papa.parse(file, {
         header: true,
@@ -33,7 +39,7 @@ function handleUpload() {
     });
 }
 
-// الوظيفة الأساسية لفرز البيانات
+// Data Processing
 function processData() {
     processedStories = [];
     let currentStory = null;
@@ -63,7 +69,6 @@ function processData() {
     calculateMetrics();
 }
 
-// حساب الـ Metrics لكل يوزر استوري
 function calculateMetrics() {
     processedStories.forEach(us => {
         // 1. Dev & Testing Effort
@@ -105,27 +110,23 @@ function calculateMetrics() {
             percentage: (bugActualTotal / (devActual || 1)) * 100
         };
 
-        // 3. Lead Time Logic
         calculateTimeline(us);
     });
 }
 
 function calculateTimeline(us) {
     if (!us.activatedDate) return;
-
     let currentExpectedDate = new Date(us.activatedDate);
     
-    // حساب الديف
-    us.tasks.forEach((t, index) => {
+    us.tasks.forEach(t => {
         if (t['Activity'] !== 'Testing') {
             t.expectedStart = new Date(currentExpectedDate);
             let hours = parseFloat(t['Original Estimation']) || 0;
             t.expectedEnd = addWorkHours(t.expectedStart, hours);
-            currentExpectedDate = new Date(t.expectedEnd); // التالية تبدأ من نهاية السابقة
+            currentExpectedDate = new Date(t.expectedEnd);
         }
     });
 
-    // حساب التستر (يبدأ بعد آخر ديف)
     us.tasks.forEach(t => {
         if (t['Activity'] === 'Testing') {
             t.expectedStart = new Date(currentExpectedDate);
@@ -136,27 +137,20 @@ function calculateTimeline(us) {
     });
 }
 
-// وظيفة إضافة ساعات العمل (5 ساعات/يوم، 9ص-6م، أحد-خميس)
 function addWorkHours(startDate, hours) {
     let date = new Date(startDate);
     let remaining = hours;
-
     while (remaining > 0) {
-        // إذا كان يوم جمعة (5) أو سبت (6) أو عطلة، تخطاه
+        // Friday (5), Saturday (6) or Holiday
         if (date.getDay() === 5 || date.getDay() === 6 || holidays.includes(date.toISOString().split('T')[0])) {
             date.setDate(date.getDate() + 1);
             date.setHours(9, 0, 0);
             continue;
         }
-
-        // ساعات العمل المتبقية في اليوم الحالي حتى الساعة 6م
-        // بما أن اليوم 5 ساعات فقط، سنعتبر اليوم ينتهي بمجرد مرور 5 ساعات من البداية (أو الوصول لـ 6م)
         let currentDayLimit = 5; 
         let addedToday = Math.min(remaining, currentDayLimit);
-        
         date.setHours(date.getHours() + addedToday);
         remaining -= addedToday;
-
         if (remaining > 0 || date.getHours() >= 18) {
             date.setDate(date.getDate() + 1);
             date.setHours(9, 0, 0);
@@ -165,11 +159,9 @@ function addWorkHours(startDate, hours) {
     return date;
 }
 
-// التبديل بين الشاشات
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
     document.getElementById(viewId).style.display = 'block';
-
     if (processedStories.length === 0) return;
 
     if (viewId === 'business-view') renderBusinessView();
@@ -178,12 +170,10 @@ function showView(viewId) {
     if (viewId === 'not-tested-view') renderNotTestedView();
 }
 
-// 1. عرض البزنس ايريا (بالتفصيل لكل يوزر استوري)
 function renderBusinessView() {
     const container = document.getElementById('business-view');
     const grouped = groupBy(processedStories, 'businessArea');
-    
-    let html = '<h2>تحليل البزنس ايريا واليوزر استوري</h2>';
+    let html = '<h2>Business Area & User Story Analysis</h2>';
     for (let area in grouped) {
         html += `<div class="business-section">
                     <h3 class="business-area-title">${area}</h3>`;
@@ -195,10 +185,10 @@ function renderBusinessView() {
                     <table>
                         <thead>
                             <tr>
-                                <th>النوع</th>
+                                <th>Type</th>
                                 <th>Est. (H)</th>
                                 <th>Actual (H)</th>
-                                <th>Deviation</th>
+                                <th>Productivity Index</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -216,7 +206,7 @@ function renderBusinessView() {
                             </tr>
                         </tbody>
                     </table>
-                    <p>عدد البجز: ${us.rework.count} | نسبة الـ Rework: ${us.rework.percentage.toFixed(1)}%</p>
+                    <p>Bugs Count: ${us.rework.count} | Rework Ratio: ${us.rework.percentage.toFixed(1)}%</p>
                 </div>`;
         });
         html += `</div>`;
@@ -224,36 +214,30 @@ function renderBusinessView() {
     container.innerHTML = html;
 }
 
-// 2. عرض الفريق (إجماليات)
 function renderTeamView() {
     const container = document.getElementById('team-view');
-    let totalDevEst = 0, totalDevAct = 0, totalBugs = 0, totalReworkTime = 0;
-
+    let totalDevEst = 0, totalDevAct = 0, totalBugs = 0;
     processedStories.forEach(us => {
         totalDevEst += us.devEffort.orig;
         totalDevAct += us.devEffort.actual;
         totalBugs += us.rework.count;
-        totalReworkTime += us.rework.time;
     });
-
     container.innerHTML = `
         <div class="card" style="background: #ecf0f1;">
-            <h2>إجمالي أداء الفريق</h2>
+            <h2>Total Team Performance</h2>
             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div class="stat-box">إجمالي ساعات الاستميشن: <b>${totalDevEst}</b></div>
-                <div class="stat-box">إجمالي ساعات العمل الفعلي: <b>${totalDevAct}</b></div>
-                <div class="stat-box">إجمالي عدد البجز: <b>${totalBugs}</b></div>
-                <div class="stat-box">إجمالي تأخير الفريق: <b>${(totalDevAct - totalDevEst).toFixed(1)} ساعة</b></div>
+                <div class="stat-box">Total Est. Hours: <b>${totalDevEst}</b></div>
+                <div class="stat-box">Total Actual Hours: <b>${totalDevAct}</b></div>
+                <div class="stat-box">Total Bugs: <b>${totalBugs}</b></div>
+                <div class="stat-box">Total Delay: <b>${(totalDevAct - totalDevEst).toFixed(1)} hours</b></div>
             </div>
         </div>
     `;
 }
 
-// 3. عرض الأشخاص (تحليل أداء كل فرد)
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     const peopleStats = {};
-
     processedStories.forEach(us => {
         const dev = us.devLead;
         if (!peopleStats[dev]) peopleStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
@@ -261,9 +245,7 @@ function renderPeopleView() {
         peopleStats[dev].act += us.devEffort.actual;
         peopleStats[dev].stories += 1;
     });
-
-    let html = '<h2>تحليل أداء المطورين</h2><table><thead><tr><th>الاسم</th><th>عدد الاستوريز</th><th>إجمالي Est</th><th>إجمالي Actual</th><th>الانحراف</th></tr></thead><tbody>';
-    
+    let html = '<h2>Developer Performance Analysis</h2><table><thead><tr><th>Name</th><th>Stories</th><th>Total Est</th><th>Total Actual</th><th>Index</th></tr></thead><tbody>';
     for (let p in peopleStats) {
         let person = peopleStats[p];
         let dev = person.est / (person.act || 1);
@@ -279,21 +261,18 @@ function renderPeopleView() {
     container.innerHTML = html;
 }
 
-// 4. عرض غير المختبر (Not Tested)
 function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
     const notTested = processedStories.filter(us => us.status !== 'Tested' && us.status !== 'Resolved');
-    
     const grouped = groupBy(notTested, 'businessArea');
-    let html = '<h2>يوزر استوري لم يتم اختبارها (مقسمة بالبزنس ايريا)</h2>';
-
+    let html = '<h2>User Stories Not Yet Tested (By Business Area)</h2>';
     if (notTested.length === 0) {
-        html += '<p>كل اليوزر استوري تم اختبارها بنجاح!</p>';
+        html += '<p>All User Stories have been tested successfully!</p>';
     } else {
         for (let area in grouped) {
             html += `<h3 class="business-area-title">${area}</h3><ul>`;
             grouped[area].forEach(us => {
-                html += `<li><b>${us.id}</b>: ${us.title} (الحالة: ${us.status})</li>`;
+                html += `<li><b>${us.id}</b>: ${us.title} (Status: ${us.status})</li>`;
             });
             html += `</ul>`;
         }
