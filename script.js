@@ -357,6 +357,7 @@ function renderNotTestedView() {
     container.innerHTML = html;
 }
 
+// ... existing code ...
 function groupBy(arr, key) {
     return arr.reduce((acc, obj) => {
         (acc[obj[key]] = acc[obj[key]] || []).push(obj);
@@ -365,6 +366,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
