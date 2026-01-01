@@ -98,11 +98,17 @@ function deleteUser(username) {
 
 // 3. التحكم في ما يظهر للمستخدم
 function setupPermissions() {
-    const role = localStorage.getItem('app_role');
+    // جلب الرتبة من localStorage أو من كائن المستخدم الحالي
+    const role = localStorage.getItem('app_role') || (currentUser ? currentUser.role : null);
     const adminElements = document.querySelectorAll('.admin-only');
     
     adminElements.forEach(el => {
-        el.style.display = (role === 'admin') ? 'block' : 'none';
+        // إذا كان المستخدم admin اجعل العنصر يظهر، وإلا أخفه تماماً
+        if (role === 'admin') {
+            el.style.setProperty('display', 'inline-block', 'important');
+        } else {
+            el.style.setProperty('display', 'none', 'important');
+        }
     });
 }
 
@@ -833,6 +839,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
