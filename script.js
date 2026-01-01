@@ -22,38 +22,7 @@ window.onload = async function() {
     }
 };
 
-async function fetchDataFromGitHub() {
-    if (!githubToken) return;
-
-    const statusDiv = document.getElementById('sync-status');
-    statusDiv.style.display = 'block';
-    statusDiv.innerText = "🔄 Fetching latest data from GitHub...";
-
-    try {
-        const response = await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.path}?ref=${GH_CONFIG.branch}`, {
-            headers: { 'Authorization': `token ${githubToken}` }
-        });
-
-        if (response.ok) {
-            const fileData = await response.json();
-            // فك التشفير مع دعم UTF-8
-            const content = JSON.parse(decodeURIComponent(escape(atob(fileData.content)))); 
-            
-            // هام جداً: إسناد البيانات لـ rawData ثم معالجتها
-            rawData = content; 
-            processData(); 
-            
-            showView('business-view');
-            statusDiv.innerText = "✅ Data synced from GitHub";
-        } else {
-            statusDiv.innerText = "⚠️ No data found on GitHub. Please upload a CSV.";
-        }
-    } catch (error) {
-        console.error(error);
-        statusDiv.innerText = "❌ Connection failed - Check Token or Console";
-    }
-}
-
+fetchDataFromGitHub
 function renderHolidays() {
     const list = document.getElementById('holidaysList');
     if (list) {
@@ -706,6 +675,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
