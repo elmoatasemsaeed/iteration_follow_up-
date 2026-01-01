@@ -533,7 +533,7 @@ function renderNotTestedView() {
     let html = '<h2>Not Yet Tested - Detailed Analysis</h2>';
     
     if (notTested.length === 0) {
-        html += '<div class="card"><p style="text-align:center; color: #27ae60; font-weight: bold;">✅ All Stories are Tested or Resolved!</p></div>';
+        html += '<div class="card"><p style="text-align:center; color: #27ae60; font-weight: bold;">✅ All Stories are Tested!</p></div>';
         container.innerHTML = html;
         return;
     }
@@ -618,6 +618,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
