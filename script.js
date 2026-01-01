@@ -150,20 +150,32 @@ function calculateTimeline(us) {
 
 function addWorkHours(startDate, hours) {
     let date = new Date(startDate);
-    let remaining = hours;
-    while (remaining > 0) {
+    let remainingMinutes = hours * 60; // تحويل الساعات إلى دقائق
+
+    while (remainingMinutes > 0) {
+        // التحقق من أيام العطلات (الجمعة والسبت)
         if (date.getDay() === 5 || date.getDay() === 6 || holidays.includes(date.toISOString().split('T')[0])) {
             date.setDate(date.getDate() + 1);
-            date.setHours(9, 0, 0);
+            date.setHours(9, 0, 0, 0);
             continue;
         }
-        let currentDayLimit = 5; 
-        let addedToday = Math.min(remaining, currentDayLimit);
-        date.setHours(date.getHours() + addedToday);
-        remaining -= addedToday;
-        if (remaining > 0 || date.getHours() >= 18) {
+
+        // حساب الدقائق المتبقية حتى نهاية يوم العمل (حتى الساعة 6 مساءً)
+        let currentHour = date.getHours();
+        let currentMinutes = date.getMinutes();
+        let minutesUntilEndOfDay = ((18 - currentHour) * 60) - currentMinutes;
+
+        // إضافة الدقائق المتاحة في اليوم الحالي
+        let addedNow = Math.min(remainingMinutes, minutesUntilEndOfDay);
+        
+        // استخدام getTime وsetTime لإضافة الوقت بدقة بالدقائق
+        date.setTime(date.getTime() + (addedNow * 60 * 1000));
+        remainingMinutes -= addedNow;
+
+        // إذا انتهى يوم العمل وما زال هناك دقائق متبقية، انتقل لليوم التالي
+        if (remainingMinutes > 0 || date.getHours() >= 18) {
             date.setDate(date.getDate() + 1);
-            date.setHours(9, 0, 0);
+            date.setHours(9, 0, 0, 0);
         }
     }
     return date;
@@ -390,6 +402,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
