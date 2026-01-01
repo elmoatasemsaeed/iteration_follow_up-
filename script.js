@@ -287,7 +287,21 @@ function renderBusinessView() {
                 return new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
             };
 
-            const sortedTasks = [...us.tasks].sort((a, b) => (a.expectedStart || 0) - (b.expectedStart || 0));
+            // فصل المهام وتطبيق نفس منطق الترتيب المستخدم في الحسابات
+const devTasksSorted = us.tasks
+    .filter(t => t.Activity !== 'Testing')
+    .sort((a, b) => {
+        let dateA = new Date(a['Activated Date'] || 0);
+        let dateB = new Date(b['Activated Date'] || 0);
+        return dateA - dateB;
+    });
+
+const testingTasksSorted = us.tasks
+    .filter(t => t.Activity === 'Testing')
+    .sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
+
+// دمج المجموعتين بالترتيب الصحيح (الديف أولاً ثم التستر)
+const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
 
             html += `
                 <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
@@ -484,6 +498,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
