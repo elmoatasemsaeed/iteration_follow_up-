@@ -33,16 +33,15 @@ function saveUsers() {
 async function attemptLogin() {
     const user = document.getElementById('loginUser').value;
     const pass = document.getElementById('loginPass').value;
-    const token = document.getElementById('ghTokenInput').value;
+    const token = document.getElementById('ghTokenInput').value; // جلب التوكن من المدخل
     const remember = document.getElementById('rememberMe').checked;
 
     if (users[user] && users[user].pass === pass && token) {
         currentUser = users[user];
-        githubToken = token;
+        githubToken = token; // تحديث المتغير العام لاستخدامه في الرفع لاحقاً
         
-        // Save to LocalStorage if Remember Me is checked
         if (remember) {
-            localStorage.setItem('gh_token', token);
+            localStorage.setItem('gh_token', token); // حفظه للمرات القادمة
             localStorage.setItem('app_role', currentUser.role);
             localStorage.setItem('saved_user', user);
             localStorage.setItem('saved_pass', pass);
@@ -56,7 +55,6 @@ async function attemptLogin() {
         alert("Invalid Credentials or Token!");
     }
 }
-
 function renderUsersTable() {
     const tbody = document.getElementById('usersListTable');
     if (!tbody || !users) return;
@@ -202,19 +200,20 @@ function removeHoliday(date) {
 // Handle Upload
 async function handleUpload() {
     const file = document.getElementById('csvFile').files[0];
-    githubToken = document.getElementById('ghToken').value;
     
-    if (!githubToken) return alert("Please enter GitHub Token first");
+    // التعديل: نستخدم المتغير العام githubToken الذي تم تعبئته عند تسجيل الدخول
+    if (!githubToken) {
+        return alert("GitHub Token is missing. Please log in again.");
+    }
+    
     if (!file) return alert("Please select a file first");
-
-    localStorage.setItem('gh_token', githubToken); // حفظ التوكن محلياً للسهولة
 
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: async function(results) {
             rawData = results.data;
-            processData(); // الدالة الموجودة مسبقاً في كودك
+            processData(); 
             await uploadToGitHub();
             showView('business-view');
         }
@@ -839,6 +838,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
