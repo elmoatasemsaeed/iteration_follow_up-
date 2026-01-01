@@ -115,37 +115,69 @@ function calculateMetrics() {
 }
 
 function calculateTimeline(us) {
-    if (!us.activatedDate) return;
-    
-    // فصل المهام إلى تطوير واختبار
-    const devTasks = us.tasks.filter(t => t['Activity'] !== 'Testing');
-    const testingTasks = us.tasks.filter(t => t['Activity'] === 'Testing');
+    let tasks = us.tasks;
+    if (!tasks || tasks.length === 0) return;
 
-    let currentExpectedDate;
+    // 1. تقسيم المهام إلى ديف وتستر
+    let devTasks = tasks.filter(t => t.Activity !== 'Testing');
+    let testingTasks = tasks.filter(t => t.Activity === 'Testing');
 
-    // معالجة مهام التطوير (Development)
-    devTasks.forEach((t, index) => {
-        if (index === 0) {
-            // أول تاسك يبدأ من وقت الأكتفيشن الخاص بالتاسك نفسه
-            // ملحوظة: إذا كنت تقصد أكتفيشن الستوري، استبدلها بـ new Date(us.activatedDate)
-            t.expectedStart = t['Activated Date'] ? new Date(t['Activated Date']) : new Date(us.activatedDate);
-        } else {
-            // المهام التالية تبدأ من انتهاء المهمة السابقة
-            t.expectedStart = new Date(currentExpectedDate);
+    // 2. معالجة مهام التطوير (Dev Tasks) - كما هي في الكود الأصلي
+    let currentDevExpectedDate = new Date(us.activationDate);
+    devTasks.forEach(t => {
+        t.expectedStart = new Date(currentDevExpectedDate);
+        let hours = parseFloat(t['Original Estimation']) || 0;
+        t.expectedEnd = addWorkHours(t.expectedStart, hours);
+        currentDevExpectedDate = new Date(t.expectedEnd);
+    });
+
+    // 3. إيجاد الوقت الفعلي لانتهاء آخر مهمة تطوير (Actual End)
+    // نبحث عن أقصى تاريخ في حقل 'Actual End' لمهام الديف
+    let lastDevActualEnd = null;
+    devTasks.forEach(t => {
+        if (t['Actual End']) {
+            let actualEnd = new Date(t['Actual End']);
+            if (!lastDevActualEnd || actualEnd > lastDevActualEnd) {
+                lastDevActualEnd = actualEnd;
+            }
         }
-        
-        let hours = parseFloat(t['Original Estimation']) || 0;
-        t.expectedEnd = addWorkHours(t.expectedStart, hours);
-        currentExpectedDate = new Date(t.expectedEnd);
     });
 
-    // معالجة مهام الاختبار (Testing) تبدأ دائماً بعد انتهاء آخر مهمة تطوير
-    testingTasks.forEach(t => {
-        t.expectedStart = new Date(currentExpectedDate);
-        let hours = parseFloat(t['Original Estimation']) || 0;
-        t.expectedEnd = addWorkHours(t.expectedStart, hours);
-        currentExpectedDate = new Date(t.expectedEnd);
+    // 4. معالجة مهام الاختبار (Testing Tasks)
+    // أ- ترتيب مهام الاختبار تصاعدياً حسب الـ ID
+    testingTasks.sort((a, b) => {
+        return parseInt(a.id || 0) - parseInt(b.id || 0);
     });
+
+    // ب- حساب التواريخ بناءً على القواعد الجديدة
+    let currentTestingExpectedDate;
+
+    testingTasks.forEach((t, index) => {
+        let hours = parseFloat(t['Original Estimation']) || 0;
+
+        if (index === 0) {
+            // أول تاسك تستر (الأصغر ID): تبدأ من وقت التفعيل الخاص بها تماماً
+            // ملاحظة: يتم استخدام Activation Date الخاص بالتاسك، وإذا لم يوجد نستخدم الخاص بالـ Story
+            let taskActivation = t['Activation Date'] ? new Date(t['Activation Date']) : new Date(us.activationDate);
+            t.expectedStart = taskActivation;
+        } else {
+            // التساكات التالية: تبدأ من الوقت الفعلي لانتهاء آخر ديف
+            // إذا لم يتوفر تاريخ فعلي للديف، يتم الاعتماد على نهاية تاسك التستر السابقة كبديل
+            if (lastDevActualEnd) {
+                t.expectedStart = new Date(lastDevActualEnd);
+            } else {
+                t.expectedStart = new Date(testingTasks[index - 1].expectedEnd);
+            }
+        }
+
+        t.expectedEnd = addWorkHours(t.expectedStart, hours);
+    });
+
+    // 5. تحديث التواريخ الكلية للـ User Story بناءً على آخر مهمة تنتهي
+    let allTasks = [...devTasks, ...testingTasks];
+    if (allTasks.length > 0) {
+        us.expectedEnd = new Date(Math.max(...allTasks.map(t => t.expectedEnd)));
+    }
 }
 
 function addWorkHours(startDate, hours) {
@@ -402,6 +434,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
