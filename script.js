@@ -180,10 +180,12 @@ function renderBusinessView() {
                     <h3 class="business-area-title">${area}</h3>`;
         
         grouped[area].forEach(us => {
-            const formatDate = (date) => date ? new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'N/A';
+            const formatDate = (date) => {
+                if (!date || date === 'N/A') return 'N/A';
+                const d = new Date(date);
+                return isNaN(d) ? 'N/A' : d.toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+            };
 
-            // ترتيب التاسكات بناءً على تاريخ البدء المتوقع
-            // الترتيب يضمن ظهور الديف والداتابيز أولاً لأن calculateTimeline تعطي الأولوية لهم زمنياً
             const sortedTasks = [...us.tasks].sort((a, b) => {
                 const dateA = a.expectedStart ? a.expectedStart.getTime() : 0;
                 const dateB = b.expectedStart ? b.expectedStart.getTime() : 0;
@@ -191,7 +193,7 @@ function renderBusinessView() {
             });
 
             html += `
-                <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9;">
+                <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
                     <h4>ID: ${us.id} - ${us.title}</h4>
                     <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
                     
@@ -222,27 +224,56 @@ function renderBusinessView() {
                         </table>
                     </div>
 
-                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule (Sorted by Start Date):</h5>
-                    <table style="font-size: 0.9em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
+                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
+                    <table style="font-size: 0.85em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background-color: #eee; text-align: left;">
                                 <th style="padding: 8px; border: 1px solid #ddd;">Task ID</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Title</th>
                                 <th style="padding: 8px; border: 1px solid #ddd;">Activity</th>
                                 <th style="padding: 8px; border: 1px solid #ddd;">Est (H)</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Expected Start</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Expected End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Exp. Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Exp. End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Act. Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Act. End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Act. Dur (H)</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">TS (H)</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Dev %</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${sortedTasks.map(t => `
+                            ${sortedTasks.map(t => {
+                                // 1. حساب المدة الفعلية (فرق الأيام بين التفعيل والحل مضروب في 5 ساعات عمل يومياً)
+                                let actDuration = 0;
+                                if (t['Activated Date'] && t['Resolved Date']) {
+                                    const start = new Date(t['Activated Date']);
+                                    const end = new Date(t['Resolved Date']);
+                                    const diffTime = Math.abs(end - start);
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    actDuration = diffDays * 5; 
+                                }
+
+                                // 2. حساب إجمالي التايم شيت للتاسك
+                                const tsDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
+                                const tsTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
+                                const totalTS = tsDev + tsTest;
+
+                                // 3. حساب نسبة الانحراف (بين التقديري والتايم شيت)
+                                const est = parseFloat(t['Original Estimation']) || 0;
+                                const deviation = est > 0 ? ((totalTS - est) / est * 100).toFixed(1) : 0;
+                                const devClass = deviation > 15 ? 'alert-red' : '';
+
+                                return `
                                 <tr>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Title']}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Original Estimation'] || 0}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${est}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedEnd)}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Activated Date'])}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Resolved Date'])}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${actDuration}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${totalTS}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;" class="${devClass}">${deviation}%</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -258,6 +289,7 @@ function renderBusinessView() {
     }
     container.innerHTML = html;
 }
+
 function renderTeamView() {
     const container = document.getElementById('team-view');
     // تجميع القصص حسب الـ Business Area
@@ -406,6 +438,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
