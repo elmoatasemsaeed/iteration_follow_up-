@@ -180,10 +180,13 @@ function renderBusinessView() {
                     <h3 class="business-area-title">${area}</h3>`;
         
         grouped[area].forEach(us => {
-            const formatDate = (date) => date ? new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'N/A';
+            // دالة تنسيق التاريخ والوقت
+            const formatDate = (date) => {
+                if (!date || date === 'N/A') return 'N/A';
+                const d = new Date(date);
+                return isNaN(d.getTime()) ? 'N/A' : d.toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+            };
 
-            // ترتيب التاسكات بناءً على تاريخ البدء المتوقع
-            // الترتيب يضمن ظهور الديف والداتابيز أولاً لأن calculateTimeline تعطي الأولوية لهم زمنياً
             const sortedTasks = [...us.tasks].sort((a, b) => {
                 const dateA = a.expectedStart ? a.expectedStart.getTime() : 0;
                 const dateB = b.expectedStart ? b.expectedStart.getTime() : 0;
@@ -222,27 +225,27 @@ function renderBusinessView() {
                         </table>
                     </div>
 
-                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule (Sorted by Start Date):</h5>
-                    <table style="font-size: 0.9em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
+                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
+                    <table style="font-size: 0.85em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background-color: #eee; text-align: left;">
                                 <th style="padding: 8px; border: 1px solid #ddd;">Task ID</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Title</th>
                                 <th style="padding: 8px; border: 1px solid #ddd;">Activity</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Est (H)</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Expected Start</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Expected End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #e3f2fd;">Expected Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #fff3e0;">Actual Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #e3f2fd;">Expected End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #fff3e0;">Actual End</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${sortedTasks.map(t => `
                                 <tr>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Title']}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Original Estimation'] || 0}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['TimeSheet_StartDate'])}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedEnd)}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['TimeSheet_EndDate'])}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -406,6 +409,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
