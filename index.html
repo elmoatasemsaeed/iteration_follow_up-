@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تحليل اليوزر استوري</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>لوحة تحكم تحليل الإنتاجية</h1>
+        <div class="upload-section">
+            <input type="file" id="csvFile" accept=".csv">
+            <button onclick="handleUpload()">تحليل البيانات</button>
+        </div>
+    </header>
+
+    <nav>
+        <button onclick="showView('business-view')">عرض بزنس ايريا</button>
+        <button onclick="showView('team-view')">عرض الفريق</button>
+        <button onclick="showView('people-view')">عرض الأشخاص</button>
+        <button onclick="showView('not-tested-view')">غير المختبر (Not Tested)</button>
+        <button onclick="showView('holidays-view')">إدارة العطلات</button>
+    </nav>
+
+    <main id="content">
+        <div id="welcome-msg" class="view">
+            <p>يرجى رفع ملف الـ CSV لبدء التحليل.</p>
+        </div>
+
+        <div id="business-view" class="view" style="display:none;"></div>
+        <div id="team-view" class="view" style="display:none;"></div>
+        <div id="people-view" class="view" style="display:none;"></div>
+        <div id="not-tested-view" class="view" style="display:none;"></div>
+        
+        <div id="holidays-view" class="view" style="display:none;">
+            <h3>تحديد العطلات الرسمية</h3>
+            <input type="date" id="holidayPicker">
+            <button onclick="addHoliday()">إضافة عطلة</button>
+            <ul id="holidaysList"></ul>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
