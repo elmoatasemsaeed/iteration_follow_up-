@@ -160,10 +160,10 @@ function addWorkHours(startDate, hours) {
             continue;
         }
 
-        // حساب الدقائق المتبقية حتى نهاية يوم العمل (حتى الساعة 6 مساءً)
+        // حساب الدقائق المتبقية حتى نهاية يوم العمل (حتى الساعة 5 مساءً)
         let currentHour = date.getHours();
         let currentMinutes = date.getMinutes();
-        let minutesUntilEndOfDay = ((18 - currentHour) * 60) - currentMinutes;
+        let minutesUntilEndOfDay = ((17 - currentHour) * 60) - currentMinutes;
 
         // إضافة الدقائق المتاحة في اليوم الحالي
         let addedNow = Math.min(remainingMinutes, minutesUntilEndOfDay);
@@ -173,7 +173,7 @@ function addWorkHours(startDate, hours) {
         remainingMinutes -= addedNow;
 
         // إذا انتهى يوم العمل وما زال هناك دقائق متبقية، انتقل لليوم التالي
-        if (remainingMinutes > 0 || date.getHours() >= 18) {
+        if (remainingMinutes > 0 || date.getHours() >= 17) {
             date.setDate(date.getDate() + 1);
             date.setHours(9, 0, 0, 0);
         }
@@ -402,6 +402,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
