@@ -251,58 +251,60 @@ function renderTeamView() {
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
-    const devDataByArea = {};    // { Area: { DevName: { stats } } }
-    const testerDataByArea = {};  // { Area: { TesterName: { stats } } }
+    const areaMap = {}; // { AreaName: { devs: {}, testers: {} } }
 
+    // 1. تجميع البيانات موزعة حسب المنطقة والمسمى الوظيفي
     processedStories.forEach(us => {
         const area = us.businessArea || 'General';
-
-        // تجميع بيانات المطورين حسب المنطقة
-        const dev = us.devLead;
-        if (dev) {
-            if (!devDataByArea[area]) devDataByArea[area] = {};
-            if (!devDataByArea[area][dev]) {
-                devDataByArea[area][dev] = { name: dev, est: 0, act: 0, stories: 0 };
-            }
-            devDataByArea[area][dev].est += us.devEffort.orig;
-            devDataByArea[area][dev].act += us.devEffort.actual;
-            devDataByArea[area][dev].stories += 1;
+        if (!areaMap[area]) {
+            areaMap[area] = { devs: {}, testers: {} };
         }
 
-        // تجميع بيانات المختبرين حسب المنطقة
+        // تجميع بيانات المطورين
+        const dev = us.devLead;
+        if (dev) {
+            if (!areaMap[area].devs[dev]) areaMap[area].devs[dev] = { name: dev, est: 0, act: 0, stories: 0 };
+            areaMap[area].devs[dev].est += us.devEffort.orig;
+            areaMap[area].devs[dev].act += us.devEffort.actual;
+            areaMap[area].devs[dev].stories += 1;
+        }
+
+        // تجميع بيانات المختبرين
         const tester = us.testerLead;
         if (tester) {
-            if (!testerDataByArea[area]) testerDataByArea[area] = {};
-            if (!testerDataByArea[area][tester]) {
-                testerDataByArea[area][tester] = { name: tester, est: 0, act: 0, stories: 0 };
-            }
-            testerDataByArea[area][tester].est += us.testEffort.orig;
-            testerDataByArea[area][tester].act += us.testEffort.actual;
-            testerDataByArea[area][tester].stories += 1;
+            if (!areaMap[area].testers[tester]) areaMap[area].testers[tester] = { name: tester, est: 0, act: 0, stories: 0 };
+            areaMap[area].testers[tester].est += us.testEffort.orig;
+            areaMap[area].testers[tester].act += us.testEffort.actual;
+            areaMap[area].testers[tester].stories += 1;
         }
     });
 
-    let html = '<h2>People Performance Analysis (By Business Area)</h2>';
+    // 2. بناء واجهة العرض (Grid لكل Business Area)
+    let html = '<h2>People Performance by Business Area</h2>';
 
-    // قسم المطورين
-    html += '<h2 style="color: #2980b9; border-bottom: 2px solid #2980b9;">Developers by Business Area</h2>';
-    for (let area in devDataByArea) {
-        html += `<h3 class="business-area-title" style="margin-top:20px;">Area: ${area}</h3>`;
-        html += generatePeopleTable(devDataByArea[area]);
-    }
-
-    html += '<br><br><hr><br>';
-
-    // قسم المختبرين
-    html += '<h2 style="color: #27ae60; border-bottom: 2px solid #27ae60;">Testers by Business Area</h2>';
-    for (let area in testerDataByArea) {
-        html += `<h3 class="business-area-title" style="margin-top:20px;">Area: ${area}</h3>`;
-        html += generatePeopleTable(testerDataByArea[area]);
+    for (let area in areaMap) {
+        html += `
+            <div class="area-performance-grid" style="margin-bottom: 40px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff;">
+                <h3 style="background: #2c3e50; color: white; padding: 10px; margin: -15px -15px 15px -15px; border-radius: 8px 8px 0 0;">
+                    Business Area: ${area}
+                </h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4 style="color: #2980b9;">Developers</h4>
+                        ${Object.keys(areaMap[area].devs).length > 0 ? generatePeopleTable(areaMap[area].devs) : '<p>No developers assigned</p>'}
+                    </div>
+                    <div>
+                        <h4 style="color: #27ae60;">Testers</h4>
+                        ${Object.keys(areaMap[area].testers).length > 0 ? generatePeopleTable(areaMap[area].testers) : '<p>No testers assigned</p>'}
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     container.innerHTML = html;
 }
-
 // وظيفة مساعدة لإنشاء الجدول لتقليل تكرار الكود
 function generatePeopleTable(statsObj) {
     let tableHtml = `<table>
@@ -360,5 +362,6 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
