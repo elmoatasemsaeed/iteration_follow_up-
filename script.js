@@ -249,54 +249,7 @@ function renderTeamView() {
     container.innerHTML = html;
 }
 
-function renderPeopleView() {
-    const container = document.getElementById('people-view');
-    // 1. تجميع القصص حسب Business Area أولاً
-    const groupedByArea = groupBy(processedStories, 'businessArea');
-    
-    let html = '<h2>People Performance Analysis (By Business Area)</h2>';
-
-    for (let area in groupedByArea) {
-        html += `<div class="business-section" style="margin-bottom: 40px; border-bottom: 2px solid #34495e; padding-bottom: 20px;">
-                    <h2 class="business-area-title" style="background: var(--secondary);">${area}</h2>`;
-
-        const devStats = {};
-        const testerStats = {};
-
-        // 2. حساب الإحصائيات للأشخاص داخل هذه الـ Area فقط
-        groupedByArea[area].forEach(us => {
-            // إحصائيات المطورين
-            const dev = us.devLead;
-            if (dev) {
-                if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
-                devStats[dev].est += us.devEffort.orig;
-                devStats[dev].act += us.devEffort.actual;
-                devStats[dev].stories += 1;
-            }
-
-            // إحصائيات المختبرين
-            const tester = us.testerLead;
-            if (tester) {
-                if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
-                testerStats[tester].est += us.testEffort.orig;
-                testerStats[tester].act += us.testEffort.actual;
-                testerStats[tester].stories += 1;
-            }
-        });
-
-        // 3. توليد جداول المنطقة الحالية
-        html += `<h3 style="color: #2c3e50;">Developers in ${area}</h3>`;
-        html += generatePeopleTable(devStats);
-
-        html += `<h3 style="color: #2c3e50; margin-top: 20px;">Testers in ${area}</h3>`;
-        html += generatePeopleTable(testerStats);
-
-        html += `</div>`;
-    }
-
-    container.innerHTML = html;
-}
-
+    renderPeopleView
 // وظيفة مساعدة لإنشاء الجدول لتقليل تكرار الكود
 function generatePeopleTable(statsObj) {
     let tableHtml = `<table>
@@ -354,6 +307,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
