@@ -1,23 +1,30 @@
 let rawData = [];
 let processedStories = [];
 let holidays = JSON.parse(localStorage.getItem('holidays') || "[]");
+// اجعل التوكن متاحاً من البداية
+let githubToken = localStorage.getItem('gh_token') || ""; 
+
 // GitHub Configuration
 const GH_CONFIG = {
-    owner: 'elmoatasemsaeed', // اسم المستخدم الخاص بك
-    repo: 'iteration_follow_up-',        // اسم المستودع
-    path: 'data.json',             // اسم الملف الذي سيتم تخزينه
-    branch: 'main'                 // البرانش
+    owner: 'elmoatasemsaeed',
+    repo: 'iteration_follow_up-',
+    path: 'data.json',
+    branch: 'main'
 };
 // عند تشغيل الصفحة، ابحث عن بيانات مخزنة مسبقاً
 window.onload = async function() {
+    renderHolidays(); // عرض العطلات فوراً
+    
+    const tokenInput = document.getElementById('ghToken');
     if (githubToken) {
-        document.getElementById('ghToken').value = githubToken;
-        fetchDataFromGitHub();
+        tokenInput.value = githubToken;
+        await fetchDataFromGitHub(); // استدعاء جلب البيانات
     }
-    renderHolidays();
 };
 
 async function fetchDataFromGitHub() {
+    if (!githubToken) return;
+
     const statusDiv = document.getElementById('sync-status');
     statusDiv.style.display = 'block';
     statusDiv.innerText = "🔄 Fetching latest data from GitHub...";
@@ -29,26 +36,21 @@ async function fetchDataFromGitHub() {
 
         if (response.ok) {
             const fileData = await response.json();
-            const content = JSON.parse(atob(fileData.content)); // فك تشفير Base64
-            processedStories = content;
+            // فك التشفير مع دعم UTF-8
+            const content = JSON.parse(decodeURIComponent(escape(atob(fileData.content)))); 
+            
+            // هام جداً: إسناد البيانات لـ rawData ثم معالجتها
+            rawData = content; 
+            processData(); 
+            
             showView('business-view');
             statusDiv.innerText = "✅ Data synced from GitHub";
         } else {
             statusDiv.innerText = "⚠️ No data found on GitHub. Please upload a CSV.";
         }
     } catch (error) {
-        statusDiv.innerText = "❌ Connection failed";
-    }
-}
-
-let githubToken = localStorage.getItem('gh_token') || "";
-// Holiday Setup
-function addHoliday() {
-    const h = document.getElementById('holidayPicker').value;
-    if(h && !holidays.includes(h)) {
-        holidays.push(h);
-        localStorage.setItem('holidays', JSON.stringify(holidays));
-        renderHolidays();
+        console.error(error);
+        statusDiv.innerText = "❌ Connection failed - Check Token or Console";
     }
 }
 
@@ -704,6 +706,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
