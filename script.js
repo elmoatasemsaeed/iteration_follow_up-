@@ -405,32 +405,43 @@ function renderTeamView() {
     let html = '<h2>Team Performance by Business Area</h2>';
 
     for (let area in grouped) {
-        let areaDevEst = 0, areaDevAct = 0, areaBugsCount = 0, areaReworkTime = 0;
+        let areaDevEst = 0, areaDevAct = 0, areaBugsCount = 0, areaReworkTime = 0, areaBugActualTotal = 0;
         
         grouped[area].forEach(us => {
             areaDevEst += us.devEffort.orig;
             areaDevAct += us.devEffort.actual;
-            // جمع عدد البجز وإجمالي ساعات الريورك من كل يوزر ستوري
             areaBugsCount += us.rework.count;
-            areaReworkTime += us.rework.time;
+            areaReworkTime += us.rework.time; // هذا يعتمد على التقدير الأصلي للبجز
+
+            // لحساب النسبة بدقة نحتاج لجمع الوقت الفعلي المستغرق في البجز من كل ستوري
+            // استناداً للمنطق الموجود في calculateMetrics
+            let usBugActual = us.bugs.reduce((sum, b) => {
+                return sum + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0);
+            }, 0);
+            areaBugActualTotal += usBugActual;
         });
 
         const delay = areaDevAct - areaDevEst;
+        // حساب النسبة: (إجمالي وقت البجز الفعلي / إجمالي وقت التطوير الفعلي) * 100
+        const reworkPercentage = areaDevAct > 0 ? ((areaBugActualTotal / areaDevAct) * 100).toFixed(1) : 0;
         
         html += `
             <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 20px;">
                 <h3 style="color: #2c3e50; margin-bottom: 15px;">${area}</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
                     <div><small>Dev Est:</small><br><b>${areaDevEst.toFixed(1)}h</b></div>
                     <div><small>Dev Act:</small><br><b>${areaDevAct.toFixed(1)}h</b></div>
                     <div style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">
                         <small>Delay:</small><br><b>${delay.toFixed(1)}h</b>
                     </div>
-                    <div style="border-left: 2px solid #eee; padding-left: 15px;">
+                    <div>
                         <small>Total Bugs:</small><br><b style="color: #e67e22;">${areaBugsCount}</b>
                     </div>
                     <div>
-                        <small>Total Rework:</small><br><b style="color: #e74c3c;">${areaReworkTime.toFixed(1)}h</b>
+                        <small>Rework Time:</small><br><b style="color: #e74c3c;">${areaBugActualTotal.toFixed(1)}h</b>
+                    </div>
+                    <div style="background: #fdf2f2; padding: 5px; border-radius: 4px; border: 1px solid #f8d7da;">
+                        <small>Rework %:</small><br><b style="color: #c0392b;">${reworkPercentage}%</b>
                     </div>
                 </div>
             </div>`;
@@ -508,6 +519,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
