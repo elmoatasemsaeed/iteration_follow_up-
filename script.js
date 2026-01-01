@@ -1,7 +1,7 @@
+// 1. Global Variables (Top Level Scope)
 let rawData = [];
 let processedStories = [];
 let holidays = JSON.parse(localStorage.getItem('holidays') || "[]");
-// اجعل التوكن متاحاً من البداية
 let githubToken = localStorage.getItem('gh_token') || ""; 
 
 // GitHub Configuration
@@ -11,22 +11,25 @@ const GH_CONFIG = {
     path: 'data.json',
     branch: 'main'
 };
-let users = JSON.parse(localStorage.getItem('app_users'));
 
+// Initialize Users
+let users = JSON.parse(localStorage.getItem('app_users'));
 if (!users || Object.keys(users).length === 0) {
     users = {
-        "admin": { pass: "admin", role: "100300311" }
+        "admin": { pass: "admin", role: "admin" } // Changed role to 'admin' to match setupPermissions logic
     };
     localStorage.setItem('app_users', JSON.stringify(users));
 }
 
-function saveUsers() {
-    localStorage.setItem('app_users', JSON.stringify(users));
-    if(typeof renderUsersTable === "function") renderUsersTable(); 
-}
 let currentUser = null;
 
-// 2. وظيفة تسجيل الدخول
+// --- Functions ---
+
+function saveUsers() {
+    localStorage.setItem('app_users', JSON.stringify(users));
+    renderUsersTable(); 
+}
+
 async function attemptLogin() {
     const user = document.getElementById('loginUser').value;
     const pass = document.getElementById('loginPass').value;
@@ -37,7 +40,7 @@ async function attemptLogin() {
         currentUser = users[user];
         githubToken = token;
         
-        // حفظ البيانات إذا اختار المستخدم "Remember Me"
+        // Save to LocalStorage if Remember Me is checked
         if (remember) {
             localStorage.setItem('gh_token', token);
             localStorage.setItem('app_role', currentUser.role);
@@ -53,9 +56,10 @@ async function attemptLogin() {
         alert("Invalid Credentials or Token!");
     }
 }
+
 function renderUsersTable() {
     const tbody = document.getElementById('usersListTable');
-    if (!tbody) return;
+    if (!tbody || !users) return;
     
     tbody.innerHTML = Object.keys(users).map(u => `
         <tr>
@@ -63,11 +67,12 @@ function renderUsersTable() {
             <td>${users[u].pass}</td>
             <td>${users[u].role}</td>
             <td>
-                <button onclick="deleteUser('${u}')" style="background:#e74c3c; padding:5px;">Delete</button>
+                <button onclick="deleteUser('${u}')" style="background:#e74c3c; padding:5px; color:white; border:none; border-radius:3px;">Delete</button>
             </td>
         </tr>
     `).join('');
 }
+
 
 function addUser() {
     const name = document.getElementById('newUserName').value;
@@ -828,6 +833,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
