@@ -9,6 +9,7 @@ const GH_CONFIG = {
     owner: 'elmoatasemsaeed',
     repo: 'iteration_follow_up-',
     path: 'data.json',
+    usersPath: 'users.json', // مسار ملف المستخدمين الجديد
     branch: 'main'
 };
 
@@ -72,20 +73,76 @@ function renderUsersTable() {
 }
 
 
-function addUser() {
+async function addUser() {
     const name = document.getElementById('newUserName').value;
     const pass = document.getElementById('newUserPass').value;
     const role = document.getElementById('newUserRole').value;
 
     if (name && pass) {
         users[name] = { pass: pass, role: role };
-        saveUsers();
-        alert("User saved successfully!");
+        // حفظ محلي مؤقت
+        localStorage.setItem('app_users', JSON.stringify(users)); 
+        
+        // رفع القائمة المحدثة إلى GitHub
+        await uploadUsersToGitHub(); 
+        
+        alert("User saved and synced to GitHub!");
         document.getElementById('newUserName').value = '';
         document.getElementById('newUserPass').value = '';
+        renderUsersTable();
     }
 }
 
+// جلب المستخدمين من GitHub عند تشغيل النظام
+async function fetchUsersFromGitHub() {
+    try {
+        const res = await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.usersPath}`, {
+            headers: { 'Authorization': `token ${githubToken}` }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const content = decodeURIComponent(escape(atob(data.content)));
+            users = JSON.parse(content);
+            localStorage.setItem('app_users', JSON.stringify(users));
+            renderUsersTable();
+        }
+    } catch (e) {
+        console.error("Error fetching users:", e);
+    }
+}
+
+// رفع قائمة المستخدمين إلى GitHub
+async function uploadUsersToGitHub() {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(users))));
+    let sha = "";
+
+    try {
+        const res = await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.usersPath}`, {
+            headers: { 'Authorization': `token ${githubToken}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            sha = data.sha;
+        }
+
+        await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.usersPath}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${githubToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: "Update user list",
+                content: content,
+                sha: sha,
+                branch: GH_CONFIG.branch
+            })
+        });
+    } catch (e) {
+        console.error("Error syncing users:", e);
+    }
+}
 function deleteUser(username) {
     if (username === 'admin') return alert("Cannot delete main admin!");
     if (confirm(`Delete user ${username}?`)) {
@@ -139,8 +196,12 @@ async function fetchDataFromGitHub() {
 }
 
 // 5. تسجيل الخروج
-function logout() {
-    localStorage.clear();
+logoutfunction logout() {
+    // نمسح فقط بيانات الجلسة الحالية
+    localStorage.removeItem('gh_token');
+    localStorage.removeItem('app_role');
+    localStorage.removeItem('saved_user');
+    localStorage.removeItem('saved_pass');
     location.reload();
 }
 
@@ -826,6 +887,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
