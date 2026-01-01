@@ -180,8 +180,15 @@ function renderBusinessView() {
                     <h3 class="business-area-title">${area}</h3>`;
         
         grouped[area].forEach(us => {
-            // تحويل التواريخ لنصوص مقروءة
             const formatDate = (date) => date ? new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'N/A';
+
+            // ترتيب التاسكات بناءً على تاريخ البدء المتوقع
+            // الترتيب يضمن ظهور الديف والداتابيز أولاً لأن calculateTimeline تعطي الأولوية لهم زمنياً
+            const sortedTasks = [...us.tasks].sort((a, b) => {
+                const dateA = a.expectedStart ? a.expectedStart.getTime() : 0;
+                const dateB = b.expectedStart ? b.expectedStart.getTime() : 0;
+                return dateA - dateB;
+            });
 
             html += `
                 <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9;">
@@ -189,7 +196,7 @@ function renderBusinessView() {
                     <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
                     
                     <div style="margin-bottom: 15px;">
-                        <table class="summary-table">
+                        <table>
                             <thead>
                                 <tr>
                                     <th>Type</th>
@@ -215,27 +222,27 @@ function renderBusinessView() {
                         </table>
                     </div>
 
-                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
-                    <table class="tasks-table" style="font-size: 0.9em; background-color: #fcfcfc;">
+                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule (Sorted by Start Date):</h5>
+                    <table style="font-size: 0.9em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
                         <thead>
-                            <tr style="background-color: #eee;">
-                                <th>Task ID</th>
-                                <th>Title</th>
-                                <th>Activity</th>
-                                <th>Est (H)</th>
-                                <th>Expected Start</th>
-                                <th>Expected End</th>
+                            <tr style="background-color: #eee; text-align: left;">
+                                <th style="padding: 8px; border: 1px solid #ddd;">Task ID</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Title</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Activity</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Est (H)</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Expected Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Expected End</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${us.tasks.map(t => `
+                            ${sortedTasks.map(t => `
                                 <tr>
-                                    <td>${t['ID']}</td>
-                                    <td>${t['Title']}</td>
-                                    <td>${t['Activity']}</td>
-                                    <td>${t['Original Estimation'] || 0}</td>
-                                    <td>${formatDate(t.expectedStart)}</td>
-                                    <td>${formatDate(t.expectedEnd)}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Title']}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Original Estimation'] || 0}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedEnd)}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -251,7 +258,6 @@ function renderBusinessView() {
     }
     container.innerHTML = html;
 }
-
 function renderTeamView() {
     const container = document.getElementById('team-view');
     // تجميع القصص حسب الـ Business Area
@@ -400,6 +406,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
