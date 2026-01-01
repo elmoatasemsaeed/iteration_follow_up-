@@ -165,51 +165,142 @@ function addWorkHours(startDate, hours) {
     return date;
 }
 
-// التبديل بين الشاشات وعرض البيانات
+// التبديل بين الشاشات
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
     document.getElementById(viewId).style.display = 'block';
 
+    if (processedStories.length === 0) return;
+
     if (viewId === 'business-view') renderBusinessView();
     if (viewId === 'team-view') renderTeamView();
+    if (viewId === 'people-view') renderPeopleView();
+    if (viewId === 'not-tested-view') renderNotTestedView();
 }
 
+// 1. عرض البزنس ايريا (بالتفصيل لكل يوزر استوري)
 function renderBusinessView() {
     const container = document.getElementById('business-view');
     const grouped = groupBy(processedStories, 'businessArea');
     
-    let html = '';
+    let html = '<h2>تحليل البزنس ايريا واليوزر استوري</h2>';
     for (let area in grouped) {
-        html += `<h2 class="business-area-title">${area}</h2>`;
+        html += `<div class="business-section">
+                    <h3 class="business-area-title">${area}</h3>`;
         grouped[area].forEach(us => {
             html += `
                 <div class="card">
-                    <h3>${us.id}: ${us.title}</h3>
-                    <p>المطور: ${us.devLead} | التستر: ${us.testerLead}</p>
+                    <h4>ID: ${us.id} - ${us.title}</h4>
+                    <p><b>Dev:</b> ${us.devLead} | <b>Tester:</b> ${us.testerLead}</p>
                     <table>
-                        <tr>
-                            <th>Dev Effort (H)</th>
-                            <th>Testing Effort (H)</th>
-                            <th>Rework Time (H)</th>
-                            <th>Bug Count</th>
-                            <th>Rework %</th>
-                        </tr>
-                        <tr>
-                            <td>${us.devEffort.orig}</td>
-                            <td>${us.testEffort.orig}</td>
-                            <td>${us.rework.time}</td>
-                            <td>${us.rework.count}</td>
-                            <td>${us.rework.percentage.toFixed(1)}%</td>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th>النوع</th>
+                                <th>Est. (H)</th>
+                                <th>Actual (H)</th>
+                                <th>Deviation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Development</td>
+                                <td>${us.devEffort.orig}</td>
+                                <td>${us.devEffort.actual}</td>
+                                <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td>Testing</td>
+                                <td>${us.testEffort.orig}</td>
+                                <td>${us.testEffort.actual}</td>
+                                <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
                     </table>
-                </div>
-            `;
+                    <p>عدد البجز: ${us.rework.count} | نسبة الـ Rework: ${us.rework.percentage.toFixed(1)}%</p>
+                </div>`;
         });
+        html += `</div>`;
     }
     container.innerHTML = html;
 }
 
-// دالة مساعدة للتجميع
+// 2. عرض الفريق (إجماليات)
+function renderTeamView() {
+    const container = document.getElementById('team-view');
+    let totalDevEst = 0, totalDevAct = 0, totalBugs = 0, totalReworkTime = 0;
+
+    processedStories.forEach(us => {
+        totalDevEst += us.devEffort.orig;
+        totalDevAct += us.devEffort.actual;
+        totalBugs += us.rework.count;
+        totalReworkTime += us.rework.time;
+    });
+
+    container.innerHTML = `
+        <div class="card" style="background: #ecf0f1;">
+            <h2>إجمالي أداء الفريق</h2>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div class="stat-box">إجمالي ساعات الاستميشن: <b>${totalDevEst}</b></div>
+                <div class="stat-box">إجمالي ساعات العمل الفعلي: <b>${totalDevAct}</b></div>
+                <div class="stat-box">إجمالي عدد البجز: <b>${totalBugs}</b></div>
+                <div class="stat-box">إجمالي تأخير الفريق: <b>${(totalDevAct - totalDevEst).toFixed(1)} ساعة</b></div>
+            </div>
+        </div>
+    `;
+}
+
+// 3. عرض الأشخاص (تحليل أداء كل فرد)
+function renderPeopleView() {
+    const container = document.getElementById('people-view');
+    const peopleStats = {};
+
+    processedStories.forEach(us => {
+        const dev = us.devLead;
+        if (!peopleStats[dev]) peopleStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
+        peopleStats[dev].est += us.devEffort.orig;
+        peopleStats[dev].act += us.devEffort.actual;
+        peopleStats[dev].stories += 1;
+    });
+
+    let html = '<h2>تحليل أداء المطورين</h2><table><thead><tr><th>الاسم</th><th>عدد الاستوريز</th><th>إجمالي Est</th><th>إجمالي Actual</th><th>الانحراف</th></tr></thead><tbody>';
+    
+    for (let p in peopleStats) {
+        let person = peopleStats[p];
+        let dev = person.est / (person.act || 1);
+        html += `<tr>
+            <td>${person.name}</td>
+            <td>${person.stories}</td>
+            <td>${person.est}</td>
+            <td>${person.act}</td>
+            <td class="${dev < 1 ? 'alert-red' : ''}">${dev.toFixed(2)}</td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// 4. عرض غير المختبر (Not Tested)
+function renderNotTestedView() {
+    const container = document.getElementById('not-tested-view');
+    const notTested = processedStories.filter(us => us.status !== 'Tested' && us.status !== 'Resolved');
+    
+    const grouped = groupBy(notTested, 'businessArea');
+    let html = '<h2>يوزر استوري لم يتم اختبارها (مقسمة بالبزنس ايريا)</h2>';
+
+    if (notTested.length === 0) {
+        html += '<p>كل اليوزر استوري تم اختبارها بنجاح!</p>';
+    } else {
+        for (let area in grouped) {
+            html += `<h3 class="business-area-title">${area}</h3><ul>`;
+            grouped[area].forEach(us => {
+                html += `<li><b>${us.id}</b>: ${us.title} (الحالة: ${us.status})</li>`;
+            });
+            html += `</ul>`;
+        }
+    }
+    container.innerHTML = html;
+}
+
 function groupBy(arr, key) {
     return arr.reduce((acc, obj) => {
         (acc[obj[key]] = acc[obj[key]] || []).push(obj);
