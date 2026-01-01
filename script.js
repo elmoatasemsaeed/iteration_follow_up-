@@ -251,39 +251,54 @@ function renderTeamView() {
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
-    const devStats = {};
-    const testerStats = {};
+    const devDataByArea = {};    // { Area: { DevName: { stats } } }
+    const testerDataByArea = {};  // { Area: { TesterName: { stats } } }
 
     processedStories.forEach(us => {
-        // إحصائيات المطورين (Dev Lead)
+        const area = us.businessArea || 'General';
+
+        // تجميع بيانات المطورين حسب المنطقة
         const dev = us.devLead;
         if (dev) {
-            if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
-            devStats[dev].est += us.devEffort.orig;
-            devStats[dev].act += us.devEffort.actual;
-            devStats[dev].stories += 1;
+            if (!devDataByArea[area]) devDataByArea[area] = {};
+            if (!devDataByArea[area][dev]) {
+                devDataByArea[area][dev] = { name: dev, est: 0, act: 0, stories: 0 };
+            }
+            devDataByArea[area][dev].est += us.devEffort.orig;
+            devDataByArea[area][dev].act += us.devEffort.actual;
+            devDataByArea[area][dev].stories += 1;
         }
 
-        // إحصائيات المختبرين (Tester Lead)
+        // تجميع بيانات المختبرين حسب المنطقة
         const tester = us.testerLead;
         if (tester) {
-            if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
-            testerStats[tester].est += us.testEffort.orig;
-            testerStats[tester].act += us.testEffort.actual;
-            testerStats[tester].stories += 1;
+            if (!testerDataByArea[area]) testerDataByArea[area] = {};
+            if (!testerDataByArea[area][tester]) {
+                testerDataByArea[area][tester] = { name: tester, est: 0, act: 0, stories: 0 };
+            }
+            testerDataByArea[area][tester].est += us.testEffort.orig;
+            testerDataByArea[area][tester].act += us.testEffort.actual;
+            testerDataByArea[area][tester].stories += 1;
         }
     });
 
-    let html = '<h2>People Performance Analysis</h2>';
+    let html = '<h2>People Performance Analysis (By Business Area)</h2>';
 
-    // جدول المطورين
-    html += '<h3>Developers Performance</h3>' + generatePeopleTable(devStats);
+    // قسم المطورين
+    html += '<h2 style="color: #2980b9; border-bottom: 2px solid #2980b9;">Developers by Business Area</h2>';
+    for (let area in devDataByArea) {
+        html += `<h3 class="business-area-title" style="margin-top:20px;">Area: ${area}</h3>`;
+        html += generatePeopleTable(devDataByArea[area]);
+    }
 
-    // مسافة بين الجدولين
-    html += '<br><hr><br>';
+    html += '<br><br><hr><br>';
 
-    // جدول المختبرين
-    html += '<h3>Testers Performance</h3>' + generatePeopleTable(testerStats);
+    // قسم المختبرين
+    html += '<h2 style="color: #27ae60; border-bottom: 2px solid #27ae60;">Testers by Business Area</h2>';
+    for (let area in testerDataByArea) {
+        html += `<h3 class="business-area-title" style="margin-top:20px;">Area: ${area}</h3>`;
+        html += generatePeopleTable(testerDataByArea[area]);
+    }
 
     container.innerHTML = html;
 }
@@ -345,4 +360,5 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
