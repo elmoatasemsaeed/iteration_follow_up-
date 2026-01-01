@@ -251,66 +251,45 @@ function renderTeamView() {
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
-    // التأكد من وجود بيانات
-    if (processedStories.length === 0) {
-        container.innerHTML = '<p>No data available. Please upload a CSV file.</p>';
-        return;
-    }
-
-    const groupedData = {}; 
+    const devStats = {};
+    const testerStats = {};
 
     processedStories.forEach(us => {
-        const area = us.businessArea || 'General';
-        if (!groupedData[area]) {
-            groupedData[area] = { devs: {}, testers: {} };
-        }
-
-        // إحصائيات المطورين داخل المنطقة
+        // إحصائيات المطورين (Dev Lead)
         const dev = us.devLead;
         if (dev) {
-            if (!groupedData[area].devs[dev]) {
-                groupedData[area].devs[dev] = { name: dev, est: 0, act: 0, stories: 0 };
-            }
-            groupedData[area].devs[dev].est += (us.devEffort.orig || 0);
-            groupedData[area].devs[dev].act += (us.devEffort.actual || 0);
-            groupedData[area].devs[dev].stories += 1;
+            if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
+            devStats[dev].est += us.devEffort.orig;
+            devStats[dev].act += us.devEffort.actual;
+            devStats[dev].stories += 1;
         }
 
-        // إحصائيات المختبرين داخل المنطقة
+        // إحصائيات المختبرين (Tester Lead)
         const tester = us.testerLead;
         if (tester) {
-            if (!groupedData[area].testers[tester]) {
-                groupedData[area].testers[tester] = { name: tester, est: 0, act: 0, stories: 0 };
-            }
-            groupedData[area].testers[tester].est += (us.testEffort.orig || 0);
-            groupedData[area].testers[tester].act += (us.testEffort.actual || 0);
-            groupedData[area].testers[tester].stories += 1;
+            if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
+            testerStats[tester].est += us.testEffort.orig;
+            testerStats[tester].act += us.testEffort.actual;
+            testerStats[tester].stories += 1;
         }
     });
 
-    let html = '<h2>People Performance by Business Area</h2>';
+    let html = '<h2>People Performance Analysis</h2>';
 
-    for (let area in groupedData) {
-        html += `
-            <div class="business-section" style="margin-bottom: 40px;">
-                <h3 class="business-area-title">${area}</h3>
-                <div class="card">
-                    <h4 style="color: var(--secondary);">Developers</h4>
-                    ${generatePeopleTable(groupedData[area].devs)}
-                    
-                    <h4 style="color: var(--secondary); margin-top: 20px;">Testers</h4>
-                    ${generatePeopleTable(groupedData[area].testers)}
-                </div>
-            </div>`;
-    }
+    // جدول المطورين
+    html += '<h3>Developers Performance</h3>' + generatePeopleTable(devStats);
+
+    // مسافة بين الجدولين
+    html += '<br><hr><br>';
+
+    // جدول المختبرين
+    html += '<h3>Testers Performance</h3>' + generatePeopleTable(testerStats);
 
     container.innerHTML = html;
 }
 
-// وظيفة مساعدة لإنشاء الجداول (تأكد من وجودها)
+// وظيفة مساعدة لإنشاء الجدول لتقليل تكرار الكود
 function generatePeopleTable(statsObj) {
-    if (Object.keys(statsObj).length === 0) return '<p>No data recorded for this role in this area.</p>';
-
     let tableHtml = `<table>
         <thead>
             <tr>
@@ -366,8 +345,4 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
-
-
-
-
 
