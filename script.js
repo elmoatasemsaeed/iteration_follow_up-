@@ -242,7 +242,6 @@ function renderBusinessView() {
                         </thead>
                         <tbody>
                             ${sortedTasks.map(t => {
-                                // 1. حساب المدة الفعلية (فرق الأيام بين التفعيل والحل مضروب في 5 ساعات عمل يومياً)
                                 let actDuration = 0;
                                 if (t['Activated Date'] && t['Resolved Date']) {
                                     const start = new Date(t['Activated Date']);
@@ -252,15 +251,13 @@ function renderBusinessView() {
                                     actDuration = diffDays * 5; 
                                 }
 
-                                // 2. حساب إجمالي التايم شيت للتاسك
                                 const tsDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
                                 const tsTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
                                 const totalTS = tsDev + tsTest;
 
-                                // 3. حساب نسبة الانحراف (بين التقديري والتايم شيت)
                                 const est = parseFloat(t['Original Estimation']) || 0;
                                 const deviation = est > 0 ? ((totalTS - est) / est * 100).toFixed(1) : 0;
-                                const devClass = deviation > 15 ? 'alert-red' : '';
+                                const devClass = parseFloat(deviation) > 15 ? 'alert-red' : '';
 
                                 return `
                                 <tr>
@@ -274,8 +271,8 @@ function renderBusinessView() {
                                     <td style="padding: 8px; border: 1px solid #ddd;">${actDuration}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${totalTS}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;" class="${devClass}">${deviation}%</td>
-                                </tr>
-                            `).join('')}
+                                </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                     
@@ -438,6 +435,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
