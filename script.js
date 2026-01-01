@@ -118,7 +118,7 @@ function calculateTimeline(us) {
     let tasks = us.tasks;
     if (!tasks || tasks.length === 0) return;
 
-    // 1. تقسيم المهام
+    // 1. تقسيم المهام إلى مجموعتين
     let devTasks = tasks.filter(t => t.Activity !== 'Testing');
     let testingTasks = tasks.filter(t => t.Activity === 'Testing');
 
@@ -126,16 +126,28 @@ function calculateTimeline(us) {
     const isValidDate = (d) => d instanceof Date && !isNaN(d);
 
     // 2. معالجة مهام التطوير (Dev Tasks)
-    let currentDevExpectedDate = isValidDate(new Date(us.activationDate)) ? new Date(us.activationDate) : new Date();
+    // ترتيب مهام الديف حسب الـ ID لضمان التسلسل
+    devTasks.sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
 
-    devTasks.forEach(t => {
-        t.expectedStart = new Date(currentDevExpectedDate);
+    let currentDevExpectedDate;
+
+    devTasks.forEach((t, index) => {
         let hours = parseFloat(t['Original Estimation']) || 0;
+
+        if (index === 0) {
+            // أول تاسك ديف: تبدأ من وقت تفعيل التاسك نفسه (الفعلي) [تعديل جديد]
+            let taskAct = t['Activated Date'] ? new Date(t['Activated Date']) : new Date(us.activatedDate);
+            t.expectedStart = isValidDate(taskAct) ? taskAct : new Date();
+        } else {
+            // المهام التالية تبدأ من انتهاء المهمة السابقة
+            t.expectedStart = new Date(currentDevExpectedDate);
+        }
+
         t.expectedEnd = addWorkHours(t.expectedStart, hours);
         currentDevExpectedDate = new Date(t.expectedEnd);
     });
 
-    // 3. إيجاد الوقت الفعلي لانتهاء آخر مهمة تطوير (Actual End)
+    // 3. إيجاد الوقت الفعلي لانتهاء آخر مهمة تطوير (Actual End) مرجع للمهام التالية في الاختبار
     let lastDevActualEnd = null;
     devTasks.forEach(t => {
         if (t['Actual End']) {
@@ -149,6 +161,7 @@ function calculateTimeline(us) {
     });
 
     // 4. معالجة مهام الاختبار (Testing Tasks)
+    // ترتيب مهام الاختبار تصاعدياً حسب الـ ID
     testingTasks.sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
 
     testingTasks.forEach((t, index) => {
@@ -156,22 +169,15 @@ function calculateTimeline(us) {
         let startDate;
 
         if (index === 0) {
-            // أول تاسك: من تاريخ التفعيل الخاص بها أو الخاص بالـ US
-            let taskAct = t['Activation Date'] ? new Date(t['Activation Date']) : null;
-            let usAct = us.activationDate ? new Date(us.activationDate) : null;
-            
-            if (isValidDate(taskAct)) {
-                startDate = taskAct;
-            } else if (isValidDate(usAct)) {
-                startDate = usAct;
-            } else {
-                startDate = new Date(); // كحل أخير إذا كانت كل التواريخ تالفة
-            }
+            // أول تاسك تستر: تبدأ من وقت تفعيل التاسك نفسه (الفعلي) [تعديل جديد]
+            let taskAct = t['Activated Date'] ? new Date(t['Activated Date']) : new Date(us.activatedDate);
+            startDate = isValidDate(taskAct) ? taskAct : new Date();
         } else {
-            // المهام التالية: من انتهاء الديف الفعلي أو نهاية التستر السابق
+            // المهام التالية (2 وما بعدها): تبدأ من انتهاء الديف الفعلي
             if (lastDevActualEnd && isValidDate(lastDevActualEnd)) {
                 startDate = new Date(lastDevActualEnd);
             } else {
+                // احتياطي في حال عدم وجود انتهاء فعلي للديف
                 let prevEnd = testingTasks[index - 1].expectedEnd;
                 startDate = isValidDate(prevEnd) ? new Date(prevEnd) : new Date();
             }
@@ -181,7 +187,7 @@ function calculateTimeline(us) {
         t.expectedEnd = addWorkHours(t.expectedStart, hours);
     });
 
-    // 5. تحديث التواريخ الكلية
+    // 5. تحديث تاريخ الانتهاء المتوقع للـ User Story ككل بناءً على آخر مهمة تنتهي
     let allTasks = [...devTasks, ...testingTasks];
     if (allTasks.length > 0) {
         let endDates = allTasks.map(t => t.expectedEnd).filter(isValidDate);
@@ -190,7 +196,6 @@ function calculateTimeline(us) {
         }
     }
 }
-
 function addWorkHours(startDate, hours) {
     let date = new Date(startDate);
     let remainingMinutes = hours * 60; // تحويل الساعات إلى دقائق
@@ -445,6 +450,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
