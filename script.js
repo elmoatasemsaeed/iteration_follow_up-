@@ -242,38 +242,39 @@ function renderBusinessView() {
             const progressBarColor = us.rework.percentage > 25 ? '#e74c3c' : '#f1c40f';
 
             html += `
-<div style="background: #fdfdfd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h5 style="margin: 0; color: #2c3e50;">Quality and Rework Analysis</h5>
-            <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
-                         color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
-                         padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
-                ${us.rework.missingTimesheet > 0 ? `⚠️ ${us.rework.missingTimesheet} Bugs missing timesheets` : '✅ All bugs logged'}
-            </span>
-        </div>
+                <div style="background: #fdfdfd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h5 style="margin: 0; color: #2c3e50;">Quality & Rework Analysis</h5>
+                        <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
+                                     color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
+                                     padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
+                            ${us.rework.missingTimesheet > 0 ? `⚠️ ${us.rework.missingTimesheet} Bugs missing Timesheet` : '✅ All bugs recorded'}
+                        </span>
+                    </div>
 
-        <div style="display: flex; gap: 20px; align-items: center;">
-            <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 5px;">
-                    <span>Rework Percentage: <b>${us.rework.percentage.toFixed(1)}%</b></span>
-                    <span style="color: #7f8c8d;">Formula: (Bug Time / Dev Time)</span>
-                </div>
-                <div style="width: 100%; background: #eee; height: 10px; border-radius: 5px; overflow: hidden;">
-                    <div style="width: ${progressWidth}%; background: ${progressBarColor}; height: 100%; transition: width 0.5s;"></div>
-                </div>
-            </div>
-            
-            <div style="text-align: center; border-left: 1px solid #eee; padding-left: 20px;">
-                <div style="font-size: 0.75em; color: #7f8c8d;">Total Bugs</div>
-                <div style="font-size: 1.5em; font-weight: bold; color: #2c3e50;">${us.rework.count}</div>
-            </div>
-        </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 5px;">
+                                <span>Rework Ratio: <b>${us.rework.percentage.toFixed(1)}%</b></span>
+                                <span style="color: #7f8c8d;">Formula: (Bug Time / Dev Time)</span>
+                            </div>
+                            <div style="width: 100%; background: #eee; height: 10px; border-radius: 5px; overflow: hidden;">
+                                <div style="width: ${progressWidth}%; background: ${progressBarColor}; height: 100%; transition: width 0.5s;"></div>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; border-left: 1px solid #eee; padding-left: 20px;">
+                            <div style="font-size: 0.75em; color: #7f8c8d;">Total Bugs</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: #2c3e50;">${us.rework.count}</div>
+                        </div>
+                    </div>
 
-        <p style="margin-top: 10px; font-size: 0.85em; color: #555; background: #f9f9f9; padding: 5px 10px; border-radius: 4px;">
-            🔍 <b>Calculation Details:</b> <b>${us.rework.time}h</b> spent on bug fixing, against <b>${us.devEffort.actual}h</b> of actual development work.
-        </p>
-    </div>
-</div>`;
+                    <p style="margin-top: 10px; font-size: 0.85em; color: #555; background: #f9f9f9; padding: 5px 10px; border-radius: 4px;">
+                        🔍 <b>Calculation Details:</b> Spent <b>${us.rework.time}h</b> on bug fixes, compared to <b>${us.devEffort.actual}h</b> of actual development work.
+                    </p>
+                </div>
+            </div>`; 
+        });
         html += `</div>`;
     }
     container.innerHTML = html;
@@ -376,6 +377,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
