@@ -123,8 +123,8 @@ async function fetchUsersFromGitHub() {
 }
 
 // رفع قائمة المستخدمين إلى GitHub
-async function uploadUsersToGitHub() {
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(users))));
+async function uploadUsersToGitHub() 
+const content = btoa(unescape(encodeURIComponent(JSON.stringify(users))));
     let sha = "";
 
     try {
@@ -903,6 +903,7 @@ function groupBy(arr, key) {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
