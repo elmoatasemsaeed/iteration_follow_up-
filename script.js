@@ -147,39 +147,22 @@ function logout() {
 // تحديث window.onload
 window.onload = async function() {
     renderHolidays();
-    const savedToken = localStorage.getItem('gh_token');
-    const savedRole = localStorage.getItem('app_role');
-
-    if (savedToken && savedRole) {
-        githubToken = savedToken;
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('main-nav').style.display = 'flex';
-        setupPermissions();
-        await fetchDataFromGitHub();
-    }
-};
-
-window.onload = async function() {
-    renderHolidays();
     renderUsersTable();
 
-    // التحقق إذا كان هناك بيانات محفوظة (Remember Me)
     const savedToken = localStorage.getItem('gh_token');
     const savedRole = localStorage.getItem('app_role');
     const savedUser = localStorage.getItem('saved_user');
-    const savedPass = localStorage.getItem('saved_pass');
 
     if (savedToken && savedRole) {
-        githubToken = savedToken;
+        githubToken = savedToken; // استرجاع التوكن المحفوظ تلقائياً
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-nav').style.display = 'flex';
         setupPermissions();
         await fetchDataFromGitHub();
     } else if (savedUser) {
-        // تعبئة الخانات تلقائياً إذا كان مسجلاً من قبل ولكن لم يدخل
         document.getElementById('loginUser').value = savedUser;
-        document.getElementById('loginPass').value = savedPass;
-        document.getElementById('ghTokenInput').value = localStorage.getItem('gh_token') || "";
+        document.getElementById('loginPass').value = localStorage.getItem('saved_pass') || "";
+        document.getElementById('ghTokenInput').value = savedToken || "";
     }
 };
 
@@ -198,22 +181,27 @@ function removeHoliday(date) {
 }
 
 // Handle Upload
+// Handle Upload
 async function handleUpload() {
     const file = document.getElementById('csvFile').files[0];
     
-    // التعديل: نستخدم المتغير العام githubToken الذي تم تعبئته عند تسجيل الدخول
+    // التعديل هنا: نستخدم المتغير githubToken الذي تم تعريفه عالمياً وتعبئته عند تسجيل الدخول
+    // بدلاً من سحب القيمة من عنصر HTML قد لا يكون موجوداً في هذه الشاشة
     if (!githubToken) {
-        return alert("GitHub Token is missing. Please log in again.");
+        return alert("GitHub Token is missing. Please log in again or ensure it's provided.");
     }
-    
+
     if (!file) return alert("Please select a file first");
+
+    // تخزين التوكن الحالي في LocalStorage لضمان استمراريته
+    localStorage.setItem('gh_token', githubToken); 
 
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: async function(results) {
             rawData = results.data;
-            processData(); 
+            processData(); // الدالة الموجودة مسبقاً
             await uploadToGitHub();
             showView('business-view');
         }
@@ -838,6 +826,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
