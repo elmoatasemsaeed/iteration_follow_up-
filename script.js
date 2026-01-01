@@ -227,7 +227,6 @@ window.onload = async function() {
     }
 };
 
-fetchDataFromGitHub
 function renderHolidays() {
     const list = document.getElementById('holidaysList');
     if (list) {
@@ -875,9 +874,11 @@ function renderNotTestedView() {
                 </div>`;
         });
         html += `</div>`;
-    }
+}
     container.innerHTML = html;
 }
+
+// دالة التجميع (Helper Function)
 function groupBy(arr, key) {
     return arr.reduce((acc, obj) => {
         (acc[obj[key]] = acc[obj[key]] || []).push(obj);
@@ -885,9 +886,8 @@ function groupBy(arr, key) {
     }, {});
 }
 
-// Initialize
+// السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
-
 
 
 
