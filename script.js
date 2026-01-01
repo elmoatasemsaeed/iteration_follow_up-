@@ -228,6 +228,35 @@ function addWorkHours(startDate, hours) {
     }
     return date;
 }
+function calculateHourDiff(start, actual) {
+    if (!start || !actual || isNaN(new Date(start)) || isNaN(new Date(actual))) return 0;
+    
+    let startDate = new Date(start);
+    let actualDate = new Date(actual);
+    
+    // إذا بدأ قبل الموعد، نعتبر التأخير 0
+    if (actualDate <= startDate) return 0;
+
+    let totalDiffMinutes = 0;
+    let current = new Date(startDate);
+
+    while (current < actualDate) {
+        let dayEnd = new Date(current);
+        dayEnd.setHours(17, 0, 0, 0); // نهاية العمل 5 مساءً
+
+        if (current.getDay() !== 5 && current.getDay() !== 6 && !holidays.includes(current.toISOString().split('T')[0])) {
+            let endOfPeriod = actualDate < dayEnd ? actualDate : dayEnd;
+            let diff = (endOfPeriod - current) / (1000 * 60);
+            if (diff > 0) totalDiffMinutes += diff;
+        }
+
+        // الانتقال لليوم التالي الساعة 9 صباحاً
+        current.setDate(current.getDate() + 1);
+        current.setHours(9, 0, 0, 0);
+    }
+
+    return (totalDiffMinutes / 60).toFixed(1);
+}
 
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
@@ -292,18 +321,21 @@ function renderBusinessView() {
                                 const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
                                 const est = parseFloat(t['Original Estimation']) || 0;
                                 const deviation = est > 0 ? ((tsTotal - est) / est * 100).toFixed(1) : 0;
-                                return `
-                                <tr>
-                                    <td>${t['ID']}</td>
-                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
-                                    <td>${t['Activity']}</td>
-                                    <td>${est}</td>
-                                    <td>${formatDate(t.expectedStart)}</td>
-                                    <td>${formatDate(t.expectedEnd)}</td>
-                                    <td>${formatDate(t['Activated Date'])}</td>
-                                    <td>${tsTotal}</td>
-                                    <td class="${deviation > 15 ? 'alert-red' : ''}">${deviation}%</td>
-                                </tr>`;
+                          
+return `
+<tr>
+    <td>${t['ID']}</td>
+    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
+    <td>${t['Activity']}</td>
+    <td>${est}</td>
+    <td>${formatDate(t.expectedStart)}</td>
+    <td>${formatDate(t.expectedEnd)}</td>
+    <td>${formatDate(t['Activated Date'])}</td>
+    <td>${tsTotal}</td>
+    <td class="${calculateHourDiff(t.expectedStart, t['Activated Date']) > 0 ? 'alert-red' : ''}">
+        ${calculateHourDiff(t.expectedStart, t['Activated Date'])}h
+    </td>
+</tr>`;
                             }).join('')}
                         </tbody>
                     </table>`;
@@ -450,6 +482,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
