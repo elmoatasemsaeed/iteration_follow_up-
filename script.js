@@ -10,11 +10,10 @@ function addHoliday() {
         localStorage.setItem('holidays', JSON.stringify(holidays));
         renderHolidays();
     }
-} // Added missing brace here
+}
 
 function renderHolidays() {
     const list = document.getElementById('holidaysList');
-    if (!list) return;
     list.innerHTML = holidays.map(h => `<li>${h} <button onclick="removeHoliday('${h}')">X</button></li>`).join('');
 }
 
@@ -29,7 +28,6 @@ function handleUpload() {
     const file = document.getElementById('csvFile').files[0];
     if (!file) return alert("Please select a file first");
 
-    // Ensure PapaParse library is loaded in your HTML
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
@@ -73,11 +71,13 @@ function processData() {
 
 function calculateMetrics() {
     processedStories.forEach(us => {
+        // 1. Dev & Testing Effort
         let devOrig = 0, devActual = 0, testOrig = 0, testActual = 0;
         
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
             const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
+            const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
 
             if (activity === 'Development' || activity === 'DB Modification') {
@@ -85,13 +85,14 @@ function calculateMetrics() {
                 devActual += actDev;
             } else if (activity === 'Testing') {
                 testOrig += orig;
-                testActual += (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
+                testActual += actTest;
             }
         });
 
         us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
+        // 2. Bugs Rework
         let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
         us.bugs.forEach(b => {
             bugOrig += parseFloat(b['Original Estimation']) || 0;
@@ -102,7 +103,10 @@ function calculateMetrics() {
         });
 
         us.rework = {
+            time: bugOrig,
             count: us.bugs.length,
+            missingTimesheet: bugsNoTimesheet,
+            deviation: bugOrig / (bugActualTotal || 1),
             percentage: (bugActualTotal / (devActual || 1)) * 100
         };
 
@@ -115,10 +119,21 @@ function calculateTimeline(us) {
     let currentExpectedDate = new Date(us.activatedDate);
     
     us.tasks.forEach(t => {
-        t.expectedStart = new Date(currentExpectedDate);
-        let hours = parseFloat(t['Original Estimation']) || 0;
-        t.expectedEnd = addWorkHours(t.expectedStart, hours);
-        currentExpectedDate = new Date(t.expectedEnd);
+        if (t['Activity'] !== 'Testing') {
+            t.expectedStart = new Date(currentExpectedDate);
+            let hours = parseFloat(t['Original Estimation']) || 0;
+            t.expectedEnd = addWorkHours(t.expectedStart, hours);
+            currentExpectedDate = new Date(t.expectedEnd);
+        }
+    });
+
+    us.tasks.forEach(t => {
+        if (t['Activity'] === 'Testing') {
+            t.expectedStart = new Date(currentExpectedDate);
+            let hours = parseFloat(t['Original Estimation']) || 0;
+            t.expectedEnd = addWorkHours(t.expectedStart, hours);
+            currentExpectedDate = new Date(t.expectedEnd);
+        }
     });
 }
 
@@ -126,12 +141,14 @@ function addWorkHours(startDate, hours) {
     let date = new Date(startDate);
     let remaining = hours;
     while (remaining > 0) {
+        // Friday (5), Saturday (6) or Holiday
         if (date.getDay() === 5 || date.getDay() === 6 || holidays.includes(date.toISOString().split('T')[0])) {
             date.setDate(date.getDate() + 1);
             date.setHours(9, 0, 0);
             continue;
         }
-        let addedToday = Math.min(remaining, 5); 
+        let currentDayLimit = 5; 
+        let addedToday = Math.min(remaining, currentDayLimit);
         date.setHours(date.getHours() + addedToday);
         remaining -= addedToday;
         if (remaining > 0 || date.getHours() >= 18) {
@@ -144,10 +161,9 @@ function addWorkHours(startDate, hours) {
 
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
-    const target = document.getElementById(viewId);
-    if (target) target.style.display = 'block';
-
+    document.getElementById(viewId).style.display = 'block';
     if (processedStories.length === 0) return;
+
     if (viewId === 'business-view') renderBusinessView();
     if (viewId === 'team-view') renderTeamView();
     if (viewId === 'people-view') renderPeopleView();
@@ -157,21 +173,169 @@ function showView(viewId) {
 function renderBusinessView() {
     const container = document.getElementById('business-view');
     const grouped = groupBy(processedStories, 'businessArea');
-    let html = '<h2>Business Area Analysis</h2>';
+    let html = '<h2>Business Area & User Story Analysis</h2>';
     for (let area in grouped) {
-        html += `<div class="business-section"><h3>${area}</h3>`;
+        html += `<div class="business-section">
+                    <h3 class="business-area-title">${area}</h3>`;
         grouped[area].forEach(us => {
-            html += `<div class="card"><h4>${us.id}: ${us.title}</h4>
-            <p>Dev Productivity: ${us.devEffort.dev.toFixed(2)}</p></div>`;
+            html += `
+                <div class="card">
+                    <h4>ID: ${us.id} - ${us.title}</h4>
+                    <p><b>Dev:</b> ${us.devLead} | <b>Tester:</b> ${us.testerLead}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Est. (H)</th>
+                                <th>Actual (H)</th>
+                                <th>Productivity Index</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Development</td>
+                                <td>${us.devEffort.orig}</td>
+                                <td>${us.devEffort.actual}</td>
+                                <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td>Testing</td>
+                                <td>${us.testEffort.orig}</td>
+                                <td>${us.testEffort.actual}</td>
+                                <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p>Bugs Count: ${us.rework.count} | Rework Ratio: ${us.rework.percentage.toFixed(1)}%</p>
+                </div>`;
         });
         html += `</div>`;
     }
     container.innerHTML = html;
 }
 
-function renderTeamView() { /* Function implementation */ }
-function renderPeopleView() { /* Function implementation */ }
-function renderNotTestedView() { /* Function implementation */ }
+function renderTeamView() {
+    const container = document.getElementById('team-view');
+    // تجميع القصص حسب الـ Business Area
+    const grouped = groupBy(processedStories, 'businessArea');
+    
+    let html = '<h2>Team Performance by Business Area</h2>';
+
+    for (let area in grouped) {
+        let areaDevEst = 0, areaDevAct = 0, areaBugs = 0;
+        
+        // حساب إجمالي الأرقام لكل منطقة عمل
+        grouped[area].forEach(us => {
+            areaDevEst += us.devEffort.orig;
+            areaDevAct += us.devEffort.actual;
+            areaBugs += us.rework.count;
+        });
+
+        const delay = areaDevAct - areaDevEst;
+
+        html += `
+            <div class="card" style="background: #f8f9fa; border-left: 5px solid #2980b9; margin-bottom: 20px;">
+                <h3 style="color: #2c3e50; margin-top: 0;">${area}</h3>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div class="stat-box">Total Est. Hours: <b>${areaDevEst.toFixed(1)}</b></div>
+                    <div class="stat-box">Total Actual Hours: <b>${areaDevAct.toFixed(1)}</b></div>
+                    <div class="stat-box">Total Bugs: <b>${areaBugs}</b></div>
+                    <div class="stat-box">Total Delay: <b style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">${delay.toFixed(1)} hours</b></div>
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function renderPeopleView() {
+    const container = document.getElementById('people-view');
+    const devStats = {};
+    const testerStats = {};
+
+    processedStories.forEach(us => {
+        // إحصائيات المطورين (Dev Lead)
+        const dev = us.devLead;
+        if (dev) {
+            if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
+            devStats[dev].est += us.devEffort.orig;
+            devStats[dev].act += us.devEffort.actual;
+            devStats[dev].stories += 1;
+        }
+
+        // إحصائيات المختبرين (Tester Lead)
+        const tester = us.testerLead;
+        if (tester) {
+            if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
+            testerStats[tester].est += us.testEffort.orig;
+            testerStats[tester].act += us.testEffort.actual;
+            testerStats[tester].stories += 1;
+        }
+    });
+
+    let html = '<h2>People Performance Analysis</h2>';
+
+    // جدول المطورين
+    html += '<h3>Developers Performance</h3>' + generatePeopleTable(devStats);
+
+    // مسافة بين الجدولين
+    html += '<br><hr><br>';
+
+    // جدول المختبرين
+    html += '<h3>Testers Performance</h3>' + generatePeopleTable(testerStats);
+
+    container.innerHTML = html;
+}
+
+// وظيفة مساعدة لإنشاء الجدول لتقليل تكرار الكود
+function generatePeopleTable(statsObj) {
+    let tableHtml = `<table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Stories</th>
+                <th>Total Est (H)</th>
+                <th>Total Actual (H)</th>
+                <th>Productivity Index</th>
+            </tr>
+        </thead>
+        <tbody>`;
+    
+    for (let p in statsObj) {
+        let person = statsObj[p];
+        let index = person.est / (person.act || 1);
+        tableHtml += `<tr>
+            <td>${person.name}</td>
+            <td>${person.stories}</td>
+            <td>${person.est.toFixed(1)}</td>
+            <td>${person.act.toFixed(1)}</td>
+            <td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td>
+        </tr>`;
+    }
+    
+    tableHtml += '</tbody></table>';
+    return tableHtml;
+}
+
+function renderNotTestedView() {
+    const container = document.getElementById('not-tested-view');
+    const notTested = processedStories.filter(us => us.status !== 'Tested' && us.status !== 'Resolved');
+    const grouped = groupBy(notTested, 'businessArea');
+    let html = '<h2>User Stories Not Yet Tested (By Business Area)</h2>';
+    if (notTested.length === 0) {
+        html += '<p>All User Stories have been tested successfully!</p>';
+    } else {
+        for (let area in grouped) {
+            html += `<h3 class="business-area-title">${area}</h3><ul>`;
+            grouped[area].forEach(us => {
+                html += `<li><b>${us.id}</b>: ${us.title} (Status: ${us.status})</li>`;
+            });
+            html += `</ul>`;
+        }
+    }
+    container.innerHTML = html;
+}
 
 function groupBy(arr, key) {
     return arr.reduce((acc, obj) => {
@@ -180,16 +344,5 @@ function groupBy(arr, key) {
     }, {});
 }
 
-function generatePeopleTable(statsObj) {
-    if (Object.keys(statsObj).length === 0) return '<p>No data.</p>';
-    let tableHtml = `<table><thead><tr><th>Name</th><th>Stories</th><th>Index</th></tr></thead><tbody>`;
-    for (let p in statsObj) {
-        let person = statsObj[p];
-        let index = person.est / (person.act || 1);
-        tableHtml += `<tr><td>${person.name}</td><td>${person.stories}</td><td>${index.toFixed(2)}</td></tr>`;
-    }
-    return tableHtml + '</tbody></table>';
-}
-
-// Initial call to load saved holidays
 renderHolidays();
+
