@@ -1,7 +1,47 @@
 let rawData = [];
 let processedStories = [];
 let holidays = JSON.parse(localStorage.getItem('holidays') || "[]");
+// GitHub Configuration
+const GH_CONFIG = {
+    owner: 'elmoatasemsaeed', // اسم المستخدم الخاص بك
+    repo: 'iteration_follow_up-',        // اسم المستودع
+    path: 'data.json',             // اسم الملف الذي سيتم تخزينه
+    branch: 'main'                 // البرانش
+};
+// عند تشغيل الصفحة، ابحث عن بيانات مخزنة مسبقاً
+window.onload = async function() {
+    if (githubToken) {
+        document.getElementById('ghToken').value = githubToken;
+        fetchDataFromGitHub();
+    }
+    renderHolidays();
+};
 
+async function fetchDataFromGitHub() {
+    const statusDiv = document.getElementById('sync-status');
+    statusDiv.style.display = 'block';
+    statusDiv.innerText = "🔄 Fetching latest data from GitHub...";
+
+    try {
+        const response = await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.path}?ref=${GH_CONFIG.branch}`, {
+            headers: { 'Authorization': `token ${githubToken}` }
+        });
+
+        if (response.ok) {
+            const fileData = await response.json();
+            const content = JSON.parse(atob(fileData.content)); // فك تشفير Base64
+            processedStories = content;
+            showView('business-view');
+            statusDiv.innerText = "✅ Data synced from GitHub";
+        } else {
+            statusDiv.innerText = "⚠️ No data found on GitHub. Please upload a CSV.";
+        }
+    } catch (error) {
+        statusDiv.innerText = "❌ Connection failed";
+    }
+}
+
+let githubToken = localStorage.getItem('gh_token') || "";
 // Holiday Setup
 function addHoliday() {
     const h = document.getElementById('holidayPicker').value;
@@ -26,19 +66,65 @@ function removeHoliday(date) {
 }
 
 // Handle Upload
-function handleUpload() {
+async function handleUpload() {
     const file = document.getElementById('csvFile').files[0];
+    githubToken = document.getElementById('ghToken').value;
+    
+    if (!githubToken) return alert("Please enter GitHub Token first");
     if (!file) return alert("Please select a file first");
+
+    localStorage.setItem('gh_token', githubToken); // حفظ التوكن محلياً للسهولة
 
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        complete: function(results) {
+        complete: async function(results) {
             rawData = results.data;
-            processData();
+            processData(); // الدالة الموجودة مسبقاً في كودك
+            await uploadToGitHub();
             showView('business-view');
         }
     });
+}
+
+async function uploadToGitHub() {
+    const statusDiv = document.getElementById('sync-status');
+    statusDiv.style.display = 'block';
+    statusDiv.innerText = "🚀 Uploading to GitHub...";
+
+    const content = btoa(JSON.stringify(processedStories)); // تحويل البيانات لـ Base64
+    
+    // نحتاج أولاً لمعرفة إذا كان الملف موجوداً للحصول على الـ SHA الخاص به
+    let sha = "";
+    try {
+        const res = await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.path}`, {
+            headers: { 'Authorization': `token ${githubToken}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            sha = data.sha;
+        }
+    } catch (e) {}
+
+    const response = await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.path}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `token ${githubToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message: "Update productivity data",
+            content: content,
+            sha: sha, // ضروري لتحديث ملف موجود
+            branch: GH_CONFIG.branch
+        })
+    });
+
+    if (response.ok) {
+        statusDiv.innerText = "✅ Successfully synced to GitHub!";
+    } else {
+        alert("Error uploading to GitHub. Check your token and repo permissions.");
+    }
 }
 
 // Data Processing
@@ -618,6 +704,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
