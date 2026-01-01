@@ -14,7 +14,9 @@ function addHoliday() {
 
 function renderHolidays() {
     const list = document.getElementById('holidaysList');
-    list.innerHTML = holidays.map(h => `<li>${h} <button onclick="removeHoliday('${h}')">X</button></li>`).join('');
+    if (list) {
+        list.innerHTML = holidays.map(h => `<li>${h} <button onclick="removeHoliday('${h}')">X</button></li>`).join('');
+    }
 }
 
 function removeHoliday(date) {
@@ -71,7 +73,6 @@ function processData() {
 
 function calculateMetrics() {
     processedStories.forEach(us => {
-        // 1. Dev & Testing Effort
         let devOrig = 0, devActual = 0, testOrig = 0, testActual = 0;
         
         us.tasks.forEach(t => {
@@ -92,7 +93,6 @@ function calculateMetrics() {
         us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
-        // 2. Bugs Rework
         let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
         us.bugs.forEach(b => {
             bugOrig += parseFloat(b['Original Estimation']) || 0;
@@ -141,7 +141,6 @@ function addWorkHours(startDate, hours) {
     let date = new Date(startDate);
     let remaining = hours;
     while (remaining > 0) {
-        // Friday (5), Saturday (6) or Holiday
         if (date.getDay() === 5 || date.getDay() === 6 || holidays.includes(date.toISOString().split('T')[0])) {
             date.setDate(date.getDate() + 1);
             date.setHours(9, 0, 0);
@@ -161,7 +160,9 @@ function addWorkHours(startDate, hours) {
 
 function showView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
-    document.getElementById(viewId).style.display = 'block';
+    const target = document.getElementById(viewId);
+    if (target) target.style.display = 'block';
+    
     if (processedStories.length === 0) return;
 
     if (viewId === 'business-view') renderBusinessView();
@@ -176,155 +177,57 @@ function renderBusinessView() {
     let html = '<h2>Business Area & User Story Analysis</h2>';
     
     for (let area in grouped) {
-        html += `<div class="business-section">
-                    <h3 class="business-area-title">${area}</h3>`;
+        html += `<div class="business-section"><h3 class="business-area-title">${area}</h3>`;
         
         grouped[area].forEach(us => {
             const formatDate = (date) => {
-                if (!date || date === 'N/A') return 'N/A';
-                const d = new Date(date);
-                return isNaN(d) ? 'N/A' : d.toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+                if (!date || isNaN(new Date(date))) return 'N/A';
+                return new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
             };
 
-            const sortedTasks = [...us.tasks].sort((a, b) => {
-                const dateA = a.expectedStart ? a.expectedStart.getTime() : 0;
-                const dateB = b.expectedStart ? b.expectedStart.getTime() : 0;
-                return dateA - dateB;
-            });
+            const sortedTasks = [...us.tasks].sort((a, b) => (a.expectedStart || 0) - (b.expectedStart || 0));
 
             html += `
                 <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
                     <h4>ID: ${us.id} - ${us.title}</h4>
                     <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Est. (H)</th>
-                                    <th>Actual (H)</th>
-                                    <th>Productivity Index</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Development</td>
-                                    <td>${us.devEffort.orig}</td>
-                                    <td>${us.devEffort.actual}</td>
-                                    <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
-                                </tr>
-                                <tr>
-                                    <td>Testing</td>
-                                    <td>${us.testEffort.orig}</td>
-                                    <td>${us.testEffort.actual}</td>
-                                    <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
-                    <table style="font-size: 0.85em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
+                    <table>
                         <thead>
-                            <tr style="background-color: #eee; text-align: left;">
-                                <th style="padding: 8px; border: 1px solid #ddd;">Task ID</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Activity</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Est (H)</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Exp. Start</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Exp. End</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Act. Start</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Act. End</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Act. Dur (H)</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">TS (H)</th>
-                                <th style="padding: 8px; border: 1px solid #ddd;">Dev %</th>
+                            <tr><th>Type</th><th>Est. (H)</th><th>Actual (H)</th><th>Index</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Dev</td><td>${us.devEffort.orig}</td><td>${us.devEffort.actual}</td><td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td></tr>
+                            <tr><td>Test</td><td>${us.testEffort.orig}</td><td>${us.testEffort.actual}</td><td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h5 style="margin: 10px 0;">Tasks Timeline:</h5>
+                    <table style="font-size: 0.85em; width: 100%;">
+                        <thead>
+                            <tr style="background:#eee;">
+                                <th>ID</th><th>Activity</th><th>Est</th><th>Exp. Start</th><th>Exp. End</th><th>Act. Start</th><th>TS Total</th><th>Dev %</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${sortedTasks.map(t => {
-                                let actDuration = 0;
-                                if (t['Activated Date'] && t['Resolved Date']) {
-                                    const start = new Date(t['Activated Date']);
-                                    const end = new Date(t['Resolved Date']);
-                                    const diffTime = Math.abs(end - start);
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                    actDuration = diffDays * 5; 
-                                }
-
-                                const tsDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
-                                const tsTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
-                                const totalTS = tsDev + tsTest;
-
+                                const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
                                 const est = parseFloat(t['Original Estimation']) || 0;
-                                const deviation = est > 0 ? ((totalTS - est) / est * 100).toFixed(1) : 0;
-                                const devClass = parseFloat(deviation) > 15 ? 'alert-red' : '';
-
+                                const deviation = est > 0 ? ((tsTotal - est) / est * 100).toFixed(1) : 0;
                                 return `
                                 <tr>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${est}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedEnd)}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Activated Date'])}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Resolved Date'])}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${actDuration}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${totalTS}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;" class="${devClass}">${deviation}%</td>
+                                    <td>${t['ID']}</td>
+                                    <td>${t['Activity']}</td>
+                                    <td>${est}</td>
+                                    <td>${formatDate(t.expectedStart)}</td>
+                                    <td>${formatDate(t.expectedEnd)}</td>
+                                    <td>${formatDate(t['Activated Date'])}</td>
+                                    <td>${tsTotal}</td>
+                                    <td class="${deviation > 15 ? 'alert-red' : ''}">${deviation}%</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
                     </table>
-                    
-                    <p style="margin-top: 10px;">
-                        <b>Bugs Count:</b> ${us.rework.count} | 
-                        <b>Rework Ratio:</b> ${us.rework.percentage.toFixed(1)}%
-                    </p>
-                </div>`;
-        });
-        html += `</div>`;
-    }
-    container.innerHTML = html;
-}
-                            ${sortedTasks.map(t => {
-                                let actDuration = 0;
-                                if (t['Activated Date'] && t['Resolved Date']) {
-                                    const start = new Date(t['Activated Date']);
-                                    const end = new Date(t['Resolved Date']);
-                                    const diffTime = Math.abs(end - start);
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                    actDuration = diffDays * 5; 
-                                }
-
-                                const tsDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
-                                const tsTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
-                                const totalTS = tsDev + tsTest;
-
-                                const est = parseFloat(t['Original Estimation']) || 0;
-                                const deviation = est > 0 ? ((totalTS - est) / est * 100).toFixed(1) : 0;
-                                const devClass = parseFloat(deviation) > 15 ? 'alert-red' : '';
-
-                                return `
-                                <tr>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${est}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedEnd)}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Activated Date'])}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Resolved Date'])}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${actDuration}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${totalTS}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;" class="${devClass}">${deviation}%</td>
-                                </tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                    
-                    <p style="margin-top: 10px;">
-                        <b>Bugs Count:</b> ${us.rework.count} | 
-                        <b>Rework Ratio:</b> ${us.rework.percentage.toFixed(1)}%
-                    </p>
+                    <p><b>Bugs:</b> ${us.rework.count} | <b>Rework:</b> ${us.rework.percentage.toFixed(1)}%</p>
                 </div>`;
         });
         html += `</div>`;
@@ -334,139 +237,88 @@ function renderBusinessView() {
 
 function renderTeamView() {
     const container = document.getElementById('team-view');
-    // تجميع القصص حسب الـ Business Area
     const grouped = groupBy(processedStories, 'businessArea');
-    
     let html = '<h2>Team Performance by Business Area</h2>';
 
     for (let area in grouped) {
         let areaDevEst = 0, areaDevAct = 0, areaBugs = 0;
-        
-        // حساب إجمالي الأرقام لكل منطقة عمل
         grouped[area].forEach(us => {
             areaDevEst += us.devEffort.orig;
             areaDevAct += us.devEffort.actual;
             areaBugs += us.rework.count;
         });
-
         const delay = areaDevAct - areaDevEst;
-
         html += `
-            <div class="card" style="background: #f8f9fa; border-left: 5px solid #2980b9; margin-bottom: 20px;">
-                <h3 style="color: #2c3e50; margin-top: 0;">${area}</h3>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <div class="stat-box">Total Est. Hours: <b>${areaDevEst.toFixed(1)}</b></div>
-                    <div class="stat-box">Total Actual Hours: <b>${areaDevAct.toFixed(1)}</b></div>
-                    <div class="stat-box">Total Bugs: <b>${areaBugs}</b></div>
-                    <div class="stat-box">Total Delay: <b style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">${delay.toFixed(1)} hours</b></div>
+            <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 20px;">
+                <h3>${area}</h3>
+                <div style="display: flex; gap: 20px;">
+                    <div>Est: <b>${areaDevEst.toFixed(1)}</b></div>
+                    <div>Act: <b>${areaDevAct.toFixed(1)}</b></div>
+                    <div>Bugs: <b>${areaBugs}</b></div>
+                    <div style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">Delay: <b>${delay.toFixed(1)}h</b></div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
-    
     container.innerHTML = html;
 }
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
-    const areaMap = {}; // { AreaName: { devs: {}, testers: {} } }
+    const areaMap = {};
 
-    // 1. تجميع البيانات موزعة حسب المنطقة والمسمى الوظيفي
     processedStories.forEach(us => {
-        const area = us.businessArea || 'General';
-        if (!areaMap[area]) {
-            areaMap[area] = { devs: {}, testers: {} };
-        }
+        const area = us.businessArea;
+        if (!areaMap[area]) areaMap[area] = { devs: {}, testers: {} };
 
-        // تجميع بيانات المطورين
-        const dev = us.devLead;
-        if (dev) {
-            if (!areaMap[area].devs[dev]) areaMap[area].devs[dev] = { name: dev, est: 0, act: 0, stories: 0 };
-            areaMap[area].devs[dev].est += us.devEffort.orig;
-            areaMap[area].devs[dev].act += us.devEffort.actual;
-            areaMap[area].devs[dev].stories += 1;
+        if (us.devLead) {
+            const d = us.devLead;
+            if (!areaMap[area].devs[d]) areaMap[area].devs[d] = { name: d, est: 0, act: 0, stories: 0 };
+            areaMap[area].devs[d].est += us.devEffort.orig;
+            areaMap[area].devs[d].act += us.devEffort.actual;
+            areaMap[area].devs[d].stories++;
         }
-
-        // تجميع بيانات المختبرين
-        const tester = us.testerLead;
-        if (tester) {
-            if (!areaMap[area].testers[tester]) areaMap[area].testers[tester] = { name: tester, est: 0, act: 0, stories: 0 };
-            areaMap[area].testers[tester].est += us.testEffort.orig;
-            areaMap[area].testers[tester].act += us.testEffort.actual;
-            areaMap[area].testers[tester].stories += 1;
+        if (us.testerLead) {
+            const t = us.testerLead;
+            if (!areaMap[area].testers[t]) areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0 };
+            areaMap[area].testers[t].est += us.testEffort.orig;
+            areaMap[area].testers[t].act += us.testEffort.actual;
+            areaMap[area].testers[t].stories++;
         }
     });
 
-    // 2. بناء واجهة العرض (Grid لكل Business Area)
-    let html = '<h2>People Performance by Business Area</h2>';
-
+    let html = '<h2>People Performance</h2>';
     for (let area in areaMap) {
-        html += `
-            <div class="area-performance-grid" style="margin-bottom: 40px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff;">
-                <h3 style="background: #2c3e50; color: white; padding: 10px; margin: -15px -15px 15px -15px; border-radius: 8px 8px 0 0;">
-                    Business Area: ${area}
-                </h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div>
-                        <h4 style="color: #2980b9;">Developers</h4>
-                        ${Object.keys(areaMap[area].devs).length > 0 ? generatePeopleTable(areaMap[area].devs) : '<p>No developers assigned</p>'}
-                    </div>
-                    <div>
-                        <h4 style="color: #27ae60;">Testers</h4>
-                        ${Object.keys(areaMap[area].testers).length > 0 ? generatePeopleTable(areaMap[area].testers) : '<p>No testers assigned</p>'}
-                    </div>
-                </div>
+        html += `<div style="margin-bottom:30px; border:1px solid #ddd; padding:10px;">
+            <h3>${area}</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div><h4>Devs</h4>${generatePeopleTable(areaMap[area].devs)}</div>
+                <div><h4>Testers</h4>${generatePeopleTable(areaMap[area].testers)}</div>
             </div>
-        `;
+        </div>`;
     }
-
     container.innerHTML = html;
 }
-// وظيفة مساعدة لإنشاء الجدول لتقليل تكرار الكود
+
 function generatePeopleTable(statsObj) {
-    let tableHtml = `<table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Stories</th>
-                <th>Total Est (H)</th>
-                <th>Total Actual (H)</th>
-                <th>Productivity Index</th>
-            </tr>
-        </thead>
-        <tbody>`;
-    
+    let tableHtml = `<table><thead><tr><th>Name</th><th>S.</th><th>Est</th><th>Act</th><th>Idx</th></tr></thead><tbody>`;
     for (let p in statsObj) {
         let person = statsObj[p];
         let index = person.est / (person.act || 1);
-        tableHtml += `<tr>
-            <td>${person.name}</td>
-            <td>${person.stories}</td>
-            <td>${person.est.toFixed(1)}</td>
-            <td>${person.act.toFixed(1)}</td>
-            <td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td>
-        </tr>`;
+        tableHtml += `<tr><td>${person.name}</td><td>${person.stories}</td><td>${person.est.toFixed(1)}</td><td>${person.act.toFixed(1)}</td><td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td></tr>`;
     }
-    
-    tableHtml += '</tbody></table>';
-    return tableHtml;
+    return tableHtml + '</tbody></table>';
 }
 
 function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
     const notTested = processedStories.filter(us => us.status !== 'Tested' && us.status !== 'Resolved');
     const grouped = groupBy(notTested, 'businessArea');
-    let html = '<h2>User Stories Not Yet Tested (By Business Area)</h2>';
+    let html = '<h2>Not Yet Tested</h2>';
     if (notTested.length === 0) {
-        html += '<p>All User Stories have been tested successfully!</p>';
+        html += '<p>All Stories Tested!</p>';
     } else {
         for (let area in grouped) {
-            html += `<h3 class="business-area-title">${area}</h3><ul>`;
-            grouped[area].forEach(us => {
-                html += `<li><b>${us.id}</b>: ${us.title} (Status: ${us.status})</li>`;
-            });
-            html += `</ul>`;
+            html += `<h3>${area}</h3><ul>${grouped[area].map(us => `<li>${us.id}: ${us.title}</li>`).join('')}</ul>`;
         }
     }
     container.innerHTML = html;
@@ -479,12 +331,5 @@ function groupBy(arr, key) {
     }, {});
 }
 
+// Initialize
 renderHolidays();
-
-
-
-
-
-
-
-
