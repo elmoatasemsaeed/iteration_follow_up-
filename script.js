@@ -92,7 +92,7 @@ async function uploadToGitHub() {
     statusDiv.style.display = 'block';
     statusDiv.innerText = "🚀 Uploading to GitHub...";
 
-    const content = btoa(JSON.stringify(processedStories)); // تحويل البيانات لـ Base64
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(rawData))));
     
     // نحتاج أولاً لمعرفة إذا كان الملف موجوداً للحصول على الـ SHA الخاص به
     let sha = "";
@@ -704,6 +704,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
