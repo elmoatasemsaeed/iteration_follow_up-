@@ -61,8 +61,9 @@ function processData() {
             };
             processedStories.push(currentStory);
         } else if (currentStory) {
-            if (type === 'Task') currentStory.tasks.push(row);
-            if (type === 'Bug') currentStory.bugs.push(row);
+            // هنا نستخدم spread operator ...row لضمان أخذ كل الأعمدة بما فيها التواريخ
+            if (type === 'Task') currentStory.tasks.push({ ...row }); 
+            if (type === 'Bug') currentStory.bugs.push({ ...row });
         }
     });
 
@@ -176,13 +177,11 @@ function renderBusinessView() {
     let html = '<h2>Business Area & User Story Analysis</h2>';
     
     for (let area in grouped) {
-        html += `<div class="business-section">
-                    <h3 class="business-area-title">${area}</h3>`;
+        html += `<div class="business-section"><h3 class="business-area-title">${area}</h3>`;
         
         grouped[area].forEach(us => {
-            // دالة تنسيق التاريخ والوقت
             const formatDate = (date) => {
-                if (!date || date === 'N/A') return 'N/A';
+                if (!date) return 'N/A';
                 const d = new Date(date);
                 return isNaN(d.getTime()) ? 'N/A' : d.toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
             };
@@ -196,51 +195,21 @@ function renderBusinessView() {
             html += `
                 <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9;">
                     <h4>ID: ${us.id} - ${us.title}</h4>
-                    <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
                     
-                    <div style="margin-bottom: 15px;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Est. (H)</th>
-                                    <th>Actual (H)</th>
-                                    <th>Productivity Index</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Development</td>
-                                    <td>${us.devEffort.orig}</td>
-                                    <td>${us.devEffort.actual}</td>
-                                    <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
-                                </tr>
-                                <tr>
-                                    <td>Testing</td>
-                                    <td>${us.testEffort.orig}</td>
-                                    <td>${us.testEffort.actual}</td>
-                                    <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
                     <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
                     <table style="font-size: 0.85em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background-color: #eee; text-align: left;">
-                                <th style="padding: 8px; border: 1px solid #ddd;">Task ID</th>
                                 <th style="padding: 8px; border: 1px solid #ddd;">Activity</th>
                                 <th style="padding: 8px; border: 1px solid #ddd; background-color: #e3f2fd;">Expected Start</th>
-                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #fff3e0;">Actual Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #e8f5e9;">Actual Start</th>
                                 <th style="padding: 8px; border: 1px solid #ddd; background-color: #e3f2fd;">Expected End</th>
-                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #fff3e0;">Actual End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #e8f5e9;">Actual End</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${sortedTasks.map(t => `
                                 <tr>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['TimeSheet_StartDate'])}</td>
@@ -250,11 +219,6 @@ function renderBusinessView() {
                             `).join('')}
                         </tbody>
                     </table>
-                    
-                    <p style="margin-top: 10px;">
-                        <b>Bugs Count:</b> ${us.rework.count} | 
-                        <b>Rework Ratio:</b> ${us.rework.percentage.toFixed(1)}%
-                    </p>
                 </div>`;
         });
         html += `</div>`;
@@ -409,6 +373,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
