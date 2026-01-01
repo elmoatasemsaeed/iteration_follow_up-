@@ -458,11 +458,18 @@ function renderPeopleView() {
 
         if (us.devLead) {
             const d = us.devLead;
-            if (!areaMap[area].devs[d]) areaMap[area].devs[d] = { name: d, est: 0, act: 0, stories: 0 };
+            if (!areaMap[area].devs[d]) {
+                // إضافة reworkTime هنا
+                areaMap[area].devs[d] = { name: d, est: 0, act: 0, stories: 0, reworkTime: 0 };
+            }
             areaMap[area].devs[d].est += us.devEffort.orig;
             areaMap[area].devs[d].act += us.devEffort.actual;
+            // إضافة وقت الريورك الفعلي من اليوزر ستوري
+            areaMap[area].devs[d].reworkTime += (us.rework.time || 0); 
             areaMap[area].devs[d].stories++;
         }
+        
+        // ... جزء التستر يبقى كما هو ...
         if (us.testerLead) {
             const t = us.testerLead;
             if (!areaMap[area].testers[t]) areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0 };
@@ -477,20 +484,40 @@ function renderPeopleView() {
         html += `<div style="margin-bottom:30px; border:1px solid #ddd; padding:10px;">
             <h3>${area}</h3>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div><h4>Devs</h4>${generatePeopleTable(areaMap[area].devs)}</div>
-                <div><h4>Testers</h4>${generatePeopleTable(areaMap[area].testers)}</div>
+                <div><h4>Devs</h4>${generatePeopleTable(areaMap[area].devs, true)}</div>
+                <div><h4>Testers</h4>${generatePeopleTable(areaMap[area].testers, false)}</div>
             </div>
         </div>`;
     }
     container.innerHTML = html;
 }
 
-function generatePeopleTable(statsObj) {
-    let tableHtml = `<table><thead><tr><th>Name</th><th>S.</th><th>Est</th><th>Act</th><th>Idx</th></tr></thead><tbody>`;
+function generatePeopleTable(statsObj, isDev) {
+    // إضافة رأس الجدول الجديد إذا كان الشخص ديف
+    let tableHtml = `<table><thead><tr>
+        <th>Name</th>
+        <th>S.</th>
+        <th>Est</th>
+        <th>Act</th>
+        <th>Idx</th>
+        ${isDev ? '<th>%RW</th>' : ''} 
+    </tr></thead><tbody>`;
+
     for (let p in statsObj) {
         let person = statsObj[p];
         let index = person.est / (person.act || 1);
-        tableHtml += `<tr><td>${person.name}</td><td>${person.stories}</td><td>${person.est.toFixed(1)}</td><td>${person.act.toFixed(1)}</td><td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td></tr>`;
+        
+        // حساب نسبة الريورك: (وقت البجز / وقت الديف الفعلي) * 100
+        let reworkPerc = isDev ? ((person.reworkTime / (person.act || 1)) * 100).toFixed(1) : 0;
+        
+        tableHtml += `<tr>
+            <td>${person.name}</td>
+            <td>${person.stories}</td>
+            <td>${person.est.toFixed(1)}</td>
+            <td>${person.act.toFixed(1)}</td>
+            <td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td>
+            ${isDev ? `<td style="color: ${reworkPerc > 25 ? '#e74c3c' : '#2c3e50'}">${reworkPerc}%</td>` : ''}
+        </tr>`;
     }
     return tableHtml + '</tbody></table>';
 }
@@ -519,6 +546,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
