@@ -174,39 +174,77 @@ function renderBusinessView() {
     const container = document.getElementById('business-view');
     const grouped = groupBy(processedStories, 'businessArea');
     let html = '<h2>Business Area & User Story Analysis</h2>';
+    
     for (let area in grouped) {
         html += `<div class="business-section">
                     <h3 class="business-area-title">${area}</h3>`;
+        
         grouped[area].forEach(us => {
+            // تحويل التواريخ لنصوص مقروءة
+            const formatDate = (date) => date ? new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'N/A';
+
             html += `
-                <div class="card">
+                <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9;">
                     <h4>ID: ${us.id} - ${us.title}</h4>
-                    <p><b>Dev:</b> ${us.devLead} | <b>Tester:</b> ${us.testerLead}</p>
-                    <table>
+                    <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <table class="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Est. (H)</th>
+                                    <th>Actual (H)</th>
+                                    <th>Productivity Index</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Development</td>
+                                    <td>${us.devEffort.orig}</td>
+                                    <td>${us.devEffort.actual}</td>
+                                    <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Testing</td>
+                                    <td>${us.testEffort.orig}</td>
+                                    <td>${us.testEffort.actual}</td>
+                                    <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
+                    <table class="tasks-table" style="font-size: 0.9em; background-color: #fcfcfc;">
                         <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Est. (H)</th>
-                                <th>Actual (H)</th>
-                                <th>Productivity Index</th>
+                            <tr style="background-color: #eee;">
+                                <th>Task ID</th>
+                                <th>Title</th>
+                                <th>Activity</th>
+                                <th>Est (H)</th>
+                                <th>Expected Start</th>
+                                <th>Expected End</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Development</td>
-                                <td>${us.devEffort.orig}</td>
-                                <td>${us.devEffort.actual}</td>
-                                <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td>Testing</td>
-                                <td>${us.testEffort.orig}</td>
-                                <td>${us.testEffort.actual}</td>
-                                <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
-                            </tr>
+                            ${us.tasks.map(t => `
+                                <tr>
+                                    <td>${t['ID']}</td>
+                                    <td>${t['Title']}</td>
+                                    <td>${t['Activity']}</td>
+                                    <td>${t['Original Estimation'] || 0}</td>
+                                    <td>${formatDate(t.expectedStart)}</td>
+                                    <td>${formatDate(t.expectedEnd)}</td>
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
-                    <p>Bugs Count: ${us.rework.count} | Rework Ratio: ${us.rework.percentage.toFixed(1)}%</p>
+                    
+                    <p style="margin-top: 10px;">
+                        <b>Bugs Count:</b> ${us.rework.count} | 
+                        <b>Rework Ratio:</b> ${us.rework.percentage.toFixed(1)}%
+                    </p>
                 </div>`;
         });
         html += `</div>`;
@@ -362,6 +400,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
