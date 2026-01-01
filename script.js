@@ -405,27 +405,38 @@ function renderTeamView() {
     let html = '<h2>Team Performance by Business Area</h2>';
 
     for (let area in grouped) {
-        let areaDevEst = 0, areaDevAct = 0, areaBugs = 0;
+        let areaDevEst = 0, areaDevAct = 0, areaBugsCount = 0, areaReworkTime = 0;
+        
         grouped[area].forEach(us => {
             areaDevEst += us.devEffort.orig;
             areaDevAct += us.devEffort.actual;
-            areaBugs += us.rework.count;
+            // جمع عدد البجز وإجمالي ساعات الريورك من كل يوزر ستوري
+            areaBugsCount += us.rework.count;
+            areaReworkTime += us.rework.time;
         });
+
         const delay = areaDevAct - areaDevEst;
+        
         html += `
             <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 20px;">
-                <h3>${area}</h3>
-                <div style="display: flex; gap: 20px;">
-                    <div>Est: <b>${areaDevEst.toFixed(1)}</b></div>
-                    <div>Act: <b>${areaDevAct.toFixed(1)}</b></div>
-                    <div>Bugs: <b>${areaBugs}</b></div>
-                    <div style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">Delay: <b>${delay.toFixed(1)}h</b></div>
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">${area}</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div><small>Dev Est:</small><br><b>${areaDevEst.toFixed(1)}h</b></div>
+                    <div><small>Dev Act:</small><br><b>${areaDevAct.toFixed(1)}h</b></div>
+                    <div style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">
+                        <small>Delay:</small><br><b>${delay.toFixed(1)}h</b>
+                    </div>
+                    <div style="border-left: 2px solid #eee; padding-left: 15px;">
+                        <small>Total Bugs:</small><br><b style="color: #e67e22;">${areaBugsCount}</b>
+                    </div>
+                    <div>
+                        <small>Total Rework:</small><br><b style="color: #e74c3c;">${areaReworkTime.toFixed(1)}h</b>
+                    </div>
                 </div>
             </div>`;
     }
     container.innerHTML = html;
 }
-
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     const areaMap = {};
@@ -497,6 +508,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
