@@ -5,7 +5,7 @@ let holidays = JSON.parse(localStorage.getItem('holidays') || "[]");
 // Holiday Setup
 function addHoliday() {
     const h = document.getElementById('holidayPicker').value;
-    if(h && !holidays.includes(h)) {
+    if (h && !holidays.includes(h)) {
         holidays.push(h);
         localStorage.setItem('holidays', JSON.stringify(holidays));
         renderHolidays();
@@ -48,22 +48,21 @@ function processData() {
 
     rawData.forEach(row => {
         const type = row['Work Item Type'];
-        
-if (type === 'User Story') {
-    currentStory = {
-        id: row['ID'],
-        title: row['Title'],
-        businessArea: row['Business Area'] || 'General',
-        devLead: row['Assigned To'],
-        testerLead: row['Assigned To Tester'],
-        activatedDate: row['Activated Date'],
-        testedDate: row['Tested Date'] || row['Resolved Date'], // تأكد من اسم العمود في ملف CSV
-        status: row['State'],
-        tasks: [],
-        bugs: []
-    };
-    processedStories.push(currentStory);
-}
+
+        if (type === 'User Story') {
+            currentStory = {
+                id: row['ID'],
+                title: row['Title'],
+                businessArea: row['Business Area'] || 'General',
+                devLead: row['Assigned To'],
+                testerLead: row['Assigned To Tester'],
+                activatedDate: row['Activated Date'],
+                testedDate: row['Tested Date'] || row['Resolved Date'],
+                status: row['State'],
+                tasks: [],
+                bugs: []
+            };
+            processedStories.push(currentStory);
         } else if (currentStory) {
             if (type === 'Task') currentStory.tasks.push(row);
             if (type === 'Bug') currentStory.bugs.push(row);
@@ -75,9 +74,8 @@ if (type === 'User Story') {
 
 function calculateMetrics() {
     processedStories.forEach(us => {
-        
         let devOrig = 0, devActual = 0, testOrig = 0, testActual = 0;
-        
+
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
             const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
@@ -113,17 +111,17 @@ function calculateMetrics() {
             percentage: (bugActualTotal / (devActual || 1)) * 100
         };
 
+        // Calculate Work Duration
+        if (us.activatedDate && us.testedDate) {
+            us.actualTotalDuration = calculateHourDiff(us.activatedDate, us.testedDate);
+        } else {
+            us.actualTotalDuration = "N/A";
+        }
+
         calculateTimeline(us);
     });
 }
-if (us.activatedDate && us.testedDate) {
-        us.actualTotalDuration = calculateHourDiff(us.activatedDate, us.testedDate);
-    } else {
-        us.actualTotalDuration = "N/A";
-    }
 
-    calculateTimeline(us);
-});
 function calculateTimeline(us) {
     let tasks = us.tasks;
     if (!tasks || tasks.length === 0) return;
@@ -133,7 +131,6 @@ function calculateTimeline(us) {
     let devTasks = tasks.filter(t => t.Activity !== 'Testing');
     let testingTasks = tasks.filter(t => t.Activity === 'Testing');
 
-    // 1. ترتيب مهام التطوير
     devTasks.sort((a, b) => {
         let dateA = new Date(a['Activated Date'] || 0);
         let dateB = new Date(b['Activated Date'] || 0);
@@ -145,10 +142,8 @@ function calculateTimeline(us) {
 
     devTasks.forEach((t, index) => {
         let hours = parseFloat(t['Original Estimation']) || 0;
-        
-        // التعديل هنا: استخدام Resolved Date إذا كان Actual End غير موجود
-        // 
         let finishDateStr = t['Actual End'] || t['Resolved Date']; 
+        
         if (finishDateStr) {
             let actualEnd = new Date(finishDateStr);
             if (isValidDate(actualEnd)) {
@@ -169,7 +164,6 @@ function calculateTimeline(us) {
         lastDevExpectedEnd = new Date(t.expectedEnd);
     });
 
-    // 2. ترتيب مهام الاختبار
     testingTasks.sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
 
     let lastTestExpectedEnd = null;
@@ -182,8 +176,6 @@ function calculateTimeline(us) {
             t.expectedStart = isValidDate(taskAct) ? taskAct : new Date();
         } 
         else if (index === 1) {
-            // الآن سيجد قيمة في lastDevActualEnd لأننا سحبناها من Resolved Date في ملف الـ CSV
-            // [cite: 1, 6]
             if (lastDevActualEnd && isValidDate(lastDevActualEnd)) {
                 t.expectedStart = new Date(lastDevActualEnd);
             } else {
@@ -198,7 +190,6 @@ function calculateTimeline(us) {
         lastTestExpectedEnd = new Date(t.expectedEnd);
     });
 
-    // تحديث نهاية الـ User Story
     let allTasks = [...devTasks, ...testingTasks];
     if (allTasks.length > 0) {
         let endDates = allTasks.map(t => t.expectedEnd).filter(isValidDate);
@@ -207,31 +198,26 @@ function calculateTimeline(us) {
         }
     }
 }
+
 function addWorkHours(startDate, hours) {
     let date = new Date(startDate);
-    let remainingMinutes = hours * 60; // تحويل الساعات إلى دقائق
+    let remainingMinutes = hours * 60;
 
     while (remainingMinutes > 0) {
-        // التحقق من أيام العطلات (الجمعة والسبت)
         if (date.getDay() === 5 || date.getDay() === 6 || holidays.includes(date.toISOString().split('T')[0])) {
             date.setDate(date.getDate() + 1);
             date.setHours(9, 0, 0, 0);
             continue;
         }
 
-        // حساب الدقائق المتبقية حتى نهاية يوم العمل (حتى الساعة 5 مساءً)
         let currentHour = date.getHours();
         let currentMinutes = date.getMinutes();
         let minutesUntilEndOfDay = ((17 - currentHour) * 60) - currentMinutes;
 
-        // إضافة الدقائق المتاحة في اليوم الحالي
         let addedNow = Math.min(remainingMinutes, minutesUntilEndOfDay);
-        
-        // استخدام getTime وsetTime لإضافة الوقت بدقة بالدقائق
         date.setTime(date.getTime() + (addedNow * 60 * 1000));
         remainingMinutes -= addedNow;
 
-        // إذا انتهى يوم العمل وما زال هناك دقائق متبقية، انتقل لليوم التالي
         if (remainingMinutes > 0 || date.getHours() >= 17) {
             date.setDate(date.getDate() + 1);
             date.setHours(9, 0, 0, 0);
@@ -239,13 +225,13 @@ function addWorkHours(startDate, hours) {
     }
     return date;
 }
+
 function calculateHourDiff(start, actual) {
     if (!start || !actual || isNaN(new Date(start)) || isNaN(new Date(actual))) return 0;
     
     let startDate = new Date(start);
     let actualDate = new Date(actual);
     
-    // إذا بدأ قبل الموعد، نعتبر التأخير 0
     if (actualDate <= startDate) return 0;
 
     let totalDiffMinutes = 0;
@@ -253,7 +239,7 @@ function calculateHourDiff(start, actual) {
 
     while (current < actualDate) {
         let dayEnd = new Date(current);
-        dayEnd.setHours(17, 0, 0, 0); // نهاية العمل 5 مساءً
+        dayEnd.setHours(17, 0, 0, 0);
 
         if (current.getDay() !== 5 && current.getDay() !== 6 && !holidays.includes(current.toISOString().split('T')[0])) {
             let endOfPeriod = actualDate < dayEnd ? actualDate : dayEnd;
@@ -261,7 +247,6 @@ function calculateHourDiff(start, actual) {
             if (diff > 0) totalDiffMinutes += diff;
         }
 
-        // الانتقال لليوم التالي الساعة 9 صباحاً
         current.setDate(current.getDate() + 1);
         current.setHours(9, 0, 0, 0);
     }
@@ -296,126 +281,39 @@ function renderBusinessView() {
                 return new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
             };
 
-            // حساب المدة الفعلية الكلية لليوزر استوري (من Activation إلى Tested)
             const actualTotalDuration = calculateHourDiff(us.activatedDate, us.testedDate);
-
-            // ترتيب المهام: الديف أولاً ثم التستر
-            const devTasksSorted = us.tasks
-                .filter(t => t.Activity !== 'Testing')
-                .sort((a, b) => {
-                    let dateA = new Date(a['Activated Date'] || 0);
-                    let dateB = new Date(b['Activated Date'] || 0);
-                    return dateA - dateB;
-                });
-
-            const testingTasksSorted = us.tasks
-                .filter(t => t.Activity === 'Testing')
-                .sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
-
+            const devTasksSorted = us.tasks.filter(t => t.Activity !== 'Testing').sort((a, b) => new Date(a['Activated Date'] || 0) - new Date(b['Activated Date'] || 0));
+            const testingTasksSorted = us.tasks.filter(t => t.Activity === 'Testing').sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
             const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
 
             html += `
                 <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h4>ID: ${us.id} - ${us.title}</h4>
-                        <div style="text-align: right; background: #f0f4f8; padding: 10px; border-radius: 8px; border: 1px solid #d1d9e0;">
-                            <div style="font-size: 0.8em; color: #586069;">Total Actual Worktime</div>
-                            <div style="font-size: 1.2em; font-weight: bold; color: #2980b9;">${actualTotalDuration} Hours</div>
-                        </div>
-                    </div>
-
-                    <div style="margin: 10px 0; font-size: 0.9em; color: #555; display: flex; gap: 15px;">
-                        <span><b>Activated:</b> ${formatDate(us.activatedDate)}</span>
-                        <span><b>Tested Date:</b> ${formatDate(us.testedDate)}</span>
-                        <span><b>Status:</b> ${us.status}</span>
-                    </div>
-
-                    <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
-                    
+                    <h4>ID: ${us.id} - ${us.title}</h4>
+                    <p>Total Actual Worktime: <b>${actualTotalDuration} Hours</b></p>
                     <table>
                         <thead>
-                            <tr><th>Type</th><th>Est. (H)</th><th>Actual (H)</th><th>Index</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Dev</td><td>${us.devEffort.orig}</td><td>${us.devEffort.actual}</td><td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td></tr>
-                            <tr><td>Test</td><td>${us.testEffort.orig}</td><td>${us.testEffort.actual}</td><td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td></tr>
-                        </tbody>
-                    </table>
-
-                    <h5 style="margin: 10px 0;">Tasks Timeline & Schedule:</h5>
-                    <table style="font-size: 0.85em; width: 100%;">
-                        <thead>
-                            <tr style="background:#eee;">
-                                <th>ID</th>
-                                <th>Task Name</th>
-                                <th>Activity</th>
-                                <th>Est</th>
-                                <th>Exp. Start</th>
-                                <th>Exp. End</th>
-                                <th>Act. Start</th>
-                                <th>TS Total</th>
-                                <th>Delay</th>
-                            </tr>
+                            <tr><th>ID</th><th>Task</th><th>Activity</th><th>Exp. End</th><th>Delay</th></tr>
                         </thead>
                         <tbody>
                             ${sortedTasks.map(t => {
-                                const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
-                                const est = parseFloat(t['Original Estimation']) || 0;
                                 const delayHours = calculateHourDiff(t.expectedStart, t['Activated Date']);
-                          
-                                return `
-                                <tr>
-                                    <td>${t['ID']}</td>
-                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
-                                    <td>${t['Activity']}</td>
-                                    <td>${est}</td>
-                                    <td>${formatDate(t.expectedStart)}</td>
+                                return `<tr>
+                                    <td>${t.ID}</td>
+                                    <td>${t.Title}</td>
+                                    <td>${t.Activity}</td>
                                     <td>${formatDate(t.expectedEnd)}</td>
-                                    <td>${formatDate(t['Activated Date'])}</td>
-                                    <td>${tsTotal}</td>
-                                    <td class="${delayHours > 0 ? 'alert-red' : ''}">
-                                        ${delayHours}h
-                                    </td>
+                                    <td class="${delayHours > 0 ? 'alert-red' : ''}">${delayHours}h</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
                     </table>
-
-                    <div style="background: #fdfdfd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h5 style="margin: 0; color: #2c3e50;">Quality & Rework Analysis</h5>
-                            <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
-                                 color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
-                                 padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
-                                ${us.rework.missingTimesheet > 0 
-                                    ? `⚠️ ${us.rework.missingTimesheet} Bugs missing Timesheet` 
-                                    : '✅ All bugs recorded'}
-                            </span>
-                        </div>
-
-                        <div style="display: flex; gap: 20px; align-items: center;">
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 5px;">
-                                    <span>Rework Ratio: <b>${us.rework.percentage.toFixed(1)}%</b></span>
-                                    <span style="color: #7f8c8d;">Formula: (Bug Time / Dev Time)</span>
-                                </div>
-                                <div style="width: 100%; background: #eee; height: 10px; border-radius: 5px; overflow: hidden;">
-                                    <div style="width: ${Math.min(us.rework.percentage, 100)}%; background: ${us.rework.percentage > 25 ? '#e74c3c' : '#f1c40f'}; height: 100%; transition: width 0.5s;"></div>
-                                </div>
-                            </div>
-                            
-                            <div style="text-align: center; border-left: 1px solid #eee; padding-left: 20px;">
-                                <div style="font-size: 0.75em; color: #7f8c8d;">Total Bugs</div>
-                                <div style="font-size: 1.5em; font-weight: bold; color: #2c3e50;">${us.rework.count}</div>
-                            </div>
-                        </div>
-                    </div>
                 </div>`; 
         });
         html += `</div>`;
     }
     container.innerHTML = html;
 }
+
 function renderTeamView() {
     const container = document.getElementById('team-view');
     const grouped = groupBy(processedStories, 'businessArea');
@@ -432,12 +330,7 @@ function renderTeamView() {
         html += `
             <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 20px;">
                 <h3>${area}</h3>
-                <div style="display: flex; gap: 20px;">
-                    <div>Est: <b>${areaDevEst.toFixed(1)}</b></div>
-                    <div>Act: <b>${areaDevAct.toFixed(1)}</b></div>
-                    <div>Bugs: <b>${areaBugs}</b></div>
-                    <div style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">Delay: <b>${delay.toFixed(1)}h</b></div>
-                </div>
+                <div>Est: ${areaDevEst.toFixed(1)} | Act: ${areaDevAct.toFixed(1)} | Delay: ${delay.toFixed(1)}h</div>
             </div>`;
     }
     container.innerHTML = html;
@@ -469,12 +362,9 @@ function renderPeopleView() {
 
     let html = '<h2>People Performance</h2>';
     for (let area in areaMap) {
-        html += `<div style="margin-bottom:30px; border:1px solid #ddd; padding:10px;">
-            <h3>${area}</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div><h4>Devs</h4>${generatePeopleTable(areaMap[area].devs)}</div>
-                <div><h4>Testers</h4>${generatePeopleTable(areaMap[area].testers)}</div>
-            </div>
+        html += `<h3>${area}</h3><div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div><h4>Devs</h4>${generatePeopleTable(areaMap[area].devs)}</div>
+            <div><h4>Testers</h4>${generatePeopleTable(areaMap[area].testers)}</div>
         </div>`;
     }
     container.innerHTML = html;
@@ -514,22 +404,3 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
