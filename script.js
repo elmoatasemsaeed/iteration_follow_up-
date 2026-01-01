@@ -526,19 +526,89 @@ function generatePeopleTable(statsObj, isDev) {
 }
 function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
+    // تصفية القصص التي لم تختبر بعد
     const notTested = processedStories.filter(us => us.status !== 'Tested' && us.status !== 'Resolved');
     const grouped = groupBy(notTested, 'businessArea');
-    let html = '<h2>Not Yet Tested</h2>';
+    
+    let html = '<h2>Not Yet Tested - Detailed Analysis</h2>';
+    
     if (notTested.length === 0) {
-        html += '<p>All Stories Tested!</p>';
-    } else {
-        for (let area in grouped) {
-            html += `<h3>${area}</h3><ul>${grouped[area].map(us => `<li>${us.id}: ${us.title}</li>`).join('')}</ul>`;
-        }
+        html += '<div class="card"><p style="text-align:center; color: #27ae60; font-weight: bold;">✅ All Stories are Tested or Resolved!</p></div>';
+        container.innerHTML = html;
+        return;
+    }
+
+    const formatDate = (date) => {
+        if (!date || isNaN(new Date(date))) return 'N/A';
+        return new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    };
+
+    for (let area in grouped) {
+        html += `<div class="business-section"><h3 class="business-area-title">${area}</h3>`;
+        
+        grouped[area].forEach(us => {
+            // ترتيب المهام (نفس المنطق المستخدم في البزنس فيو)
+            const devTasksSorted = us.tasks
+                .filter(t => t.Activity !== 'Testing')
+                .sort((a, b) => new Date(a['Activated Date'] || 0) - new Date(b['Activated Date'] || 0));
+
+            const testingTasksSorted = us.tasks
+                .filter(t => t.Activity === 'Testing')
+                .sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
+
+            const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
+
+            html += `
+                <div class="card" style="margin-bottom: 30px; border-left: 5px solid #e67e22; overflow-x: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4>ID: ${us.id} - ${us.title}</h4>
+                        <span style="background: #eee; padding: 2px 8px; border-radius: 4px; font-size: 0.8em;">Status: <b>${us.status}</b></span>
+                    </div>
+                    <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
+                    
+                    <table>
+                        <thead>
+                            <tr><th>Type</th><th>Est. (H)</th><th>Actual (H)</th><th>Index</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Dev</td><td>${us.devEffort.orig}</td><td>${us.devEffort.actual}</td><td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td></tr>
+                            <tr><td>Test</td><td>${us.testEffort.orig}</td><td>${us.testEffort.actual}</td><td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h5 style="margin: 10px 0;">Tasks Timeline:</h5>
+                    <table style="font-size: 0.85em; width: 100%;">
+                        <thead>
+                            <tr style="background:#eee;">
+                                <th>ID</th><th>Task Name</th><th>Activity</th><th>Est</th><th>Exp. Start</th><th>Exp. End</th><th>Act. Start</th><th>TS Total</th><th>Delay</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedTasks.map(t => {
+                                const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
+                                const est = parseFloat(t['Original Estimation']) || 0;
+                                const delay = calculateHourDiff(t.expectedStart, t['Activated Date']);
+                                return `
+                                <tr>
+                                    <td>${t['ID']}</td>
+                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
+                                    <td>${t['Activity']}</td>
+                                    <td>${est}</td>
+                                    <td>${formatDate(t.expectedStart)}</td>
+                                    <td>${formatDate(t.expectedEnd)}</td>
+                                    <td>${formatDate(t['Activated Date'])}</td>
+                                    <td>${tsTotal}</td>
+                                    <td class="${delay > 0 ? 'alert-red' : ''}">${delay}h</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+        });
+        html += `</div>`;
     }
     container.innerHTML = html;
 }
-
 function groupBy(arr, key) {
     return arr.reduce((acc, obj) => {
         (acc[obj[key]] = acc[obj[key]] || []).push(obj);
@@ -548,6 +618,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
