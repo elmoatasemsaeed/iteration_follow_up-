@@ -251,28 +251,71 @@ function renderTeamView() {
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
-    const peopleStats = {};
+    const devStats = {};
+    const testerStats = {};
+
     processedStories.forEach(us => {
+        // إحصائيات المطورين (Dev Lead)
         const dev = us.devLead;
-        if (!peopleStats[dev]) peopleStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
-        peopleStats[dev].est += us.devEffort.orig;
-        peopleStats[dev].act += us.devEffort.actual;
-        peopleStats[dev].stories += 1;
+        if (dev) {
+            if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
+            devStats[dev].est += us.devEffort.orig;
+            devStats[dev].act += us.devEffort.actual;
+            devStats[dev].stories += 1;
+        }
+
+        // إحصائيات المختبرين (Tester Lead)
+        const tester = us.testerLead;
+        if (tester) {
+            if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
+            testerStats[tester].est += us.testEffort.orig;
+            testerStats[tester].act += us.testEffort.actual;
+            testerStats[tester].stories += 1;
+        }
     });
-    let html = '<h2>Developer Performance Analysis</h2><table><thead><tr><th>Name</th><th>Stories</th><th>Total Est</th><th>Total Actual</th><th>Index</th></tr></thead><tbody>';
-    for (let p in peopleStats) {
-        let person = peopleStats[p];
-        let dev = person.est / (person.act || 1);
-        html += `<tr>
+
+    let html = '<h2>People Performance Analysis</h2>';
+
+    // جدول المطورين
+    html += '<h3>Developers Performance</h3>' + generatePeopleTable(devStats);
+
+    // مسافة بين الجدولين
+    html += '<br><hr><br>';
+
+    // جدول المختبرين
+    html += '<h3>Testers Performance</h3>' + generatePeopleTable(testerStats);
+
+    container.innerHTML = html;
+}
+
+// وظيفة مساعدة لإنشاء الجدول لتقليل تكرار الكود
+function generatePeopleTable(statsObj) {
+    let tableHtml = `<table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Stories</th>
+                <th>Total Est (H)</th>
+                <th>Total Actual (H)</th>
+                <th>Productivity Index</th>
+            </tr>
+        </thead>
+        <tbody>`;
+    
+    for (let p in statsObj) {
+        let person = statsObj[p];
+        let index = person.est / (person.act || 1);
+        tableHtml += `<tr>
             <td>${person.name}</td>
             <td>${person.stories}</td>
-            <td>${person.est}</td>
-            <td>${person.act}</td>
-            <td class="${dev < 1 ? 'alert-red' : ''}">${dev.toFixed(2)}</td>
+            <td>${person.est.toFixed(1)}</td>
+            <td>${person.act.toFixed(1)}</td>
+            <td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td>
         </tr>`;
     }
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    
+    tableHtml += '</tbody></table>';
+    return tableHtml;
 }
 
 function renderNotTestedView() {
@@ -302,4 +345,5 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
