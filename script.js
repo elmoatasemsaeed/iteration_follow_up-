@@ -10,7 +10,7 @@ function addHoliday() {
         localStorage.setItem('holidays', JSON.stringify(holidays));
         renderHolidays();
     }
-
+}
 function renderHolidays() {
     const list = document.getElementById('holidaysList');
     list.innerHTML = holidays.map(h => `<li>${h} <button onclick="removeHoliday('${h}')">X</button></li>`).join('');
@@ -366,6 +366,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
