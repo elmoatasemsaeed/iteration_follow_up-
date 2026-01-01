@@ -251,39 +251,48 @@ function renderTeamView() {
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
-    const devStats = {};
-    const testerStats = {};
+    // 1. تجميع القصص حسب Business Area أولاً
+    const groupedByArea = groupBy(processedStories, 'businessArea');
+    
+    let html = '<h2>People Performance Analysis (By Business Area)</h2>';
 
-    processedStories.forEach(us => {
-        // إحصائيات المطورين (Dev Lead)
-        const dev = us.devLead;
-        if (dev) {
-            if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
-            devStats[dev].est += us.devEffort.orig;
-            devStats[dev].act += us.devEffort.actual;
-            devStats[dev].stories += 1;
-        }
+    for (let area in groupedByArea) {
+        html += `<div class="business-section" style="margin-bottom: 40px; border-bottom: 2px solid #34495e; padding-bottom: 20px;">
+                    <h2 class="business-area-title" style="background: var(--secondary);">${area}</h2>`;
 
-        // إحصائيات المختبرين (Tester Lead)
-        const tester = us.testerLead;
-        if (tester) {
-            if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
-            testerStats[tester].est += us.testEffort.orig;
-            testerStats[tester].act += us.testEffort.actual;
-            testerStats[tester].stories += 1;
-        }
-    });
+        const devStats = {};
+        const testerStats = {};
 
-    let html = '<h2>People Performance Analysis</h2>';
+        // 2. حساب الإحصائيات للأشخاص داخل هذه الـ Area فقط
+        groupedByArea[area].forEach(us => {
+            // إحصائيات المطورين
+            const dev = us.devLead;
+            if (dev) {
+                if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
+                devStats[dev].est += us.devEffort.orig;
+                devStats[dev].act += us.devEffort.actual;
+                devStats[dev].stories += 1;
+            }
 
-    // جدول المطورين
-    html += '<h3>Developers Performance</h3>' + generatePeopleTable(devStats);
+            // إحصائيات المختبرين
+            const tester = us.testerLead;
+            if (tester) {
+                if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
+                testerStats[tester].est += us.testEffort.orig;
+                testerStats[tester].act += us.testEffort.actual;
+                testerStats[tester].stories += 1;
+            }
+        });
 
-    // مسافة بين الجدولين
-    html += '<br><hr><br>';
+        // 3. توليد جداول المنطقة الحالية
+        html += `<h3 style="color: #2c3e50;">Developers in ${area}</h3>`;
+        html += generatePeopleTable(devStats);
 
-    // جدول المختبرين
-    html += '<h3>Testers Performance</h3>' + generatePeopleTable(testerStats);
+        html += `<h3 style="color: #2c3e50; margin-top: 20px;">Testers in ${area}</h3>`;
+        html += generatePeopleTable(testerStats);
+
+        html += `</div>`;
+    }
 
     container.innerHTML = html;
 }
@@ -345,5 +354,6 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
