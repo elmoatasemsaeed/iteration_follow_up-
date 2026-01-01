@@ -216,23 +216,37 @@ function renderBusinessView() {
 
 function renderTeamView() {
     const container = document.getElementById('team-view');
-    let totalDevEst = 0, totalDevAct = 0, totalBugs = 0;
-    processedStories.forEach(us => {
-        totalDevEst += us.devEffort.orig;
-        totalDevAct += us.devEffort.actual;
-        totalBugs += us.rework.count;
-    });
-    container.innerHTML = `
-        <div class="card" style="background: #ecf0f1;">
-            <h2>Total Team Performance</h2>
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div class="stat-box">Total Est. Hours: <b>${totalDevEst}</b></div>
-                <div class="stat-box">Total Actual Hours: <b>${totalDevAct}</b></div>
-                <div class="stat-box">Total Bugs: <b>${totalBugs}</b></div>
-                <div class="stat-box">Total Delay: <b>${(totalDevAct - totalDevEst).toFixed(1)} hours</b></div>
+    // تجميع القصص حسب الـ Business Area
+    const grouped = groupBy(processedStories, 'businessArea');
+    
+    let html = '<h2>Team Performance by Business Area</h2>';
+
+    for (let area in grouped) {
+        let areaDevEst = 0, areaDevAct = 0, areaBugs = 0;
+        
+        // حساب إجمالي الأرقام لكل منطقة عمل
+        grouped[area].forEach(us => {
+            areaDevEst += us.devEffort.orig;
+            areaDevAct += us.devEffort.actual;
+            areaBugs += us.rework.count;
+        });
+
+        const delay = areaDevAct - areaDevEst;
+
+        html += `
+            <div class="card" style="background: #f8f9fa; border-left: 5px solid #2980b9; margin-bottom: 20px;">
+                <h3 style="color: #2c3e50; margin-top: 0;">${area}</h3>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div class="stat-box">Total Est. Hours: <b>${areaDevEst.toFixed(1)}</b></div>
+                    <div class="stat-box">Total Actual Hours: <b>${areaDevAct.toFixed(1)}</b></div>
+                    <div class="stat-box">Total Bugs: <b>${areaBugs}</b></div>
+                    <div class="stat-box">Total Delay: <b style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">${delay.toFixed(1)} hours</b></div>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
+    
+    container.innerHTML = html;
 }
 
 function renderPeopleView() {
@@ -288,3 +302,4 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
