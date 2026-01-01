@@ -527,7 +527,7 @@ function generatePeopleTable(statsObj, isDev) {
 function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
     // تصفية القصص التي لم تختبر بعد
-    const notTested = processedStories.filter(us => us.status !== 'Tested' && us.status !== 'Resolved');
+    const notTested = processedStories.filter(us => us.status !== 'Tested');
     const grouped = groupBy(notTested, 'businessArea');
     
     let html = '<h2>Not Yet Tested - Detailed Analysis</h2>';
@@ -618,6 +618,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
