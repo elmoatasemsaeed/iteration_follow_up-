@@ -49,17 +49,39 @@
 </head>
 <body>
 
-    <div id="login-overlay">
-        <div class="login-card">
-            <h2 style="text-align: center; color: #2c3e50; margin-top: 0;">System Login</h2>
-            <input type="text" id="loginUser" placeholder="Username">
-            <input type="password" id="loginPass" placeholder="Password">
-            <input type="password" id="ghTokenInput" placeholder="GitHub Personal Access Token">
-            <button onclick="attemptLogin()">Login & Sync Data</button>
-            <p id="login-error" style="color: red; font-size: 0.8em; text-align: center; display: none;">Invalid credentials or token!</p>
-        </div>
+ <div id="login-overlay">
+    <div class="login-card">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 0;">System Login</h2>
+        <input type="text" id="loginUser" placeholder="Username">
+        <input type="password" id="loginPass" placeholder="Password">
+        <input type="password" id="ghTokenInput" placeholder="GitHub Personal Access Token">
+        <label style="font-size: 0.8em; color: #555;">
+            <input type="checkbox" id="rememberMe" style="width: auto; margin-bottom: 20px;"> Remember Me
+        </label>
+        <button onclick="attemptLogin()">Login & Sync Data</button>
     </div>
+</div>
 
+<button onclick="showView('users-view')" class="admin-only">Manage Users</button>
+
+<div id="users-view" class="view" style="display:none;">
+    <h3>User Management</h3>
+    <div class="card">
+        <input type="text" id="newUserName" placeholder="Username">
+        <input type="text" id="newUserPass" placeholder="Password">
+        <select id="newUserRole">
+            <option value="viewer">Viewer</option>
+            <option value="admin">Admin</option>
+        </select>
+        <button onclick="addUser()">Add/Update User</button>
+    </div>
+    <table style="margin-top: 20px;">
+        <thead>
+            <tr><th>Username</th><th>Password</th><th>Role</th><th>Action</th></tr>
+        </thead>
+        <tbody id="usersListTable"></tbody>
+    </table>
+</div>
     <header>
         <h1>Productivity Analysis Dashboard</h1>
         <div class="upload-section admin-only" id="admin-upload-controls">
@@ -102,3 +124,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+
