@@ -118,15 +118,12 @@ function calculateTimeline(us) {
     let tasks = us.tasks;
     if (!tasks || tasks.length === 0) return;
 
-    // دالة مساعدة للتأكد من صحة التاريخ
     const isValidDate = (d) => d instanceof Date && !isNaN(d);
 
-    // 1. تقسيم المهام إلى مجموعتين
     let devTasks = tasks.filter(t => t.Activity !== 'Testing');
     let testingTasks = tasks.filter(t => t.Activity === 'Testing');
 
-    // 2. معالجة مهام التطوير (Dev Tasks)
-    // الترتيب حسب تاريخ التفعيل (Activated Date) من الأقدم للأحدث
+    // 1. ترتيب مهام التطوير
     devTasks.sort((a, b) => {
         let dateA = new Date(a['Activated Date'] || 0);
         let dateB = new Date(b['Activated Date'] || 0);
@@ -139,9 +136,11 @@ function calculateTimeline(us) {
     devTasks.forEach((t, index) => {
         let hours = parseFloat(t['Original Estimation']) || 0;
         
-        // حساب الوقت الفعلي لانتهاء آخر مهمة تطوير (لاستخدامه مع التستر لاحقاً)
-        if (t['Actual End']) {
-            let actualEnd = new Date(t['Actual End']);
+        // التعديل هنا: استخدام Resolved Date إذا كان Actual End غير موجود
+        // 
+        let finishDateStr = t['Actual End'] || t['Resolved Date']; 
+        if (finishDateStr) {
+            let actualEnd = new Date(finishDateStr);
             if (isValidDate(actualEnd)) {
                 if (!lastDevActualEnd || actualEnd > lastDevActualEnd) {
                     lastDevActualEnd = actualEnd;
@@ -150,11 +149,9 @@ function calculateTimeline(us) {
         }
 
         if (index === 0) {
-            // أول تاسك ديف: تبدأ من وقت تفعيلها الفعلي
             let taskAct = t['Activated Date'] ? new Date(t['Activated Date']) : new Date(us.activatedDate);
             t.expectedStart = isValidDate(taskAct) ? taskAct : new Date();
         } else {
-            // المهام التالية: تبدأ من انتهاء الوقت المتوقع للمهمة السابقة
             t.expectedStart = new Date(lastDevExpectedEnd);
         }
 
@@ -162,9 +159,8 @@ function calculateTimeline(us) {
         lastDevExpectedEnd = new Date(t.expectedEnd);
     });
 
-    // 3. معالجة مهام الاختبار (Testing Tasks)
-    // الترتيب حسب الـ ID من الأصغر للأكبر
-   testingTasks.sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
+    // 2. ترتيب مهام الاختبار
+    testingTasks.sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
 
     let lastTestExpectedEnd = null;
 
@@ -172,21 +168,19 @@ function calculateTimeline(us) {
         let hours = parseFloat(t['Original Estimation']) || 0;
         
         if (index === 0) {
-            // 1- المهمة الاولى: تبدا من الوقت الفعلي الذي بدأت فيه activation time
             let taskAct = t['Activated Date'] ? new Date(t['Activated Date']) : new Date(us.activatedDate);
             t.expectedStart = isValidDate(taskAct) ? taskAct : new Date();
         } 
         else if (index === 1) {
-            // 2- المهمة الثانية: تبدا من الوقت الفعلي لنهاية اخر تاسك للديف after resolve date of last dev task
+            // الآن سيجد قيمة في lastDevActualEnd لأننا سحبناها من Resolved Date في ملف الـ CSV
+            // [cite: 1, 6]
             if (lastDevActualEnd && isValidDate(lastDevActualEnd)) {
                 t.expectedStart = new Date(lastDevActualEnd);
             } else {
-                // احتياطي في حال عدم وجود تاريخ نهاية للديف، تبدأ من تفعيل المهمة أو نهاية الأولى
                 t.expectedStart = new Date(lastTestExpectedEnd);
             }
         } 
         else {
-            // 3- ما يلي المهمة الثانية: يبدأ بعد الوقت المتوقع لنهاية المهمة السابقة
             t.expectedStart = new Date(lastTestExpectedEnd);
         }
 
@@ -194,7 +188,7 @@ function calculateTimeline(us) {
         lastTestExpectedEnd = new Date(t.expectedEnd);
     });
 
-    // 4. تحديث تاريخ الانتهاء المتوقع للـ User Story ككل
+    // تحديث نهاية الـ User Story
     let allTasks = [...devTasks, ...testingTasks];
     if (allTasks.length > 0) {
         let endDates = allTasks.map(t => t.expectedEnd).filter(isValidDate);
@@ -503,6 +497,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
