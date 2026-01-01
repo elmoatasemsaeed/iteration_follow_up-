@@ -34,26 +34,36 @@ function saveUsers() {
 async function attemptLogin() {
     const user = document.getElementById('loginUser').value;
     const pass = document.getElementById('loginPass').value;
-    const token = document.getElementById('ghTokenInput').value; // جلب التوكن من المدخل
+    const token = document.getElementById('ghTokenInput').value;
     const remember = document.getElementById('rememberMe').checked;
 
-    if (users[user] && users[user].pass === pass && token) {
-        currentUser = users[user];
-        githubToken = token; // تحديث المتغير العام لاستخدامه في الرفع لاحقاً
-        
-        if (remember) {
-            localStorage.setItem('gh_token', token); // حفظه للمرات القادمة
-            localStorage.setItem('app_role', currentUser.role);
-            localStorage.setItem('saved_user', user);
-            localStorage.setItem('saved_pass', pass);
-        }
+    if (!token) return alert("Please enter GitHub Token");
 
-        setupPermissions();
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('main-nav').style.display = 'flex';
-        await fetchDataFromGitHub();
-    } else {
-        alert("Invalid Credentials or Token!");
+    githubToken = token; // تعيين التوكن مؤقتاً لمحاولة الجلب
+
+    try {
+        // محاولة جلب المستخدمين من GitHub أولاً
+        await fetchUsersFromGitHub(); 
+
+        if (users[user] && users[user].pass === pass) {
+            currentUser = users[user];
+            
+            if (remember) {
+                localStorage.setItem('gh_token', token);
+                localStorage.setItem('app_role', currentUser.role);
+                localStorage.setItem('saved_user', user);
+                localStorage.setItem('saved_pass', pass);
+            }
+
+            setupPermissions();
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-nav').style.display = 'flex';
+            await fetchDataFromGitHub();
+        } else {
+            alert("Invalid Credentials!");
+        }
+    } catch (e) {
+        alert("Login failed: Could not connect to GitHub or invalid Token.");
     }
 }
 function renderUsersTable() {
@@ -208,8 +218,12 @@ function logout() { // تم تصحيح الكلمة هنا
 
 // تحديث window.onload
 window.onload = async function() {
-    renderHolidays();
+    if (githubToken) {
+        await fetchUsersFromGitHub();
+    }
+    
     renderUsersTable();
+    renderHolidays();
 
     const savedToken = localStorage.getItem('gh_token');
     const savedRole = localStorage.getItem('app_role');
@@ -889,6 +903,7 @@ function groupBy(arr, key) {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
