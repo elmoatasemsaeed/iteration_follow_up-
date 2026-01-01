@@ -166,30 +166,33 @@ function calculateTimeline(us) {
     // الترتيب حسب الـ ID من الأصغر للأكبر
    testingTasks.sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
 
-let lastTestExpectedEnd = null;
+    let lastTestExpectedEnd = null;
 
-testingTasks.forEach((t, index) => {
-    let hours = parseFloat(t['Original Estimation']) || 0;
-    
-    // الحل: كل مهام التستر تبدأ من "نهاية آخر مهمة تطوير فعلياً" 
-    // إذا لم يتوفر تاريخ فعلي، نستخدم تاريخ التفعيل للـ User Story ككل
-    let baseStartDate = (lastDevActualEnd && isValidDate(lastDevActualEnd)) 
-                        ? new Date(lastDevActualEnd) 
-                        : new Date(us.activatedDate);
+    testingTasks.forEach((t, index) => {
+        let hours = parseFloat(t['Original Estimation']) || 0;
+        
+        if (index === 0) {
+            // 1- المهمة الاولى: تبدا من الوقت الفعلي الذي بدأت فيه activation time
+            let taskAct = t['Activated Date'] ? new Date(t['Activated Date']) : new Date(us.activatedDate);
+            t.expectedStart = isValidDate(taskAct) ? taskAct : new Date();
+        } 
+        else if (index === 1) {
+            // 2- المهمة الثانية: تبدا من الوقت الفعلي لنهاية اخر تاسك للديف after resolve date of last dev task
+            if (lastDevActualEnd && isValidDate(lastDevActualEnd)) {
+                t.expectedStart = new Date(lastDevActualEnd);
+            } else {
+                // احتياطي في حال عدم وجود تاريخ نهاية للديف، تبدأ من تفعيل المهمة أو نهاية الأولى
+                t.expectedStart = new Date(lastTestExpectedEnd);
+            }
+        } 
+        else {
+            // 3- ما يلي المهمة الثانية: يبدأ بعد الوقت المتوقع لنهاية المهمة السابقة
+            t.expectedStart = new Date(lastTestExpectedEnd);
+        }
 
-    if (index === 0) {
-        // أول مهمة تستر: تبدأ من الأحدث بين (تاريخ تفعيلها) و (نهاية الديف)
-        let taskAct = t['Activated Date'] ? new Date(t['Activated Date']) : baseStartDate;
-        t.expectedStart = (isValidDate(taskAct) && taskAct > baseStartDate) ? taskAct : baseStartDate;
-    } else {
-        // المهام التالية: تبدأ مباشرة من نهاية آخر مهمة تطوير (Resolve Date)
-        // أو إذا كنت تريدها أن تبدأ بعد انتهاء مهمة التستر التي قبلها، يمكنك المفاضلة بينهما
-        t.expectedStart = baseStartDate; 
-    }
-
-    t.expectedEnd = addWorkHours(t.expectedStart, hours);
-    lastTestExpectedEnd = new Date(t.expectedEnd);
-});
+        t.expectedEnd = addWorkHours(t.expectedStart, hours);
+        lastTestExpectedEnd = new Date(t.expectedEnd);
+    });
 
     // 4. تحديث تاريخ الانتهاء المتوقع للـ User Story ككل
     let allTasks = [...devTasks, ...testingTasks];
@@ -500,6 +503,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
