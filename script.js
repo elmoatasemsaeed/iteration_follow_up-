@@ -11,7 +11,98 @@ const GH_CONFIG = {
     path: 'data.json',
     branch: 'main'
 };
-// عند تشغيل الصفحة، ابحث عن بيانات مخزنة مسبقاً
+// 1. إعدادات المستخدمين (يمكنك توسيعها)
+const CREDENTIALS = {
+    "admin123": { pass: "admin@2025", role: "admin" },
+    "viewer123": { pass: "view@2025", role: "viewer" }
+};
+
+let currentUser = null;
+
+// 2. وظيفة تسجيل الدخول
+async function attemptLogin() {
+    const user = document.getElementById('loginUser').value;
+    const pass = document.getElementById('loginPass').value;
+    const token = document.getElementById('ghTokenInput').value;
+
+    if (CREDENTIALS[user] && CREDENTIALS[user].pass === pass && token) {
+        currentUser = CREDENTIALS[user];
+        githubToken = token;
+        
+        // حفظ البيانات في LocalStorage
+        localStorage.setItem('gh_token', token);
+        localStorage.setItem('app_role', currentUser.role);
+
+        setupPermissions();
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-nav').style.display = 'flex';
+        
+        // جلب البيانات فوراً
+        await fetchDataFromGitHub();
+    } else {
+        alert("Invalid Credentials or Token!");
+    }
+}
+
+// 3. التحكم في ما يظهر للمستخدم
+function setupPermissions() {
+    const role = localStorage.getItem('app_role');
+    const adminElements = document.querySelectorAll('.admin-only');
+    
+    adminElements.forEach(el => {
+        el.style.display = (role === 'admin') ? 'block' : 'none';
+    });
+}
+
+// 4. دالة جلب البيانات من GitHub (تحديث للدالة الحالية)
+async function fetchDataFromGitHub() {
+    const statusDiv = document.getElementById('sync-status');
+    statusDiv.style.display = 'block';
+    statusDiv.innerText = "🔍 Fetching data from GitHub...";
+
+    try {
+        const res = await fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.path}`, {
+            headers: { 'Authorization': `token ${githubToken}` }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            // فك تشفير البيانات من Base64
+            const content = decodeURIComponent(escape(atob(data.content)));
+            rawData = JSON.parse(content);
+            processData(); 
+            showView('business-view');
+            statusDiv.innerText = "✅ Data loaded from GitHub";
+        } else {
+            statusDiv.innerText = "❌ No data found on GitHub. Admin must upload first.";
+        }
+    } catch (e) {
+        console.error(e);
+        statusDiv.innerText = "❌ Connection Error";
+    }
+}
+
+// 5. تسجيل الخروج
+function logout() {
+    localStorage.clear();
+    location.reload();
+}
+
+// تحديث window.onload
+window.onload = async function() {
+    renderHolidays();
+    const savedToken = localStorage.getItem('gh_token');
+    const savedRole = localStorage.getItem('app_role');
+
+    if (savedToken && savedRole) {
+        githubToken = savedToken;
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-nav').style.display = 'flex';
+        setupPermissions();
+        await fetchDataFromGitHub();
+    }
+};
+
 window.onload = async function() {
     renderHolidays(); // عرض العطلات فوراً
     
@@ -675,6 +766,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
