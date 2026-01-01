@@ -24,23 +24,63 @@ async function attemptLogin() {
     const user = document.getElementById('loginUser').value;
     const pass = document.getElementById('loginPass').value;
     const token = document.getElementById('ghTokenInput').value;
+    const remember = document.getElementById('rememberMe').checked;
 
-    if (CREDENTIALS[user] && CREDENTIALS[user].pass === pass && token) {
-        currentUser = CREDENTIALS[user];
+    if (users[user] && users[user].pass === pass && token) {
+        currentUser = users[user];
         githubToken = token;
         
-        // حفظ البيانات في LocalStorage
-        localStorage.setItem('gh_token', token);
-        localStorage.setItem('app_role', currentUser.role);
+        // حفظ البيانات إذا اختار المستخدم "Remember Me"
+        if (remember) {
+            localStorage.setItem('gh_token', token);
+            localStorage.setItem('app_role', currentUser.role);
+            localStorage.setItem('saved_user', user);
+            localStorage.setItem('saved_pass', pass);
+        }
 
         setupPermissions();
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-nav').style.display = 'flex';
-        
-        // جلب البيانات فوراً
         await fetchDataFromGitHub();
     } else {
         alert("Invalid Credentials or Token!");
+    }
+}
+function renderUsersTable() {
+    const tbody = document.getElementById('usersListTable');
+    if (!tbody) return;
+    
+    tbody.innerHTML = Object.keys(users).map(u => `
+        <tr>
+            <td>${u}</td>
+            <td>${users[u].pass}</td>
+            <td>${users[u].role}</td>
+            <td>
+                <button onclick="deleteUser('${u}')" style="background:#e74c3c; padding:5px;">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function addUser() {
+    const name = document.getElementById('newUserName').value;
+    const pass = document.getElementById('newUserPass').value;
+    const role = document.getElementById('newUserRole').value;
+
+    if (name && pass) {
+        users[name] = { pass: pass, role: role };
+        saveUsers();
+        alert("User saved successfully!");
+        document.getElementById('newUserName').value = '';
+        document.getElementById('newUserPass').value = '';
+    }
+}
+
+function deleteUser(username) {
+    if (username === 'admin') return alert("Cannot delete main admin!");
+    if (confirm(`Delete user ${username}?`)) {
+        delete users[username];
+        saveUsers();
     }
 }
 
@@ -104,12 +144,26 @@ window.onload = async function() {
 };
 
 window.onload = async function() {
-    renderHolidays(); // عرض العطلات فوراً
-    
-    const tokenInput = document.getElementById('ghToken');
-    if (githubToken) {
-        tokenInput.value = githubToken;
-        await fetchDataFromGitHub(); // استدعاء جلب البيانات
+    renderHolidays();
+    renderUsersTable();
+
+    // التحقق إذا كان هناك بيانات محفوظة (Remember Me)
+    const savedToken = localStorage.getItem('gh_token');
+    const savedRole = localStorage.getItem('app_role');
+    const savedUser = localStorage.getItem('saved_user');
+    const savedPass = localStorage.getItem('saved_pass');
+
+    if (savedToken && savedRole) {
+        githubToken = savedToken;
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-nav').style.display = 'flex';
+        setupPermissions();
+        await fetchDataFromGitHub();
+    } else if (savedUser) {
+        // تعبئة الخانات تلقائياً إذا كان مسجلاً من قبل ولكن لم يدخل
+        document.getElementById('loginUser').value = savedUser;
+        document.getElementById('loginPass').value = savedPass;
+        document.getElementById('ghTokenInput').value = localStorage.getItem('gh_token') || "";
     }
 };
 
@@ -418,6 +472,7 @@ function showView(viewId) {
     if (viewId === 'team-view') renderTeamView();
     if (viewId === 'people-view') renderPeopleView();
     if (viewId === 'not-tested-view') renderNotTestedView();
+    if (viewId === 'users-view') renderUsersTable();
 }
 
 function renderBusinessView() {
@@ -766,6 +821,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
