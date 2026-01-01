@@ -249,45 +249,7 @@ function renderTeamView() {
     container.innerHTML = html;
 }
 
-function renderPeopleView() {
-    const container = document.getElementById('people-view');
-    const devStats = {};
-    const testerStats = {};
-
-    processedStories.forEach(us => {
-        // إحصائيات المطورين (Dev Lead)
-        const dev = us.devLead;
-        if (dev) {
-            if (!devStats[dev]) devStats[dev] = { name: dev, est: 0, act: 0, stories: 0 };
-            devStats[dev].est += us.devEffort.orig;
-            devStats[dev].act += us.devEffort.actual;
-            devStats[dev].stories += 1;
-        }
-
-        // إحصائيات المختبرين (Tester Lead)
-        const tester = us.testerLead;
-        if (tester) {
-            if (!testerStats[tester]) testerStats[tester] = { name: tester, est: 0, act: 0, stories: 0 };
-            testerStats[tester].est += us.testEffort.orig;
-            testerStats[tester].act += us.testEffort.actual;
-            testerStats[tester].stories += 1;
-        }
-    });
-
-    let html = '<h2>People Performance Analysis</h2>';
-
-    // جدول المطورين
-    html += '<h3>Developers Performance</h3>' + generatePeopleTable(devStats);
-
-    // مسافة بين الجدولين
-    html += '<br><hr><br>';
-
-    // جدول المختبرين
-    html += '<h3>Testers Performance</h3>' + generatePeopleTable(testerStats);
-
-    container.innerHTML = html;
-}
-
+    renderPeopleView
 // وظيفة مساعدة لإنشاء الجدول لتقليل تكرار الكود
 function generatePeopleTable(statsObj) {
     let tableHtml = `<table>
@@ -345,4 +307,6 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
+
 
