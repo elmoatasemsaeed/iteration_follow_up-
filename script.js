@@ -196,7 +196,8 @@ async function fetchDataFromGitHub() {
 }
 
 // 5. تسجيل الخروج
-logoutfunction logout() {
+// 5. تسجيل الخروج
+function logout() { // تم تصحيح الكلمة هنا
     // نمسح فقط بيانات الجلسة الحالية
     localStorage.removeItem('gh_token');
     localStorage.removeItem('app_role');
@@ -888,6 +889,7 @@ function groupBy(arr, key) {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
