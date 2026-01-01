@@ -11,12 +11,19 @@ const GH_CONFIG = {
     path: 'data.json',
     branch: 'main'
 };
-// 1. إعدادات المستخدمين (يمكنك توسيعها)
-const CREDENTIALS = {
-    "admin123": { pass: "admin@2025", role: "admin" },
-    "viewer123": { pass: "view@2025", role: "viewer" }
-};
+let users = JSON.parse(localStorage.getItem('app_users'));
 
+if (!users || Object.keys(users).length === 0) {
+    users = {
+        "admin": { pass: "admin", role: "100300311" }
+    };
+    localStorage.setItem('app_users', JSON.stringify(users));
+}
+
+function saveUsers() {
+    localStorage.setItem('app_users', JSON.stringify(users));
+    if(typeof renderUsersTable === "function") renderUsersTable(); 
+}
 let currentUser = null;
 
 // 2. وظيفة تسجيل الدخول
@@ -821,6 +828,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
