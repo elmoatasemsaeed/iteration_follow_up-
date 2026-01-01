@@ -493,21 +493,21 @@ function renderPeopleView() {
 }
 
 function generatePeopleTable(statsObj, isDev) {
-    // إضافة رأس الجدول الجديد إذا كان الشخص ديف
+    // إضافة رأس الجدول الجديد (RW Time) إذا كان الشخص ديف
     let tableHtml = `<table><thead><tr>
         <th>Name</th>
         <th>S.</th>
         <th>Est</th>
         <th>Act</th>
         <th>Idx</th>
-        ${isDev ? '<th>%RW</th>' : ''} 
+        ${isDev ? '<th>RW Time</th><th>%RW</th>' : ''} 
     </tr></thead><tbody>`;
 
     for (let p in statsObj) {
         let person = statsObj[p];
         let index = person.est / (person.act || 1);
         
-        // حساب نسبة الريورك: (وقت البجز / وقت الديف الفعلي) * 100
+        // حساب نسبة الريورك
         let reworkPerc = isDev ? ((person.reworkTime / (person.act || 1)) * 100).toFixed(1) : 0;
         
         tableHtml += `<tr>
@@ -516,12 +516,14 @@ function generatePeopleTable(statsObj, isDev) {
             <td>${person.est.toFixed(1)}</td>
             <td>${person.act.toFixed(1)}</td>
             <td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td>
-            ${isDev ? `<td style="color: ${reworkPerc > 25 ? '#e74c3c' : '#2c3e50'}">${reworkPerc}%</td>` : ''}
+            ${isDev ? `
+                <td>${person.reworkTime.toFixed(1)}h</td>
+                <td style="color: ${reworkPerc > 25 ? '#e74c3c' : '#2c3e50'}">${reworkPerc}%</td>
+            ` : ''}
         </tr>`;
     }
     return tableHtml + '</tbody></table>';
 }
-
 function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
     const notTested = processedStories.filter(us => us.status !== 'Tested' && us.status !== 'Resolved');
@@ -546,6 +548,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
