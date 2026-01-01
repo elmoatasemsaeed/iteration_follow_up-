@@ -116,24 +116,35 @@ function calculateMetrics() {
 
 function calculateTimeline(us) {
     if (!us.activatedDate) return;
-    let currentExpectedDate = new Date(us.activatedDate);
     
-    us.tasks.forEach(t => {
-        if (t['Activity'] !== 'Testing') {
+    // فصل المهام إلى تطوير واختبار
+    const devTasks = us.tasks.filter(t => t['Activity'] !== 'Testing');
+    const testingTasks = us.tasks.filter(t => t['Activity'] === 'Testing');
+
+    let currentExpectedDate;
+
+    // معالجة مهام التطوير (Development)
+    devTasks.forEach((t, index) => {
+        if (index === 0) {
+            // أول تاسك يبدأ من وقت الأكتفيشن الخاص بالتاسك نفسه
+            // ملحوظة: إذا كنت تقصد أكتفيشن الستوري، استبدلها بـ new Date(us.activatedDate)
+            t.expectedStart = t['Activated Date'] ? new Date(t['Activated Date']) : new Date(us.activatedDate);
+        } else {
+            // المهام التالية تبدأ من انتهاء المهمة السابقة
             t.expectedStart = new Date(currentExpectedDate);
-            let hours = parseFloat(t['Original Estimation']) || 0;
-            t.expectedEnd = addWorkHours(t.expectedStart, hours);
-            currentExpectedDate = new Date(t.expectedEnd);
         }
+        
+        let hours = parseFloat(t['Original Estimation']) || 0;
+        t.expectedEnd = addWorkHours(t.expectedStart, hours);
+        currentExpectedDate = new Date(t.expectedEnd);
     });
 
-    us.tasks.forEach(t => {
-        if (t['Activity'] === 'Testing') {
-            t.expectedStart = new Date(currentExpectedDate);
-            let hours = parseFloat(t['Original Estimation']) || 0;
-            t.expectedEnd = addWorkHours(t.expectedStart, hours);
-            currentExpectedDate = new Date(t.expectedEnd);
-        }
+    // معالجة مهام الاختبار (Testing) تبدأ دائماً بعد انتهاء آخر مهمة تطوير
+    testingTasks.forEach(t => {
+        t.expectedStart = new Date(currentExpectedDate);
+        let hours = parseFloat(t['Original Estimation']) || 0;
+        t.expectedEnd = addWorkHours(t.expectedStart, hours);
+        currentExpectedDate = new Date(t.expectedEnd);
     });
 }
 
@@ -379,6 +390,7 @@ function groupBy(arr, key) {
 
 // Initialize
 renderHolidays();
+
 
 
 
