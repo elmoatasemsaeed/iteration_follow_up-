@@ -225,59 +225,67 @@ function renderBusinessView() {
                     </div>
 
                     <h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
-<h5 style="color: #444; margin: 10px 0;">Tasks Timeline & Schedule:</h5>
-<table style="font-size: 0.85em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
-    <thead>
-        <tr style="background-color: #eee; text-align: left;">
-            <th style="padding: 8px; border: 1px solid #ddd;">Task ID</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Task Title</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Activity</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Est (H)</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Exp. Start</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Exp. End</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Act. Start</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Act. End</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Act. Dur (H)</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">TS (H)</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Dev %</th>
-        </tr>
-    </thead>
-    <tbody>
-        ${sortedTasks.map(t => {
-            let actDuration = 0;
-            if (t['Activated Date'] && t['Resolved Date']) {
-                const start = new Date(t['Activated Date']);
-                const end = new Date(t['Resolved Date']);
-                const diffTime = Math.abs(end - start);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                actDuration = diffDays * 5; 
-            }
+                    <table style="font-size: 0.85em; background-color: #fcfcfc; width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #eee; text-align: left;">
+                                <th style="padding: 8px; border: 1px solid #ddd;">Task ID</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Activity</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Est (H)</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Exp. Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Exp. End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Act. Start</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Act. End</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Act. Dur (H)</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">TS (H)</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Dev %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedTasks.map(t => {
+                                let actDuration = 0;
+                                if (t['Activated Date'] && t['Resolved Date']) {
+                                    const start = new Date(t['Activated Date']);
+                                    const end = new Date(t['Resolved Date']);
+                                    const diffTime = Math.abs(end - start);
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    actDuration = diffDays * 5; 
+                                }
 
-            const tsDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
-            const tsTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
-            const totalTS = tsDev + tsTest;
+                                const tsDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
+                                const tsTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
+                                const totalTS = tsDev + tsTest;
 
-            const est = parseFloat(t['Original Estimation']) || 0;
-            const deviation = est > 0 ? ((totalTS - est) / est * 100).toFixed(1) : 0;
-            const devClass = parseFloat(deviation) > 15 ? 'alert-red' : '';
+                                const est = parseFloat(t['Original Estimation']) || 0;
+                                const deviation = est > 0 ? ((totalTS - est) / est * 100).toFixed(1) : 0;
+                                const devClass = parseFloat(deviation) > 15 ? 'alert-red' : '';
 
-            return `
-            <tr>
-                <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${t['Title'] || 'N/A'}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${est}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedEnd)}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Activated Date'])}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Resolved Date'])}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${actDuration}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${totalTS}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;" class="${devClass}">${deviation}%</td>
-            </tr>`;
-        }).join('')}
-    </tbody>
-</table>
+                                return `
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['ID']}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${t['Activity']}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${est}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedStart)}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t.expectedEnd)}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Activated Date'])}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${formatDate(t['Resolved Date'])}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${actDuration}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${totalTS}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;" class="${devClass}">${deviation}%</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <p style="margin-top: 10px;">
+                        <b>Bugs Count:</b> ${us.rework.count} | 
+                        <b>Rework Ratio:</b> ${us.rework.percentage.toFixed(1)}%
+                    </p>
+                </div>`;
+        });
+        html += `</div>`;
+    }
+    container.innerHTML = html;
+}
                             ${sortedTasks.map(t => {
                                 let actDuration = 0;
                                 if (t['Activated Date'] && t['Resolved Date']) {
@@ -472,6 +480,7 @@ function groupBy(arr, key) {
 }
 
 renderHolidays();
+
 
 
 
