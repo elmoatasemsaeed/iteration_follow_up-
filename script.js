@@ -777,6 +777,7 @@ function renderPeopleView() {
     const container = document.getElementById('people-view');
     const areaMap = {};
 
+    // تجميع البيانات ومعالجتها
     processedStories.forEach(us => {
         const area = us.businessArea;
         if (!areaMap[area]) areaMap[area] = { devs: {}, testers: {} };
@@ -784,39 +785,110 @@ function renderPeopleView() {
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
-                // إضافة reworkTime هنا
-                areaMap[area].devs[d] = { name: d, est: 0, act: 0, stories: 0, reworkTime: 0 };
+                areaMap[area].devs[d] = { name: d, est: 0, act: 0, stories: 0, reworkTime: 0, totalBugs: 0 };
             }
             areaMap[area].devs[d].est += us.devEffort.orig;
             areaMap[area].devs[d].act += us.devEffort.actual;
-            // إضافة وقت الريورك الفعلي من اليوزر ستوري
-            areaMap[area].devs[d].reworkTime += (us.rework.time || 0); 
+            areaMap[area].devs[d].reworkTime += (us.rework.time || 0);
+            areaMap[area].devs[d].totalBugs += us.rework.count;
             areaMap[area].devs[d].stories++;
         }
-        
-        // ... جزء التستر يبقى كما هو ...
+
         if (us.testerLead) {
             const t = us.testerLead;
-            if (!areaMap[area].testers[t]) areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0 };
+            if (!areaMap[area].testers[t]) {
+                areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0 };
+            }
             areaMap[area].testers[t].est += us.testEffort.orig;
             areaMap[area].testers[t].act += us.testEffort.actual;
             areaMap[area].testers[t].stories++;
         }
     });
 
-    let html = '<h2>People Performance</h2>';
+    let html = '<h2 style="margin-bottom:25px;">👥 People Performance Analytics</h2>';
+
     for (let area in areaMap) {
-        html += `<div style="margin-bottom:30px; border:1px solid #ddd; padding:10px;">
-            <h3>${area}</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div><h4>Devs</h4>${generatePeopleTable(areaMap[area].devs, true)}</div>
-                <div><h4>Testers</h4>${generatePeopleTable(areaMap[area].testers, false)}</div>
+        html += `
+        <div class="business-section" style="margin-bottom: 40px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
+            <div style="background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; font-size: 1.4em;">${area}</h3>
+                <span style="font-size: 0.9em; opacity: 0.8;">Section Overview</span>
+            </div>
+            
+            <div style="padding: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div>
+                        <h4 style="border-bottom: 2px solid #2ecc71; padding-bottom: 8px; color: #2ecc71;">💻 Developers</h4>
+                        ${generatePeopleCards(areaMap[area].devs, true)}
+                    </div>
+                    
+                    <div>
+                        <h4 style="border-bottom: 2px solid #3498db; padding-bottom: 8px; color: #3498db;">🔍 Testers</h4>
+                        ${generatePeopleCards(areaMap[area].testers, false)}
+                    </div>
+                </div>
             </div>
         </div>`;
     }
     container.innerHTML = html;
 }
 
+function generatePeopleCards(statsObj, isDev) {
+    let cardsHtml = '';
+    
+    for (let p in statsObj) {
+        let person = statsObj[p];
+        let index = person.est / (person.act || 1);
+        let reworkPerc = isDev ? ((person.reworkTime / (person.act || 1)) * 100) : 0;
+        
+        // تحديد تقييم الأداء
+        let statusLabel = "Standard";
+        let labelColor = "#7f8c8d";
+        
+        if (isDev) {
+            if (index >= 0.95 && reworkPerc < 15) { statusLabel = "🏆 Star"; labelColor = "#27ae60"; }
+            else if (reworkPerc > 30) { statusLabel = "⚠️ High Rework"; labelColor = "#e74c3c"; }
+            else if (index < 0.7) { statusLabel = "🐢 Slow Pace"; labelColor = "#f39c12"; }
+        }
+
+        cardsHtml += `
+        <div style="border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 15px; transition: transform 0.2s; background: #fafafa;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <div>
+                    <strong style="font-size: 1.1em; color: #2c3e50;">${person.name}</strong>
+                    <div style="font-size: 0.8em; color: #7f8c8d;">Stories: ${person.stories}</div>
+                </div>
+                <span style="background: ${labelColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold;">
+                    ${statusLabel}
+                </span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; margin-bottom: 10px;">
+                <div style="background: white; padding: 5px; border-radius: 4px; border: 1px solid #f0f0f0; text-align: center;">
+                    <div style="color: #95a5a6; font-size: 0.75em;">Efficiency</div>
+                    <strong style="color: ${index < 0.8 ? '#e74c3c' : '#2c3e50'}">${(index * 100).toFixed(0)}%</strong>
+                </div>
+                <div style="background: white; padding: 5px; border-radius: 4px; border: 1px solid #f0f0f0; text-align: center;">
+                    <div style="color: #95a5a6; font-size: 0.75em;">Actual Hours</div>
+                    <strong>${person.act.toFixed(1)}h</strong>
+                </div>
+            </div>
+
+            ${isDev ? `
+                <div style="margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75em; margin-bottom: 3px;">
+                        <span>Rework Ratio</span>
+                        <span style="font-weight: bold; color: ${reworkPerc > 25 ? '#e74c3c' : '#27ae60'}">${reworkPerc.toFixed(1)}%</span>
+                    </div>
+                    <div style="width: 100%; background: #eee; height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div style="width: ${Math.min(reworkPerc, 100)}%; background: ${reworkPerc > 25 ? '#e74c3c' : '#2ecc71'}; height: 100%;"></div>
+                    </div>
+                </div>
+            ` : ''}
+        </div>`;
+    }
+    return cardsHtml || '<p style="color:#ccc; font-style:italic;">No data recorded</p>';
+}
 function generatePeopleTable(statsObj, isDev) {
     // إضافة رأس الجدول الجديد (RW Time) إذا كان الشخص ديف
     let tableHtml = `<table><thead><tr>
@@ -1094,6 +1166,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
