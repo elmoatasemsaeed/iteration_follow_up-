@@ -689,43 +689,84 @@ function renderTeamView() {
     let html = '<h2>Team Performance by Business Area</h2>';
 
     for (let area in grouped) {
-        let areaDevEst = 0, areaDevAct = 0, areaBugsCount = 0, areaReworkTime = 0, areaBugActualTotal = 0;
-        
+        let areaDevEst = 0, areaDevAct = 0;
+        let areaTestEst = 0, areaTestAct = 0;
+        let areaBugsCount = 0, areaBugActualTotal = 0;
+        let totalStories = grouped[area].length;
+        let testedStories = grouped[area].filter(us => us.status === 'Tested').length;
+
         grouped[area].forEach(us => {
+            // إحصائيات التطوير
             areaDevEst += us.devEffort.orig;
             areaDevAct += us.devEffort.actual;
-            areaBugsCount += us.rework.count;
-            areaReworkTime += us.rework.time; // هذا يعتمد على التقدير الأصلي للبجز
+            
+            // إحصائيات الاختبار
+            areaTestEst += us.testEffort.orig;
+            areaTestAct += us.testEffort.actual;
 
-            // لحساب النسبة بدقة نحتاج لجمع الوقت الفعلي المستغرق في البجز من كل ستوري
-            // استناداً للمنطق الموجود في calculateMetrics
+            // إحصائيات الأخطاء والريورك
+            areaBugsCount += us.rework.count;
             let usBugActual = us.bugs.reduce((sum, b) => {
                 return sum + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0);
             }, 0);
             areaBugActualTotal += usBugActual;
         });
 
-        const delay = areaDevAct - areaDevEst;
-        // حساب النسبة: (إجمالي وقت البجز الفعلي / إجمالي وقت التطوير الفعلي) * 100
+        // حسابات المؤشرات (KPIs)
+        const devIndex = areaDevEst / (areaDevAct || 1);
+        const testIndex = areaTestEst / (areaTestAct || 1);
         const reworkPercentage = areaDevAct > 0 ? ((areaBugActualTotal / areaDevAct) * 100).toFixed(1) : 0;
+        const completionRate = ((testedStories / totalStories) * 100).toFixed(1);
         
+        // حساب إجمالي الساعات المستهلكة في المنطقة
+        const totalAreaHours = areaDevAct + areaTestAct + areaBugActualTotal;
+
         html += `
-            <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 20px;">
-                <h3 style="color: #2c3e50; margin-bottom: 15px;">${area}</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
-                    <div><small>Dev Est:</small><br><b>${areaDevEst.toFixed(1)}h</b></div>
-                    <div><small>Dev Act:</small><br><b>${areaDevAct.toFixed(1)}h</b></div>
-                    <div style="color: ${delay > 0 ? '#e74c3c' : '#27ae60'}">
-                        <small>Delay:</small><br><b>${delay.toFixed(1)}h</b>
+            <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 30px; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                    <h3 style="color: #2c3e50; margin: 0;">${area}</h3>
+                    <span style="background: #3498db; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9em;">
+                        ${testedStories} / ${totalStories} Stories Completed (${completionRate}%)
+                    </span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h5 style="margin: 0 0 10px 0; color: #7f8c8d;">Productivity Index</h5>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <span>Dev Index: <b style="color: ${devIndex < 1 ? '#e74c3c' : '#27ae60'}">${devIndex.toFixed(2)}</b></span>
+                            <span>Test Index: <b style="color: ${testIndex < 1 ? '#e74c3c' : '#27ae60'}">${testIndex.toFixed(2)}</b></span>
+                        </div>
                     </div>
-                    <div>
-                        <small>Total Bugs:</small><br><b style="color: #e67e22;">${areaBugsCount}</b>
+
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h5 style="margin: 0 0 10px 0; color: #7f8c8d;">Effort Summary</h5>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <span>Total Actual: <b>${totalAreaHours.toFixed(1)}h</b></span>
+                            <span>Dev Delay: <b style="color: ${areaDevAct > areaDevEst ? '#e74c3c' : '#27ae60'}">${(areaDevAct - areaDevEst).toFixed(1)}h</b></span>
+                        </div>
                     </div>
-                    <div>
-                        <small>Rework Time:</small><br><b style="color: #e74c3c;">${areaBugActualTotal.toFixed(1)}h</b>
+
+                    <div style="background: #fdf2f2; padding: 15px; border-radius: 8px; border: 1px solid #f8d7da;">
+                        <h5 style="margin: 0 0 10px 0; color: #c0392b;">Quality Metrics</h5>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <span>Bugs Found: <b>${areaBugsCount}</b></span>
+                            <span>Rework Ratio: <b style="color: #c0392b;">${reworkPercentage}%</b></span>
+                        </div>
                     </div>
-                    <div style="background: #fdf2f2; padding: 5px; border-radius: 4px; border: 1px solid #f8d7da;">
-                        <small>Rework %:</small><br><b style="color: #c0392b;">${reworkPercentage}%</b>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h5 style="margin-bottom: 10px; font-size: 0.85em; color: #666;">Time Distribution Across Business Area</h5>
+                    <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #eee;">
+                        <div style="width: ${(areaDevAct/totalAreaHours*100).toFixed(1)}%; background: #2ecc71;" title="Dev Time"></div>
+                        <div style="width: ${(areaBugActualTotal/totalAreaHours*100).toFixed(1)}%; background: #e74c3c;" title="Rework Time"></div>
+                        <div style="width: ${(areaTestAct/totalAreaHours*100).toFixed(1)}%; background: #3498db;" title="Test Time"></div>
+                    </div>
+                    <div style="display: flex; gap: 15px; font-size: 0.75em; margin-top: 5px; color: #7f8c8d;">
+                        <span>● Dev: ${(areaDevAct/totalAreaHours*100).toFixed(0)}%</span>
+                        <span>● Rework: ${(areaBugActualTotal/totalAreaHours*100).toFixed(0)}%</span>
+                        <span>● Test: ${(areaTestAct/totalAreaHours*100).toFixed(0)}%</span>
                     </div>
                 </div>
             </div>`;
@@ -1053,6 +1094,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
