@@ -548,6 +548,7 @@ function showView(viewId) {
     
     if (processedStories.length === 0) return;
 
+    if (viewId === 'iteration-view') renderIterationView();
     if (viewId === 'business-view') renderBusinessView();
     if (viewId === 'team-view') renderTeamView();
     if (viewId === 'people-view') renderPeopleView();
@@ -900,9 +901,112 @@ function groupBy(arr, key) {
         return acc;
     }, {});
 }
+function renderIterationView() {
+    const container = document.getElementById('iteration-view');
+    if (!processedStories || processedStories.length === 0) {
+        container.innerHTML = "<h2>Iteration Summary</h2><p>No data available. Please upload a file first.</p>";
+        return;
+    }
+
+    // 1. حساب الإجماليات
+    let totalDevEst = 0, totalDevAct = 0;
+    let totalTestEst = 0, totalTestAct = 0;
+    let totalBugs = 0, totalReworkTime = 0;
+    let startDates = [];
+
+    processedStories.forEach(us => {
+        totalDevEst += us.devEffort.orig;
+        totalDevAct += us.devEffort.actual;
+        totalTestEst += us.testEffort.orig;
+        totalTestAct += us.testEffort.actual;
+        totalBugs += us.rework.count;
+        totalReworkTime += us.bugs.reduce((s, b) => s + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0), 0);
+        if (us.activatedDate) startDates.push(new Date(us.activatedDate));
+    });
+
+    const iterationStart = startDates.length > 0 ? new Date(Math.min(...startDates)).toLocaleDateString('en-GB') : 'N/A';
+    const totalReworkPerc = totalDevAct > 0 ? ((totalReworkTime / totalDevAct) * 100).toFixed(1) : 0;
+
+    // 2. تحليل أداء الأفراد (الديف تيم)
+    let devStats = {};
+    processedStories.forEach(us => {
+        if (us.devLead) {
+            if (!devStats[us.devLead]) devStats[us.devLead] = { name: us.devLead, est: 0, act: 0 };
+            devStats[us.devLead].est += us.devEffort.orig;
+            devStats[us.devLead].act += us.devEffort.actual;
+        }
+    });
+
+    let devArray = Object.values(devStats).map(d => ({
+        ...d,
+        index: d.est / (d.act || 1)
+    })).sort((a, b) => b.index - a.index); // ترتيب من الأعلى للأقل
+
+    const bestPerformer = devArray[0];
+    const lowPerformer = devArray[devArray.length - 1];
+
+    // 3. بناء واجهة العرض (HTML)
+    let html = `
+        <h2>Iteration Global Summary</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+            <div class="card" style="border-top: 5px solid #3498db;">
+                <small>Iteration Start Date</small><br><b style="font-size: 1.2em;">📅 ${iterationStart}</b>
+            </div>
+            <div class="card" style="border-top: 5px solid #2ecc71;">
+                <small>Total Dev Effort (Est vs Act)</small><br><b>${totalDevEst.toFixed(1)}h / ${totalDevAct.toFixed(1)}h</b>
+            </div>
+            <div class="card" style="border-top: 5px solid #e74c3c;">
+                <small>Total Rework (Bugs Time)</small><br><b>${totalReworkTime.toFixed(1)}h (${totalReworkPerc}%)</b>
+            </div>
+             <div class="card" style="border-top: 5px solid #f1c40f;">
+                <small>Total Bugs Count</small><br><b>🐞 ${totalBugs} Bugs</b>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card">
+                <h3>🏆 Top Performer (Dev)</h3>
+                ${bestPerformer ? `
+                    <p><b>Name:</b> ${bestPerformer.name}</p>
+                    <p><b>Efficiency Index:</b> <span style="color:green; font-weight:bold;">${bestPerformer.index.toFixed(2)}</span></p>
+                    <small>(Higher index means better estimation adherence)</small>
+                ` : 'N/A'}
+            </div>
+            <div class="card">
+                <h3>⚠️ Needs Support (Dev)</h3>
+                ${lowPerformer && lowPerformer !== bestPerformer ? `
+                    <p><b>Name:</b> ${lowPerformer.name}</p>
+                    <p><b>Efficiency Index:</b> <span style="color:red; font-weight:bold;">${lowPerformer.index.toFixed(2)}</span></p>
+                    <small>(Lower index means actual time was much higher than estimation)</small>
+                ` : 'N/A'}
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Iteration KPIs</h3>
+            <table style="width:100%">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Total Stories Processed</td><td>${processedStories.length}</td></tr>
+                    <tr><td>Total Testing Actual Time</td><td>${totalTestAct.toFixed(1)}h</td></tr>
+                    <tr><td>Dev-to-Test Ratio</td><td>1:${(totalTestAct / (totalDevAct || 1)).toFixed(2)}</td></tr>
+                    <tr><td>Average Rework per Story</td><td>${(totalReworkTime / processedStories.length).toFixed(1)}h</td></tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
