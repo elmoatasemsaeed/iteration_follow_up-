@@ -777,7 +777,7 @@ function renderPeopleView() {
     const container = document.getElementById('people-view');
     const areaMap = {};
 
-    // تجميع البيانات ومعالجتها
+    // 1. تجميع البيانات ومعالجتها
     processedStories.forEach(us => {
         const area = us.businessArea;
         if (!areaMap[area]) areaMap[area] = { devs: {}, testers: {} };
@@ -805,8 +805,35 @@ function renderPeopleView() {
         }
     });
 
+    // 2. بناء واجهة العرض
     let html = '<h2 style="margin-bottom:25px;">👥 People Performance Analytics</h2>';
 
+    // --- إضافة قسم توضيح معايير التقييم (Legend) ---
+    html += `
+    <div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <h4 style="margin-top: 0; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 10px;">📊 معايير تقييم الأداء (Performance Logic)</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 15px;">
+            <div style="font-size: 0.85em; line-height: 1.5;">
+                <strong style="color: #27ae60; font-size: 1.1em;">🏆 Star (متميز):</strong><br>
+                إنتاجية عالية <b style="color: #2c3e50;">(Index ≥ 95%)</b> <br> 
+                مع جودة ممتازة <b style="color: #2c3e50;">(Rework < 15%)</b>.
+            </div>
+            <div style="font-size: 0.85em; line-height: 1.5;">
+                <strong style="color: #e74c3c; font-size: 1.1em;">⚠️ High Rework:</strong><br>
+                مخاطر في الجودة؛ حيث يتخطى وقت إصلاح البجز <b style="color: #2c3e50;">30%</b> من إجمالي وقت التطوير.
+            </div>
+            <div style="font-size: 0.85em; line-height: 1.5;">
+                <strong style="color: #f39c12; font-size: 1.1em;">🐢 Slow Pace:</strong><br>
+                بطء في التنفيذ؛ حيث تكون الإنتاجية <b style="color: #2c3e50;">(Index < 70%)</b> مقارنة بالوقت المقدر.
+            </div>
+            <div style="font-size: 0.85em; line-height: 1.5;">
+                <strong style="color: #7f8c8d; font-size: 1.1em;">⚪ Standard:</strong><br>
+                أداء متوازن يقع ضمن النطاق الطبيعي المقبول للعمل.
+            </div>
+        </div>
+    </div>`;
+
+    // 3. عرض الأقسام لكل Business Area
     for (let area in areaMap) {
         html += `
         <div class="business-section" style="margin-bottom: 40px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
@@ -832,7 +859,6 @@ function renderPeopleView() {
     }
     container.innerHTML = html;
 }
-
 function generatePeopleCards(statsObj, isDev) {
     let cardsHtml = '';
     
@@ -1166,6 +1192,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
