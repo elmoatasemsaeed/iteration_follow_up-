@@ -904,11 +904,11 @@ function groupBy(arr, key) {
 function renderIterationView() {
     const container = document.getElementById('iteration-view');
     if (!processedStories || processedStories.length === 0) {
-        container.innerHTML = "<h2>Iteration Summary</h2><p>No data available. Please upload a file first.</p>";
+        container.innerHTML = "<div style='padding:20px;'><h2>Iteration Summary</h2><p>No data available. Please upload a file first.</p></div>";
         return;
     }
 
-    // 1. حساب الإجماليات
+    // --- 1. Basic Calculations & Data Aggregation ---
     let totalDevEst = 0, totalDevAct = 0;
     let totalTestEst = 0, totalTestAct = 0;
     let totalBugs = 0, totalReworkTime = 0;
@@ -920,84 +920,131 @@ function renderIterationView() {
         totalTestEst += us.testEffort.orig;
         totalTestAct += us.testEffort.actual;
         totalBugs += us.rework.count;
-        totalReworkTime += us.bugs.reduce((s, b) => s + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0), 0);
+        
+        // Summing up actual rework time from bug timesheets
+        let usBugActual = us.bugs.reduce((s, b) => s + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0), 0);
+        totalReworkTime += usBugActual;
+        
         if (us.activatedDate) startDates.push(new Date(us.activatedDate));
     });
 
     const iterationStart = startDates.length > 0 ? new Date(Math.min(...startDates)).toLocaleDateString('en-GB') : 'N/A';
-    const totalReworkPerc = totalDevAct > 0 ? ((totalReworkTime / totalDevAct) * 100).toFixed(1) : 0;
+    
+    // [Metric 2] Planning Accuracy Index
+    const planningAccuracy = ((totalDevEst + totalTestEst) / (totalDevAct + totalTestAct) * 100).toFixed(1);
+    const accuracyStatus = planningAccuracy > 90 ? "Excellent" : planningAccuracy > 70 ? "Healthy" : "Needs Review";
 
-    // 2. تحليل أداء الأفراد (الديف تيم)
+    // [Metric 1] Effort Allocation Analysis
+    const allocation = {
+        development: Math.max(0, totalDevAct - totalReworkTime),
+        rework: totalReworkTime,
+        testing: totalTestAct
+    };
+    const totalEffort = allocation.development + allocation.rework + allocation.testing;
+
+    // --- 2. Developer Performance Analysis (Metric 3) ---
     let devStats = {};
     processedStories.forEach(us => {
         if (us.devLead) {
-            if (!devStats[us.devLead]) devStats[us.devLead] = { name: us.devLead, est: 0, act: 0 };
+            if (!devStats[us.devLead]) devStats[us.devLead] = { name: us.devLead, est: 0, act: 0, rwTime: 0 };
             devStats[us.devLead].est += us.devEffort.orig;
             devStats[us.devLead].act += us.devEffort.actual;
+            let bugTime = us.bugs.reduce((s, b) => s + (parseFloat(b['TimeSheet_DevActualTime']) || 0), 0);
+            devStats[us.devLead].rwTime += bugTime;
         }
     });
 
     let devArray = Object.values(devStats).map(d => ({
         ...d,
-        index: d.est / (d.act || 1)
-    })).sort((a, b) => b.index - a.index); // ترتيب من الأعلى للأقل
+        index: d.est / (d.act || 1),
+        rwPerc: (d.rwTime / (d.act || 1) * 100).toFixed(1)
+    })).sort((a, b) => b.index - a.index);
 
-    const bestPerformer = devArray[0];
-    const lowPerformer = devArray[devArray.length - 1];
-
-    // 3. بناء واجهة العرض (HTML)
+    // --- 3. Build HTML View ---
     let html = `
-        <h2>Iteration Global Summary</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
-            <div class="card" style="border-top: 5px solid #3498db;">
-                <small>Iteration Start Date</small><br><b style="font-size: 1.2em;">📅 ${iterationStart}</b>
+        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
+            <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">📊 Executive Iteration Dashboard</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                <div class="card" style="border-left: 5px solid #3498db;">
+                    <small style="color: #7f8c8d;">Iteration Start</small><br>
+                    <b style="font-size: 1.2em;">📅 ${iterationStart}</b>
+                </div>
+                <div class="card" style="border-left: 5px solid #27ae60;">
+                    <small style="color: #7f8c8d;">Planning Accuracy</small><br>
+                    <b style="font-size: 1.2em; color: ${planningAccuracy > 70 ? '#27ae60' : '#e67e22'}">${planningAccuracy}%</b>
+                    <span style="font-size: 0.8em; display:block;">Status: ${accuracyStatus}</span>
+                </div>
+                <div class="card" style="border-left: 5px solid #e74c3c;">
+                    <small style="color: #7f8c8d;">Total Rework Time</small><br>
+                    <b style="font-size: 1.2em;">${totalReworkTime.toFixed(1)} hrs</b>
+                </div>
+                <div class="card" style="border-left: 5px solid #f1c40f;">
+                    <small style="color: #7f8c8d;">Quality Output</small><br>
+                    <b style="font-size: 1.2em;">🐞 ${totalBugs} Bugs Found</b>
+                </div>
             </div>
-            <div class="card" style="border-top: 5px solid #2ecc71;">
-                <small>Total Dev Effort (Est vs Act)</small><br><b>${totalDevEst.toFixed(1)}h / ${totalDevAct.toFixed(1)}h</b>
-            </div>
-            <div class="card" style="border-top: 5px solid #e74c3c;">
-                <small>Total Rework (Bugs Time)</small><br><b>${totalReworkTime.toFixed(1)}h (${totalReworkPerc}%)</b>
-            </div>
-             <div class="card" style="border-top: 5px solid #f1c40f;">
-                <small>Total Bugs Count</small><br><b>🐞 ${totalBugs} Bugs</b>
-            </div>
-        </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div class="card">
-                <h3>🏆 Top Performer (Dev)</h3>
-                ${bestPerformer ? `
-                    <p><b>Name:</b> ${bestPerformer.name}</p>
-                    <p><b>Efficiency Index:</b> <span style="color:green; font-weight:bold;">${bestPerformer.index.toFixed(2)}</span></p>
-                    <small>(Higher index means better estimation adherence)</small>
-                ` : 'N/A'}
+            <div class="card" style="margin-bottom: 25px;">
+                <h3 style="margin-top:0;">⏱️ Effort Allocation (Time Distribution)</h3>
+                <p style="font-size: 0.9em; color: #666;">Where did the team's time go during this iteration?</p>
+                <div style="display: flex; height: 35px; border-radius: 8px; overflow: hidden; margin: 15px 0; background: #eee; border: 1px solid #ddd;">
+                    <div style="width: ${(allocation.development / totalEffort * 100).toFixed(1)}%; background: #2ecc71;" title="New Features"></div>
+                    <div style="width: ${(allocation.rework / totalEffort * 100).toFixed(1)}%; background: #e74c3c;" title="Rework / Bug Fixing"></div>
+                    <div style="width: ${(allocation.testing / totalEffort * 100).toFixed(1)}%; background: #3498db;" title="Testing & Quality"></div>
+                </div>
+                <div style="display: flex; justify-content: space-around; font-size: 0.85em; flex-wrap: wrap;">
+                    <span><i style="color:#2ecc71">●</i> New Features: <b>${((allocation.development/totalEffort)*100).toFixed(1)}%</b></span>
+                    <span><i style="color:#e74c3c">●</i> Rework (Bugs): <b>${((allocation.rework/totalEffort)*100).toFixed(1)}%</b></span>
+                    <span><i style="color:#3498db">●</i> Testing / QA: <b>${((allocation.testing/totalEffort)*100).toFixed(1)}%</b></span>
+                </div>
             </div>
-            <div class="card">
-                <h3>⚠️ Needs Support (Dev)</h3>
-                ${lowPerformer && lowPerformer !== bestPerformer ? `
-                    <p><b>Name:</b> ${lowPerformer.name}</p>
-                    <p><b>Efficiency Index:</b> <span style="color:red; font-weight:bold;">${lowPerformer.index.toFixed(2)}</span></p>
-                    <small>(Lower index means actual time was much higher than estimation)</small>
-                ` : 'N/A'}
-            </div>
-        </div>
 
-        <div class="card">
-            <h3>Iteration KPIs</h3>
-            <table style="width:100%">
-                <thead>
-                    <tr style="background: #f8f9fa;">
-                        <th>Metric</th>
-                        <th>Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td>Total Stories Processed</td><td>${processedStories.length}</td></tr>
-                    <tr><td>Total Testing Actual Time</td><td>${totalTestAct.toFixed(1)}h</td></tr>
-                    <tr><td>Dev-to-Test Ratio</td><td>1:${(totalTestAct / (totalDevAct || 1)).toFixed(2)}</td></tr>
-                    <tr><td>Average Rework per Story</td><td>${(totalReworkTime / processedStories.length).toFixed(1)}h</td></tr>
-                </tbody>
-            </table>
+            <div class="card" style="margin-bottom: 25px;">
+                <h3 style="margin-top:0;">⚖️ Performance Matrix (Quality vs. Speed)</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
+                                <th style="padding:12px;">Developer</th>
+                                <th>Productivity (Idx)</th>
+                                <th>Rework Rate (%)</th>
+                                <th>Operational Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${devArray.map(d => {
+                                let rating = "Standard Performance";
+                                let color = "#2c3e50";
+                                if (d.index >= 0.9 && d.rwPerc < 15) { rating = "⭐ Star Performer"; color = "#27ae60"; }
+                                else if (d.index < 0.7 && d.rwPerc > 20) { rating = "⚠️ Quality Review Needed"; color = "#e74c3c"; }
+                                
+                                return `
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding:12px;"><b>${d.name}</b></td>
+                                    <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
+                                    <td style="color: ${d.rwPerc > 20 ? '#e74c3c' : '#2c3e50'}">${d.rwPerc}%</td>
+                                    <td><span style="background:#f0f2f5; padding:4px 10px; border-radius:15px; font-size:0.85em; color: ${color}">${rating}</span></td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            ${processedStories.filter(us => us.rework.missingTimesheet > 0).length > 0 ? `
+            <div class="card" style="border-left: 5px solid #c0392b; background: #fff8f8;">
+                <h3 style="color: #c0392b; margin-top:0;">🚩 Governance Alerts (Compliance)</h3>
+                <p style="font-size: 0.9em; color: #555;">The following stories have bugs but <b>no repair time</b> logged in timesheets:</p>
+                <ul style="color: #c0392b; font-size: 0.85em; padding-left: 20px;">
+                    ${processedStories.filter(us => us.rework.missingTimesheet > 0).map(us => `
+                        <li><b>${us.id}:</b> ${us.title} (<span style="text-decoration: underline;">${us.rework.missingTimesheet} missing entries</span>)</li>
+                    `).join('')}
+                </ul>
+            </div>` : `
+            <div class="card" style="border-left: 5px solid #27ae60; background: #f8fff8;">
+                <p style="color: #27ae60; margin:0;">✅ All time logs are compliant with registered bugs (100% Data Integrity).</p>
+            </div>`}
         </div>
     `;
 
@@ -1006,6 +1053,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
