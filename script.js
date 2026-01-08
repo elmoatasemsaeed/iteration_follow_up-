@@ -1095,7 +1095,7 @@ function renderIterationView() {
     // --- 3. تحديد أكثر القصص استهلاكاً للوقت (Bottlenecks) ---
     const topBottlenecks = [...processedStories]
         .sort((a, b) => b.rework.actualTime - a.rework.actualTime)
-        .slice(0, 3);
+        .slice(0, 5);
 
     // --- 4. بناء واجهة العرض HTML ---
     let html = `
@@ -1192,11 +1192,7 @@ function renderIterationView() {
                         <div style="font-size: 0.75em; margin-top:4px;"><b>${us.rework.actualTime.toFixed(1)}h</b> wasted in fixes</div>
                     </div>
                 `).join('')}
-                ${reworkRatio > 20 ? `
-                    <div style="margin-top: 15px; padding: 10px; background: #fff3cd; color: #856404; font-size: 0.8em; border-radius: 5px; border: 1px solid #ffeeba;">
-                        💡 <b>Recommendation:</b> High rework detected. Consider peer-review for complex stories.
-                    </div>
-                ` : ''}
+                
             </div>
         </div>
     </div>`;
@@ -1205,6 +1201,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
