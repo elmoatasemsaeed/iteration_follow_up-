@@ -1104,29 +1104,49 @@ function renderIterationView() {
     })).sort((a, b) => b.index - a.index);
 
     // --- 3. Build HTML View ---
-    let html = `
-        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
-            <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">📊 Executive Iteration Dashboard</h2>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
-                <div class="card" style="border-left: 5px solid #3498db;">
-                    <small style="color: #7f8c8d;">Iteration Start</small><br>
-                    <b style="font-size: 1.2em;">📅 ${iterationStart}</b>
-                </div>
-                <div class="card" style="border-left: 5px solid #27ae60;">
-                    <small style="color: #7f8c8d;">Planning Accuracy</small><br>
-                    <b style="font-size: 1.2em; color: ${planningAccuracy > 70 ? '#27ae60' : '#e67e22'}">${planningAccuracy}%</b>
-                    <span style="font-size: 0.8em; display:block;">Status: ${accuracyStatus}</span>
-                </div>
-                <div class="card" style="border-left: 5px solid #e74c3c;">
-                    <small style="color: #7f8c8d;">Total Rework Time</small><br>
-                    <b style="font-size: 1.2em;">${totalReworkTime.toFixed(1)} hrs</b>
-                </div>
-                <div class="card" style="border-left: 5px solid #f1c40f;">
-                    <small style="color: #7f8c8d;">Quality Output</small><br>
-                    <b style="font-size: 1.2em;">🐞 ${totalBugs} Bugs Found</b>
-                </div>
+// --- 3. Build HTML View (Updated Performance Matrix Section) ---
+let html = `
+    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
+        <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">📊 Executive Iteration Dashboard</h2>
+        
+        <div class="card" style="margin-bottom: 25px;">
+            <h3 style="margin-top:0;">⚖️ Performance Matrix (Quality vs. Speed)</h3>
+            <div style="overflow-x: auto;">
+                <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
+                            <th style="padding:12px;">Developer</th>
+                            <th>Actual Work (H)</th>
+                            <th>Rework (H)</th>
+                            <th>Productivity (Idx)</th>
+                            <th>Rework Rate (%)</th>
+                            <th>Operational Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${devArray.map(d => {
+                            let rating = "Standard Performance";
+                            let color = "#2c3e50";
+                            if (d.index >= 0.9 && d.rwPerc < 15) { rating = "⭐ Star Performer"; color = "#27ae60"; }
+                            else if (d.index < 0.7 && d.rwPerc > 20) { rating = "⚠️ Quality Review Needed"; color = "#e74c3c"; }
+                            
+                            return `
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding:12px;"><b>${d.name}</b></td>
+                                <td>${d.act.toFixed(1)}h</td>
+                                <td style="color: #e74c3c;">${d.rwTime.toFixed(1)}h</td>
+                                <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
+                                <td style="color: ${d.rwPerc > 20 ? '#e74c3c' : '#2c3e50'}">${d.rwPerc}%</td>
+                                <td><span style="background:#f0f2f5; padding:4px 10px; border-radius:15px; font-size:0.85em; color: ${color}">${rating}</span></td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
             </div>
+        </div>
+        
+        </div>
+`;
 
             <div class="card" style="margin-bottom: 25px;">
                 <h3 style="margin-top:0;">⏱️ Effort Allocation (Time Distribution)</h3>
@@ -1196,6 +1216,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
