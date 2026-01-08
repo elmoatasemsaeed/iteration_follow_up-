@@ -1071,7 +1071,7 @@ function renderIterationView() {
     // حساب المؤشرات المتقدمة
     const avgDevIndex = totalDevEst / (totalDevAct || 1);
     const iterationHealth = Math.max(0, 100 - (totalReworkTime / (totalDevAct || 1) * 100)).toFixed(1);
-    const lostDays = (totalReworkTime / 8).toFixed(1); // فرضية يوم العمل 8 ساعات
+    const lostDays = (totalReworkTime / 5).toFixed(1); // فرضية يوم العمل 8 ساعات
     const reworkRatio = ((totalReworkTime / (totalDevAct || 1)) * 100).toFixed(1);
 
     // --- 2. تحليل أداء المطورين ---
@@ -1197,6 +1197,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
