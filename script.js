@@ -1145,8 +1145,6 @@ let html = `
             </div>
         </div>
         
-        </div>
-`;
 
             <div class="card" style="margin-bottom: 25px;">
                 <h3 style="margin-top:0;">⏱️ Effort Allocation (Time Distribution)</h3>
@@ -1216,6 +1214,7 @@ let html = `
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
