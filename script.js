@@ -700,7 +700,7 @@ function renderTeamView() {
         let testedStories = grouped[area].filter(us => us.status === 'Tested').length;
 
         grouped[area].forEach(us => {
-            // إحصائيات التطوير
+            // إحصائيات التطوير (صافي بدون الريورك)
             areaDevEst += us.devEffort.orig;
             areaDevAct += us.devEffort.actual;
             
@@ -710,10 +710,7 @@ function renderTeamView() {
 
             // إحصائيات الأخطاء والريورك
             areaBugsCount += us.rework.count;
-            let usBugActual = us.bugs.reduce((sum, b) => {
-                return sum + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0);
-            }, 0);
-            areaBugActualTotal += usBugActual;
+            areaBugActualTotal += us.rework.actualTime;
         });
 
         // حسابات المؤشرات (KPIs)
@@ -722,8 +719,8 @@ function renderTeamView() {
         const reworkPercentage = areaDevAct > 0 ? ((areaBugActualTotal / areaDevAct) * 100).toFixed(1) : 0;
         const completionRate = ((testedStories / totalStories) * 100).toFixed(1);
         
-        // حساب إجمالي الساعات المستهلكة في المنطقة
-        const totalAreaHours = areaDevAct + areaTestAct + areaBugActualTotal;
+        // إجمالي الساعات الفعلية للمنطقة (ديف + اختبار + ريورك)
+        const totalAreaHours = areaDevAct + areaTestAct; // ملاحظة: areaDevAct يتضمن بالفعل ساعات الريورك في منطق البرنامج
 
         html += `
             <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 30px; padding: 20px;">
@@ -734,7 +731,7 @@ function renderTeamView() {
                     </span>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
                         <h5 style="margin: 0 0 10px 0; color: #7f8c8d;">Productivity Index</h5>
                         <div style="display: flex; flex-direction: column; gap: 5px;">
@@ -743,11 +740,18 @@ function renderTeamView() {
                         </div>
                     </div>
 
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                        <h5 style="margin: 0 0 10px 0; color: #7f8c8d;">Effort Summary</h5>
-                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                            <span>Total Actual: <b>${totalAreaHours.toFixed(1)}h</b></span>
-                            <span>Dev Delay: <b style="color: ${areaDevAct > areaDevEst ? '#e74c3c' : '#27ae60'}">${(areaDevAct - areaDevEst).toFixed(1)}h</b></span>
+                    <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; border: 1px solid #d0e3ff;">
+                        <h5 style="margin: 0 0 10px 0; color: #2980b9;">Total Actual Hours: <b>${(areaDevAct + areaTestAct).toFixed(1)}h</b></h5>
+                        <div style="display: flex; flex-direction: column; gap: 5px; font-size: 0.9em;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Pure Dev:</span> <b>${(areaDevAct - areaBugActualTotal).toFixed(1)}h</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; color: #c0392b;">
+                                <span>Rework (Bugs):</span> <b>${areaBugActualTotal.toFixed(1)}h</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; color: #2980b9; border-top: 1px solid #ccc; margin-top: 5px; padding-top: 5px;">
+                                <span>Testing:</span> <b>${areaTestAct.toFixed(1)}h</b>
+                            </div>
                         </div>
                     </div>
 
@@ -760,17 +764,17 @@ function renderTeamView() {
                     </div>
                 </div>
 
-                <div style="margin-top: 20px;">
-                    <h5 style="margin-bottom: 10px; font-size: 0.85em; color: #666;">Time Distribution Across Business Area</h5>
-                    <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #eee;">
-                        <div style="width: ${(areaDevAct/totalAreaHours*100).toFixed(1)}%; background: #2ecc71;" title="Dev Time"></div>
-                        <div style="width: ${(areaBugActualTotal/totalAreaHours*100).toFixed(1)}%; background: #e74c3c;" title="Rework Time"></div>
-                        <div style="width: ${(areaTestAct/totalAreaHours*100).toFixed(1)}%; background: #3498db;" title="Test Time"></div>
+                <div style="margin-top: 25px;">
+                    <h5 style="margin-bottom: 10px; font-size: 0.85em; color: #666;">Time Distribution (Effort Breakdown)</h5>
+                    <div style="display: flex; height: 15px; border-radius: 8px; overflow: hidden; background: #eee; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="width: ${(((areaDevAct - areaBugActualTotal)/(areaDevAct + areaTestAct))*100).toFixed(1)}%; background: #2ecc71;" title="Pure Dev Time"></div>
+                        <div style="width: ${(areaBugActualTotal/(areaDevAct + areaTestAct)*100).toFixed(1)}%; background: #e74c3c;" title="Rework Time"></div>
+                        <div style="width: ${(areaTestAct/(areaDevAct + areaTestAct)*100).toFixed(1)}%; background: #3498db;" title="Testing Time"></div>
                     </div>
-                    <div style="display: flex; gap: 15px; font-size: 0.75em; margin-top: 5px; color: #7f8c8d;">
-                        <span>● Dev: ${(areaDevAct/totalAreaHours*100).toFixed(0)}%</span>
-                        <span>● Rework: ${(areaBugActualTotal/totalAreaHours*100).toFixed(0)}%</span>
-                        <span>● Test: ${(areaTestAct/totalAreaHours*100).toFixed(0)}%</span>
+                    <div style="display: flex; gap: 20px; font-size: 0.8em; margin-top: 8px; color: #555; justify-content: center;">
+                        <span><i style="color:#2ecc71">●</i> Pure Dev</span>
+                        <span><i style="color:#e74c3c">●</i> Rework</span>
+                        <span><i style="color:#3498db">●</i> Testing</span>
                     </div>
                 </div>
             </div>`;
@@ -1201,6 +1205,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
