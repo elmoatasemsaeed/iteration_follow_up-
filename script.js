@@ -380,12 +380,16 @@ function calculateMetrics() {
             bugOrig += parseFloat(b['Original Estimation']) || 0;
             let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
             let bTestAct = parseFloat(b['TimeSheet_TestingActualTime']) || 0;
+            
+            // حساب الوقت الفعلي الكلي للبوغ (تطوير + اختبار)
             bugActualTotal += (bDevAct + bTestAct);
+            
             if (bDevAct === 0) bugsNoTimesheet++;
         });
 
         us.rework = {
-            time: bugOrig,
+            timeEstimation: bugOrig, // الاستميشن الأصلي للأخطاء
+            actualTime: bugActualTotal, // الوقت الفعلي للأخطاء (هذا ما تحتاجه في الجملة)
             count: us.bugs.length,
             missingTimesheet: bugsNoTimesheet,
             deviation: bugOrig / (bugActualTotal || 1),
@@ -673,9 +677,9 @@ return `
                         </div>
                     </div>
 
-                    <p style="margin-top: 10px; font-size: 0.85em; color: #555; background: #f9f9f9; padding: 5px 10px; border-radius: 4px;">
-                        🔍 <b>Calculation Details:</b> Spent <b>${us.rework.time}h</b> on bug fixes, compared to <b>${us.devEffort.actual}h</b> of actual development work.
-                    </p>
+<p style="margin-top: 10px; font-size: 0.85em; color: #555; background: #f9f9f9; padding: 5px 10px; border-radius: 4px;">
+    🔍 <b>Calculation Details:</b> Spent <b>${us.rework.actualTime.toFixed(1)}h</b> on bug fixes, compared to <b>${us.devEffort.actual.toFixed(1)}h</b> of actual development work.
+</p>
                 </div>
             </div>`; 
         });
@@ -1192,6 +1196,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
