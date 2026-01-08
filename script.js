@@ -1095,7 +1095,7 @@ function renderIterationView() {
     // --- 3. تحديد أكثر القصص استهلاكاً للوقت (Bottlenecks) ---
     const topBottlenecks = [...processedStories]
         .sort((a, b) => b.rework.actualTime - a.rework.actualTime)
-        .slice(0, 5);
+        .slice(0, 6);
 
     // --- 4. بناء واجهة العرض HTML ---
     let html = `
@@ -1201,6 +1201,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
