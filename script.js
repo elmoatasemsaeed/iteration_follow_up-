@@ -1064,7 +1064,7 @@ function renderIterationView() {
         totalTestAct += us.testEffort.actual;
         totalBugs += us.rework.count;
         
-        // التعديل هنا: حساب الوقت الفعلي الكلي للبوغ (تطوير + اختبار) من كائن الـ rework الذي تم حسابه مسبقاً
+        // حساب الوقت الفعلي الكلي للبوغ (تطوير + اختبار) من كائن الـ rework الذي تم حسابه مسبقاً
         totalReworkTime += us.rework.actualTime; 
         
         if (us.activatedDate) startDates.push(new Date(us.activatedDate));
@@ -1080,7 +1080,7 @@ function renderIterationView() {
             devStats[us.devLead].est += us.devEffort.orig;
             devStats[us.devLead].act += us.devEffort.actual;
             
-            // التعديل الجوهري: حساب وقت الـ Rework لكل ديف (وقت إصلاح البوغ ديف + تست)
+            // حساب وقت الـ Rework لكل ديف (وقت إصلاح البوغ ديف + تست)
             let usBugTotalTime = us.bugs.reduce((s, b) => {
                 return s + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0);
             }, 0);
@@ -1106,12 +1106,12 @@ function renderIterationView() {
                 <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
                     <thead>
                         <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
-                            <th style="padding:12px;">Developer</th>
-                            <th>Actual Work (H)</th>
-                            <th>Total Rework (H) <small>(Dev+Test)</small></th>
-                            <th>Productivity (Idx)</th>
-                            <th>Rework Rate (%)</th>
-                            <th>Operational Rating</th>
+                            <th style="padding:12px;" title="The name of the lead developer assigned to the user stories.">Developer</th>
+                            <th title="Total hours recorded in timesheets for development activities.">Actual Work (H)</th>
+                            <th title="Total time spent fixing bugs (Development + Testing activities for Bug work items).">Total Rework (H) <small>(Dev+Test)</small></th>
+                            <th title="Efficiency Index calculated as: (Total Estimated Hours / Total Actual Hours). Higher is better.">Productivity (Idx)</th>
+                            <th title="The percentage of time spent on rework relative to actual development time: (Total Rework Time / Actual Dev Time) * 100.">Rework Rate (%)</th>
+                            <th title="Performance category based on Productivity Index and Rework Rate thresholds.">Operational Rating</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1156,6 +1156,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
