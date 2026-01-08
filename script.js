@@ -1153,7 +1153,6 @@ function renderIterationView() {
         </div>
 
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-// ابحث عن هذا الجزء داخل دالة renderIterationView وانبتره بهذا الكود:
 
 <div class="card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
     <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">⚖️ Performance Matrix</h3>
@@ -1206,6 +1205,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
