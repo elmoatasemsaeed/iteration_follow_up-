@@ -1064,36 +1064,28 @@ function renderIterationView() {
         totalTestAct += us.testEffort.actual;
         totalBugs += us.rework.count;
         
-        // Summing up actual rework time from bug timesheets
-        let usBugActual = us.bugs.reduce((s, b) => s + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0), 0);
-        totalReworkTime += usBugActual;
+        // التعديل هنا: حساب الوقت الفعلي الكلي للبوغ (تطوير + اختبار) من كائن الـ rework الذي تم حسابه مسبقاً
+        totalReworkTime += us.rework.actualTime; 
         
         if (us.activatedDate) startDates.push(new Date(us.activatedDate));
     });
 
-    const iterationStart = startDates.length > 0 ? new Date(Math.min(...startDates)).toLocaleDateString('en-GB') : 'N/A';
-    
-    // [Metric 2] Planning Accuracy Index
-    const planningAccuracy = ((totalDevEst + totalTestEst) / (totalDevAct + totalTestAct) * 100).toFixed(1);
-    const accuracyStatus = planningAccuracy > 90 ? "Excellent" : planningAccuracy > 70 ? "Healthy" : "Needs Review";
+    const totalEffort = (totalDevAct - totalReworkTime) + totalReworkTime + totalTestAct;
 
-    // [Metric 1] Effort Allocation Analysis
-    const allocation = {
-        development: Math.max(0, totalDevAct - totalReworkTime),
-        rework: totalReworkTime,
-        testing: totalTestAct
-    };
-    const totalEffort = allocation.development + allocation.rework + allocation.testing;
-
-    // --- 2. Developer Performance Analysis (Metric 3) ---
+    // --- 2. Developer Performance Analysis ---
     let devStats = {};
     processedStories.forEach(us => {
         if (us.devLead) {
             if (!devStats[us.devLead]) devStats[us.devLead] = { name: us.devLead, est: 0, act: 0, rwTime: 0 };
             devStats[us.devLead].est += us.devEffort.orig;
             devStats[us.devLead].act += us.devEffort.actual;
-            let bugTime = us.bugs.reduce((s, b) => s + (parseFloat(b['TimeSheet_DevActualTime']) || 0), 0);
-            devStats[us.devLead].rwTime += bugTime;
+            
+            // التعديل الجوهري: حساب وقت الـ Rework لكل ديف (وقت إصلاح البوغ ديف + تست)
+            let usBugTotalTime = us.bugs.reduce((s, b) => {
+                return s + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0);
+            }, 0);
+            
+            devStats[us.devLead].rwTime += usBugTotalTime;
         }
     });
 
@@ -1104,8 +1096,7 @@ function renderIterationView() {
     })).sort((a, b) => b.index - a.index);
 
     // --- 3. Build HTML View ---
-// --- 3. Build HTML View (Updated Performance Matrix Section) ---
-let html = `
+    let html = `
     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
         <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">📊 Executive Iteration Dashboard</h2>
         
@@ -1117,7 +1108,7 @@ let html = `
                         <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
                             <th style="padding:12px;">Developer</th>
                             <th>Actual Work (H)</th>
-                            <th>Rework (H)</th>
+                            <th>Total Rework (H) <small>(Dev+Test)</small></th>
                             <th>Productivity (Idx)</th>
                             <th>Rework Rate (%)</th>
                             <th>Operational Rating</th>
@@ -1134,7 +1125,7 @@ let html = `
                             <tr style="border-bottom: 1px solid #eee;">
                                 <td style="padding:12px;"><b>${d.name}</b></td>
                                 <td>${d.act.toFixed(1)}h</td>
-                                <td style="color: #e74c3c;">${d.rwTime.toFixed(1)}h</td>
+                                <td style="color: #e74c3c;"><b>${d.rwTime.toFixed(1)}h</b></td>
                                 <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
                                 <td style="color: ${d.rwPerc > 20 ? '#e74c3c' : '#2c3e50'}">${d.rwPerc}%</td>
                                 <td><span style="background:#f0f2f5; padding:4px 10px; border-radius:15px; font-size:0.85em; color: ${color}">${rating}</span></td>
@@ -1144,76 +1135,28 @@ let html = `
                 </table>
             </div>
         </div>
-        
 
-            <div class="card" style="margin-bottom: 25px;">
-                <h3 style="margin-top:0;">⏱️ Effort Allocation (Time Distribution)</h3>
-                <p style="font-size: 0.9em; color: #666;">Where did the team's time go during this iteration?</p>
-                <div style="display: flex; height: 35px; border-radius: 8px; overflow: hidden; margin: 15px 0; background: #eee; border: 1px solid #ddd;">
-                    <div style="width: ${(allocation.development / totalEffort * 100).toFixed(1)}%; background: #2ecc71;" title="New Features"></div>
-                    <div style="width: ${(allocation.rework / totalEffort * 100).toFixed(1)}%; background: #e74c3c;" title="Rework / Bug Fixing"></div>
-                    <div style="width: ${(allocation.testing / totalEffort * 100).toFixed(1)}%; background: #3498db;" title="Testing & Quality"></div>
-                </div>
-                <div style="display: flex; justify-content: space-around; font-size: 0.85em; flex-wrap: wrap;">
-                    <span><i style="color:#2ecc71">●</i> New Features: <b>${((allocation.development/totalEffort)*100).toFixed(1)}%</b></span>
-                    <span><i style="color:#e74c3c">●</i> Rework (Bugs): <b>${((allocation.rework/totalEffort)*100).toFixed(1)}%</b></span>
-                    <span><i style="color:#3498db">●</i> Testing / QA: <b>${((allocation.testing/totalEffort)*100).toFixed(1)}%</b></span>
-                </div>
+        <div class="card" style="margin-bottom: 25px;">
+            <h3 style="margin-top:0;">⏱️ Effort Allocation</h3>
+            <div style="display: flex; height: 35px; border-radius: 8px; overflow: hidden; margin: 15px 0; background: #eee; border: 1px solid #ddd;">
+                <div style="width: ${((totalDevAct - totalReworkTime) / totalEffort * 100).toFixed(1)}%; background: #2ecc71;" title="New Features"></div>
+                <div style="width: ${(totalReworkTime / totalEffort * 100).toFixed(1)}%; background: #e74c3c;" title="Rework"></div>
+                <div style="width: ${(totalTestAct / totalEffort * 100).toFixed(1)}%; background: #3498db;" title="Testing"></div>
             </div>
-
-            <div class="card" style="margin-bottom: 25px;">
-                <h3 style="margin-top:0;">⚖️ Performance Matrix (Quality vs. Speed)</h3>
-                <div style="overflow-x: auto;">
-                    <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
-                        <thead>
-                            <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
-                                <th style="padding:12px;">Developer</th>
-                                <th>Productivity (Idx)</th>
-                                <th>Rework Rate (%)</th>
-                                <th>Operational Rating</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${devArray.map(d => {
-                                let rating = "Standard Performance";
-                                let color = "#2c3e50";
-                                if (d.index >= 0.9 && d.rwPerc < 15) { rating = "⭐ Star Performer"; color = "#27ae60"; }
-                                else if (d.index < 0.7 && d.rwPerc > 20) { rating = "⚠️ Quality Review Needed"; color = "#e74c3c"; }
-                                
-                                return `
-                                <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding:12px;"><b>${d.name}</b></td>
-                                    <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
-                                    <td style="color: ${d.rwPerc > 20 ? '#e74c3c' : '#2c3e50'}">${d.rwPerc}%</td>
-                                    <td><span style="background:#f0f2f5; padding:4px 10px; border-radius:15px; font-size:0.85em; color: ${color}">${rating}</span></td>
-                                </tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
+            <div style="display: flex; justify-content: space-around; font-size: 0.85em;">
+                <span><i style="color:#2ecc71">●</i> Features: <b>${(((totalDevAct - totalReworkTime)/totalEffort)*100).toFixed(1)}%</b></span>
+                <span><i style="color:#e74c3c">●</i> Total Rework: <b>${((totalReworkTime/totalEffort)*100).toFixed(1)}%</b></span>
+                <span><i style="color:#3498db">●</i> QA: <b>${((totalTestAct/totalEffort)*100).toFixed(1)}%</b></span>
             </div>
-
-            ${processedStories.filter(us => us.rework.missingTimesheet > 0).length > 0 ? `
-            <div class="card" style="border-left: 5px solid #c0392b; background: #fff8f8;">
-                <h3 style="color: #c0392b; margin-top:0;">🚩 Governance Alerts (Compliance)</h3>
-                <p style="font-size: 0.9em; color: #555;">The following stories have bugs but <b>no repair time</b> logged in timesheets:</p>
-                <ul style="color: #c0392b; font-size: 0.85em; padding-left: 20px;">
-                    ${processedStories.filter(us => us.rework.missingTimesheet > 0).map(us => `
-                        <li><b>${us.id}:</b> ${us.title} (<span style="text-decoration: underline;">${us.rework.missingTimesheet} missing entries</span>)</li>
-                    `).join('')}
-                </ul>
-            </div>` : `
-            <div class="card" style="border-left: 5px solid #27ae60; background: #f8fff8;">
-                <p style="color: #27ae60; margin:0;">✅ All time logs are compliant with registered bugs (100% Data Integrity).</p>
-            </div>`}
         </div>
-    `;
+    </div>`;
 
     container.innerHTML = html;
 }
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
