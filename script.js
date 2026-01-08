@@ -1117,7 +1117,7 @@ function renderIterationView() {
         <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Productivity Loss</div>
         <div style="font-size: 1.8em; font-weight: bold; color: #e74c3c;">${lostDays} <small style="font-size: 0.5em;">Days</small></div>
         <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
-            <i>Total Rework Hours / 8h workday</i>
+            <i>Total Rework Hours / 5h workday</i>
         </div>
     </div>
 
@@ -1153,39 +1153,35 @@ function renderIterationView() {
         </div>
 
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-            <div class="card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">⚖️ Performance Matrix</h3>
-                <div style="overflow-x: auto;">
-                    <table style="width:100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em;">
-                        <thead>
-                            <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
-                                <th style="padding:12px;">Developer</th>
-                                <th>Actual (H)</th>
-                                <th>Rework (H)</th>
-                                <th>Index</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${devArray.map(d => {
-                                let status = "Standard";
-                                let sColor = "#7f8c8d";
-                                if (d.index >= 0.95 && d.rwPerc < 15) { status = "🏆 Star"; sColor = "#27ae60"; }
-                                else if (d.rwPerc > 25) { status = "⚠️ High RW"; sColor = "#e74c3c"; }
-                                
-                                return `
-                                <tr style="border-bottom: 1px solid #eee; background: ${d.index < 0.7 ? '#fff9f9' : 'transparent'}">
-                                    <td style="padding:12px;"><b>${d.name}</b></td>
-                                    <td>${d.act.toFixed(1)}h</td>
-                                    <td style="color: #e74c3c;">${d.rwTime.toFixed(1)}h</td>
-                                    <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
-                                    <td><span style="background:${sColor}; color: white; padding:2px 8px; border-radius:10px; font-size:0.75em;">${status}</span></td>
-                                </tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+// ابحث عن هذا الجزء داخل دالة renderIterationView وانبتره بهذا الكود:
+
+<div class="card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">⚖️ Performance Matrix</h3>
+    <div style="overflow-x: auto;">
+        <table style="width:100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em;">
+            <thead>
+                <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
+                    <th style="padding:12px;">Developer</th>
+                    <th>Actual (H)</th>
+                    <th>Rework (H)</th>
+                    <th>Index</th>
+                    </tr>
+            </thead>
+            <tbody>
+                ${devArray.map(d => {
+                    // يمكنك ترك منطق الألوان للـ Index كما هو لتحسين الرؤية
+                    return `
+                    <tr style="border-bottom: 1px solid #eee; background: ${d.index < 0.7 ? '#fff9f9' : 'transparent'}">
+                        <td style="padding:12px;"><b>${d.name}</b></td>
+                        <td>${d.act.toFixed(1)}h</td>
+                        <td style="color: #e74c3c;">${d.rwTime.toFixed(1)}h</td>
+                        <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
+                        </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+    </div>
+</div>
 
             <div class="card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">🚩 Top Bottlenecks</h3>
@@ -1210,6 +1206,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
