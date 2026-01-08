@@ -1071,7 +1071,7 @@ function renderIterationView() {
     // حساب المؤشرات المتقدمة
     const avgDevIndex = totalDevEst / (totalDevAct || 1);
     const iterationHealth = Math.max(0, 100 - (totalReworkTime / (totalDevAct || 1) * 100)).toFixed(1);
-    const lostDays = (totalReworkTime / 5).toFixed(1); // فرضية يوم العمل 8 ساعات
+    const lostDays = (totalReworkTime / 5).toFixed(1); // فرضية يوم العمل 5 ساعات
     const reworkRatio = ((totalReworkTime / (totalDevAct || 1)) * 100).toFixed(1);
 
     // --- 2. تحليل أداء المطورين ---
@@ -1102,28 +1102,41 @@ function renderIterationView() {
     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f7f6; padding: 20px; border-radius: 15px;">
         <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px; color: #2c3e50;">📊 Executive Iteration Dashboard</h2>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
-            <div class="card" style="border-top: 5px solid #2ecc71; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Team Health Score</div>
-                <div style="font-size: 1.8em; font-weight: bold; color: #2ecc71;">${iterationHealth}%</div>
-                <div style="font-size: 0.7em; color: #95a5a6;">Quality-to-Dev Ratio</div>
-            </div>
-            <div class="card" style="border-top: 5px solid #e74c3c; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Productivity Loss</div>
-                <div style="font-size: 1.8em; font-weight: bold; color: #e74c3c;">${lostDays} <small style="font-size: 0.5em;">Days</small></div>
-                <div style="font-size: 0.7em; color: #95a5a6;">Spent on Bug Fixing</div>
-            </div>
-            <div class="card" style="border-top: 5px solid #3498db; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Delivery Index</div>
-                <div style="font-size: 1.8em; font-weight: bold; color: #3498db;">${avgDevIndex.toFixed(2)}</div>
-                <div style="font-size: 0.7em; color: #95a5a6;">Team Velocity Avg</div>
-            </div>
-            <div class="card" style="border-top: 5px solid #f1c40f; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Total Rework</div>
-                <div style="font-size: 1.8em; font-weight: bold; color: #f39c12;">${reworkRatio}%</div>
-                <div style="font-size: 0.7em; color: #95a5a6;">From Total Dev Hours</div>
-            </div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+    
+    <div class="card" style="border-top: 5px solid #2ecc71; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Team Health Score</div>
+        <div style="font-size: 1.8em; font-weight: bold; color: #2ecc71;">${iterationHealth}%</div>
+        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
+            <i>(1 - Rework Time / Dev Actual) × 100</i>
         </div>
+    </div>
+
+    <div class="card" style="border-top: 5px solid #e74c3c; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Productivity Loss</div>
+        <div style="font-size: 1.8em; font-weight: bold; color: #e74c3c;">${lostDays} <small style="font-size: 0.5em;">Days</small></div>
+        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
+            <i>Total Rework Hours / 8h workday</i>
+        </div>
+    </div>
+
+    <div class="card" style="border-top: 5px solid #3498db; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Delivery Index</div>
+        <div style="font-size: 1.8em; font-weight: bold; color: #3498db;">${avgDevIndex.toFixed(2)}</div>
+        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
+            <i>Total Estimated / Total Actual hours</i>
+        </div>
+    </div>
+
+    <div class="card" style="border-top: 5px solid #f1c40f; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Total Rework</div>
+        <div style="font-size: 1.8em; font-weight: bold; color: #f39c12;">${reworkRatio}%</div>
+        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
+            <i>Rework Hours / Total Dev Hours</i>
+        </div>
+    </div>
+</div>
 
         <div class="card" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">⏱️ Iteration Effort Allocation</h3>
@@ -1197,6 +1210,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
