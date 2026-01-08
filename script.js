@@ -693,102 +693,90 @@ function renderTeamView() {
     let html = '<h2>Team Performance by Business Area</h2>';
 
     for (let area in grouped) {
-        let areaPureDev = 0;   // تاسكات الديف فقط
-        let areaRework = 0;    // أي ساعة مسجلة على Bug
-        let areaTesting = 0;   // تاسكات التست فقط
-        
-        let areaDevEst = 0;
-        let areaTestEst = 0;
+        let areaDevEst = 0, areaDevAct = 0;
+        let areaTestEst = 0, areaTestAct = 0;
+        let areaBugsCount = 0, areaBugActualTotal = 0;
         let totalStories = grouped[area].length;
         let testedStories = grouped[area].filter(us => us.status === 'Tested').length;
 
         grouped[area].forEach(us => {
-            // 1. حساب الـ Pure Dev (التاسكات اللي نوعها ديف فقط)
-            // نستخدم المصفوفة الأصلية داخل الـ Story للوصول للتاسكات
-            const devTasks = us.details.filter(item => 
-                item.type === 'Task' && 
-                (item.activity === 'Development' || item.activity === 'DB Modification')
-            );
-            areaPureDev += devTasks.reduce((sum, task) => sum + (task.devActual || 0), 0);
-
-            // 2. حساب الـ Testing (تاسكات التست فقط)
-            const testTasks = us.details.filter(item => 
-                item.type === 'Task' && item.activity === 'Testing'
-            );
-            areaTesting += testTasks.reduce((sum, task) => sum + (task.testActual || 0), 0);
-
-            // 3. حساب الـ Rework (أي حاجة مسجلة على Bug سواء ديف أو تست)
-            const bugItems = us.details.filter(item => item.type === 'Bug');
-            areaRework += bugItems.reduce((sum, bug) => sum + (bug.devActual || 0) + (bug.testActual || 0), 0);
-
-            // إجمالي التقديري للمقارنة (KPIs)
+            // إحصائيات التطوير
             areaDevEst += us.devEffort.orig;
+            areaDevAct += us.devEffort.actual;
+            
+            // إحصائيات الاختبار
             areaTestEst += us.testEffort.orig;
+            areaTestAct += us.testEffort.actual;
+
+            // إحصائيات الأخطاء والريورك
+            areaBugsCount += us.rework.count;
+            let usBugActual = us.bugs.reduce((sum, b) => {
+                return sum + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0);
+            }, 0);
+            areaBugActualTotal += usBugActual;
         });
 
-        // الإجمالي العام الجديد
-        const totalAreaActual = areaPureDev + areaRework + areaTesting;
-        
-        // حساب المؤشرات (بناءً على التقسيم الجديد)
-        const devIndex = areaDevEst / (areaPureDev || 1);
-        const testIndex = areaTestEst / (areaTesting || 1);
-        const reworkPercentage = totalAreaActual > 0 ? ((areaRework / totalAreaActual) * 100).toFixed(1) : 0;
+        // حسابات المؤشرات (KPIs)
+        const devIndex = areaDevEst / (areaDevAct || 1);
+        const testIndex = areaTestEst / (areaTestAct || 1);
+        const reworkPercentage = areaDevAct > 0 ? ((areaBugActualTotal / areaDevAct) * 100).toFixed(1) : 0;
         const completionRate = ((testedStories / totalStories) * 100).toFixed(1);
+        
+        // حساب إجمالي الساعات المستهلكة في المنطقة
+        const totalAreaHours = areaDevAct + areaTestAct + areaBugActualTotal;
 
         html += `
             <div class="card" style="border-left: 5px solid #2980b9; margin-bottom: 30px; padding: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
                     <h3 style="color: #2c3e50; margin: 0;">${area}</h3>
                     <span style="background: #3498db; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9em;">
-                        ${testedStories} / ${totalStories} Stories (${completionRate}%)
+                        ${testedStories} / ${totalStories} Stories Completed (${completionRate}%)
                     </span>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                        <h5 style="margin: 0 0 10px 0; color: #7f8c8d;">Efficiency</h5>
+                        <h5 style="margin: 0 0 10px 0; color: #7f8c8d;">Productivity Index</h5>
                         <div style="display: flex; flex-direction: column; gap: 5px;">
                             <span>Dev Index: <b style="color: ${devIndex < 1 ? '#e74c3c' : '#27ae60'}">${devIndex.toFixed(2)}</b></span>
                             <span>Test Index: <b style="color: ${testIndex < 1 ? '#e74c3c' : '#27ae60'}">${testIndex.toFixed(2)}</b></span>
                         </div>
                     </div>
 
-                    <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        <h5 style="margin: 0 0 10px 0; color: #2c3e50;">Total Hours: <b>${totalAreaActual.toFixed(1)}h</b></h5>
-                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.9em;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span><i style="color:#2ecc71">●</i> Pure Dev:</span> <b>${areaPureDev.toFixed(1)}h</b>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span><i style="color:#3498db">●</i> Testing:</span> <b>${areaTesting.toFixed(1)}h</b>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; color: #e74c3c; font-weight: bold; border-top: 1px dashed #ddd; margin-top: 5px; padding-top: 5px;">
-                                <span><i style="color:#e74c3c">●</i> Rework (Bugs):</span> <b>${areaRework.toFixed(1)}h</b>
-                            </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h5 style="margin: 0 0 10px 0; color: #7f8c8d;">Effort Summary</h5>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <span>Total Actual: <b>${totalAreaHours.toFixed(1)}h</b></span>
+                            <span>Dev Delay: <b style="color: ${areaDevAct > areaDevEst ? '#e74c3c' : '#27ae60'}">${(areaDevAct - areaDevEst).toFixed(1)}h</b></span>
                         </div>
                     </div>
 
-                    <div style="background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #fed7d7;">
-                        <h5 style="margin: 0 0 10px 0; color: #c53030;">Quality Index</h5>
+                    <div style="background: #fdf2f2; padding: 15px; border-radius: 8px; border: 1px solid #f8d7da;">
+                        <h5 style="margin: 0 0 10px 0; color: #c0392b;">Quality Metrics</h5>
                         <div style="display: flex; flex-direction: column; gap: 5px;">
-                            <span>Rework Ratio: <b>${reworkPercentage}%</b></span>
-                            <span style="font-size: 0.8em; color: #666;">(Time spent fixing vs total)</span>
+                            <span>Bugs Found: <b>${areaBugsCount}</b></span>
+                            <span>Rework Ratio: <b style="color: #c0392b;">${reworkPercentage}%</b></span>
                         </div>
                     </div>
                 </div>
 
-                <div style="margin-top: 25px;">
+                <div style="margin-top: 20px;">
+                    <h5 style="margin-bottom: 10px; font-size: 0.85em; color: #666;">Time Distribution Across Business Area</h5>
                     <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #eee;">
-                        <div style="width: ${(areaPureDev/totalAreaActual*100) || 0}%; background: #2ecc71;"></div>
-                        <div style="width: ${(areaTesting/totalAreaActual*100) || 0}%; background: #3498db;"></div>
-                        <div style="width: ${(areaRework/totalAreaActual*100) || 0}%; background: #e74c3c;"></div>
+                        <div style="width: ${(areaDevAct/totalAreaHours*100).toFixed(1)}%; background: #2ecc71;" title="Dev Time"></div>
+                        <div style="width: ${(areaBugActualTotal/totalAreaHours*100).toFixed(1)}%; background: #e74c3c;" title="Rework Time"></div>
+                        <div style="width: ${(areaTestAct/totalAreaHours*100).toFixed(1)}%; background: #3498db;" title="Test Time"></div>
+                    </div>
+                    <div style="display: flex; gap: 15px; font-size: 0.75em; margin-top: 5px; color: #7f8c8d;">
+                        <span>● Dev: ${(areaDevAct/totalAreaHours*100).toFixed(0)}%</span>
+                        <span>● Rework: ${(areaBugActualTotal/totalAreaHours*100).toFixed(0)}%</span>
+                        <span>● Test: ${(areaTestAct/totalAreaHours*100).toFixed(0)}%</span>
                     </div>
                 </div>
             </div>`;
     }
     container.innerHTML = html;
 }
-
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     const areaMap = {};
@@ -881,11 +869,7 @@ function generatePeopleCards(statsObj, isDev) {
     for (let p in statsObj) {
         let person = statsObj[p];
         let index = person.est / (person.act || 1);
-        
-        // حساب نسبة الريورك وعدد البجات (للمطورين فقط)
-        let reworkTime = person.reworkTime || 0;
-        let reworkPerc = isDev ? ((reworkTime / (person.act || 1)) * 100) : 0;
-        let bugCount = person.totalBugs || 0;
+        let reworkPerc = isDev ? ((person.reworkTime / (person.act || 1)) * 100) : 0;
         
         // تحديد تقييم الأداء
         let statusLabel = "Standard";
@@ -898,115 +882,42 @@ function generatePeopleCards(statsObj, isDev) {
         }
 
         cardsHtml += `
-        <div style="border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #fafafa; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <div style="border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 15px; transition: transform 0.2s; background: #fafafa;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                 <div>
                     <strong style="font-size: 1.1em; color: #2c3e50;">${person.name}</strong>
-                    <div style="font-size: 0.85em; color: #3498db; font-weight: bold; margin-top: 2px;">
-                        📂 Stories Worked: ${person.stories}
-                    </div>
+                    <div style="font-size: 0.8em; color: #7f8c8d;">Stories: ${person.stories}</div>
                 </div>
-                <span style="background: ${labelColor}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.75em; font-weight: bold;">
+                <span style="background: ${labelColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold;">
                     ${statusLabel}
                 </span>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85em; margin-bottom: 10px;">
-                <div style="background: white; padding: 8px; border-radius: 6px; border: 1px solid #f0f0f0; text-align: center;">
-                    <div style="color: #95a5a6; font-size: 0.75em; text-transform: uppercase;">Actual Hours</div>
-                    <strong style="font-size: 1.1em; color: #2c3e50;">${person.act.toFixed(1)}h</strong>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; margin-bottom: 10px;">
+                <div style="background: white; padding: 5px; border-radius: 4px; border: 1px solid #f0f0f0; text-align: center;">
+                    <div style="color: #95a5a6; font-size: 0.75em;">Efficiency</div>
+                    <strong style="color: ${index < 0.8 ? '#e74c3c' : '#2c3e50'}">${(index * 100).toFixed(0)}%</strong>
                 </div>
-                <div style="background: white; padding: 8px; border-radius: 6px; border: 1px solid #f0f0f0; text-align: center;">
-                    <div style="color: #95a5a6; font-size: 0.75em; text-transform: uppercase;">Efficiency Index</div>
-                    <strong style="font-size: 1.1em; color: ${index < 0.8 ? '#e74c3c' : '#27ae60'}">${(index * 100).toFixed(0)}%</strong>
+                <div style="background: white; padding: 5px; border-radius: 4px; border: 1px solid #f0f0f0; text-align: center;">
+                    <div style="color: #95a5a6; font-size: 0.75em;">Actual Hours</div>
+                    <strong>${person.act.toFixed(1)}h</strong>
                 </div>
             </div>
 
             ${isDev ? `
-                <div style="background: #fff5f5; padding: 10px; border-radius: 6px; border: 1px solid #ffe3e3;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="font-size: 0.8em; color: #c0392b;">🛠️ Rework Time: <b>${reworkTime.toFixed(1)}h</b></span>
-                        <span style="font-size: 0.8em; color: #c0392b;">🐛 Total Bugs: <b>${bugCount}</b></span>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; font-size: 0.75em; margin-bottom: 4px;">
-                        <span style="color: #7f8c8d;">Rework Ratio</span>
+                <div style="margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75em; margin-bottom: 3px;">
+                        <span>Rework Ratio</span>
                         <span style="font-weight: bold; color: ${reworkPerc > 25 ? '#e74c3c' : '#27ae60'}">${reworkPerc.toFixed(1)}%</span>
                     </div>
-                    <div style="width: 100%; background: #ddd; height: 6px; border-radius: 3px; overflow: hidden;">
+                    <div style="width: 100%; background: #eee; height: 6px; border-radius: 3px; overflow: hidden;">
                         <div style="width: ${Math.min(reworkPerc, 100)}%; background: ${reworkPerc > 25 ? '#e74c3c' : '#2ecc71'}; height: 100%;"></div>
                     </div>
                 </div>
             ` : ''}
         </div>`;
     }
-    return cardsHtml || '<p style="color:#ccc; font-style:italic; text-align:center;">No data recorded</p>';
-}function generatePeopleCards(statsObj, isDev) {
-    let cardsHtml = '';
-    
-    for (let p in statsObj) {
-        let person = statsObj[p];
-        let index = person.est / (person.act || 1);
-        
-        // حساب نسبة الريورك وعدد البجات (للمطورين فقط)
-        let reworkTime = person.reworkTime || 0;
-        let reworkPerc = isDev ? ((reworkTime / (person.act || 1)) * 100) : 0;
-        let bugCount = person.totalBugs || 0;
-        
-        // تحديد تقييم الأداء
-        let statusLabel = "Standard";
-        let labelColor = "#7f8c8d";
-        
-        if (isDev) {
-            if (index >= 0.95 && reworkPerc < 15) { statusLabel = "🏆 Star"; labelColor = "#27ae60"; }
-            else if (reworkPerc > 30) { statusLabel = "⚠️ High Rework"; labelColor = "#e74c3c"; }
-            else if (index < 0.7) { statusLabel = "🐢 Slow Pace"; labelColor = "#f39c12"; }
-        }
-
-        cardsHtml += `
-        <div style="border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #fafafa; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                <div>
-                    <strong style="font-size: 1.1em; color: #2c3e50;">${person.name}</strong>
-                    <div style="font-size: 0.85em; color: #3498db; font-weight: bold; margin-top: 2px;">
-                        📂 Stories Worked: ${person.stories}
-                    </div>
-                </div>
-                <span style="background: ${labelColor}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.75em; font-weight: bold;">
-                    ${statusLabel}
-                </span>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85em; margin-bottom: 10px;">
-                <div style="background: white; padding: 8px; border-radius: 6px; border: 1px solid #f0f0f0; text-align: center;">
-                    <div style="color: #95a5a6; font-size: 0.75em; text-transform: uppercase;">Actual Hours</div>
-                    <strong style="font-size: 1.1em; color: #2c3e50;">${person.act.toFixed(1)}h</strong>
-                </div>
-                <div style="background: white; padding: 8px; border-radius: 6px; border: 1px solid #f0f0f0; text-align: center;">
-                    <div style="color: #95a5a6; font-size: 0.75em; text-transform: uppercase;">Efficiency Index</div>
-                    <strong style="font-size: 1.1em; color: ${index < 0.8 ? '#e74c3c' : '#27ae60'}">${(index * 100).toFixed(0)}%</strong>
-                </div>
-            </div>
-
-            ${isDev ? `
-                <div style="background: #fff5f5; padding: 10px; border-radius: 6px; border: 1px solid #ffe3e3;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="font-size: 0.8em; color: #c0392b;">🛠️ Rework Time: <b>${reworkTime.toFixed(1)}h</b></span>
-                        <span style="font-size: 0.8em; color: #c0392b;">🐛 Total Bugs: <b>${bugCount}</b></span>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; font-size: 0.75em; margin-bottom: 4px;">
-                        <span style="color: #7f8c8d;">Rework Ratio</span>
-                        <span style="font-weight: bold; color: ${reworkPerc > 25 ? '#e74c3c' : '#27ae60'}">${reworkPerc.toFixed(1)}%</span>
-                    </div>
-                    <div style="width: 100%; background: #ddd; height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div style="width: ${Math.min(reworkPerc, 100)}%; background: ${reworkPerc > 25 ? '#e74c3c' : '#2ecc71'}; height: 100%;"></div>
-                    </div>
-                </div>
-            ` : ''}
-        </div>`;
-    }
-    return cardsHtml || '<p style="color:#ccc; font-style:italic; text-align:center;">No data recorded</p>';
+    return cardsHtml || '<p style="color:#ccc; font-style:italic;">No data recorded</p>';
 }
 function generatePeopleTable(statsObj, isDev) {
     // إضافة رأس الجدول الجديد (RW Time) إذا كان الشخص ديف
@@ -1184,7 +1095,7 @@ function renderIterationView() {
     // --- 3. تحديد أكثر القصص استهلاكاً للوقت (Bottlenecks) ---
     const topBottlenecks = [...processedStories]
         .sort((a, b) => b.rework.actualTime - a.rework.actualTime)
-        .slice(0, 6);
+        .slice(0, 5);
 
     // --- 4. بناء واجهة العرض HTML ---
     let html = `
@@ -1290,10 +1201,6 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
-
-
-
-
 
 
 
