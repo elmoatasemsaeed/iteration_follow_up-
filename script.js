@@ -1096,46 +1096,41 @@ function renderIterationView() {
     })).sort((a, b) => b.index - a.index);
 
     // --- 3. Build HTML View ---
-    let html = `
-    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
-        <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">📊 Executive Iteration Dashboard</h2>
-        
-        <div class="card" style="margin-bottom: 25px;">
-            <h3 style="margin-top:0;">⚖️ Performance Matrix (Quality vs. Speed)</h3>
-            <div style="overflow-x: auto;">
-                <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
-                    <thead>
-                        <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
-                            <th style="padding:12px;">Developer</th>
-                            <th>Actual Work (H)</th>
-                            <th>Total Rework (H) <small>(Dev+Test)</small></th>
-                            <th>Productivity (Idx)</th>
-                            <th>Rework Rate (%)</th>
-                            <th>Operational Rating</th>
+   // --- 3. Build HTML View ---
+let html = `
+<div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
+    <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">📊 Executive Iteration Dashboard</h2>
+    
+    <div class="card" style="margin-bottom: 25px;">
+        <h3 style="margin-top:0;">⚖️ Performance Matrix (Quality vs. Speed)</h3>
+        <div style="overflow-x: auto;">
+            <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
+                        <th style="padding:12px;">Developer</th>
+                        <th>Actual Work (H)</th>
+                        <th>Total Rework (H) <small>(Dev+Test)</small></th>
+                        <th>Productivity (Idx)</th>
+                        <th>Rework Rate (%)</th>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${devArray.map(d => {
-                            let rating = "Standard Performance";
-                            let color = "#2c3e50";
-                            if (d.index >= 0.9 && d.rwPerc < 15) { rating = "⭐ Star Performer"; color = "#27ae60"; }
-                            else if (d.index < 0.7 && d.rwPerc > 20) { rating = "⚠️ Quality Review Needed"; color = "#e74c3c"; }
-                            
-                            return `
-                            <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding:12px;"><b>${d.name}</b></td>
-                                <td>${d.act.toFixed(1)}h</td>
-                                <td style="color: #e74c3c;"><b>${d.rwTime.toFixed(1)}h</b></td>
-                                <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
-                                <td style="color: ${d.rwPerc > 20 ? '#e74c3c' : '#2c3e50'}">${d.rwPerc}%</td>
-                                <td><span style="background:#f0f2f5; padding:4px 10px; border-radius:15px; font-size:0.85em; color: ${color}">${rating}</span></td>
-                            </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>
+                </thead>
+                <tbody>
+                    ${devArray.map(d => {
+                        // احتفظنا بالمنطق في حال احتجت لتغيير الألوان بناءً على التقييم، لكن لا يتم عرضه كعامود
+                        return `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding:12px;"><b>${d.name}</b></td>
+                            <td>${d.act.toFixed(1)}h</td>
+                            <td style="color: #e74c3c;"><b>${d.rwTime.toFixed(1)}h</b></td>
+                            <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
+                            <td style="color: ${d.rwPerc > 20 ? '#e74c3c' : '#2c3e50'}">${d.rwPerc}%</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
         </div>
-
+    </div>
+    
         <div class="card" style="margin-bottom: 25px;">
             <h3 style="margin-top:0;">⏱️ Effort Allocation</h3>
             <div style="display: flex; height: 35px; border-radius: 8px; overflow: hidden; margin: 15px 0; background: #eee; border: 1px solid #ddd;">
@@ -1156,6 +1151,7 @@ function renderIterationView() {
 
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
