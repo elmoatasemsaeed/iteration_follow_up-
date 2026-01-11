@@ -575,20 +575,20 @@ function renderBusinessView() {
             };
 
             // فصل المهام وتطبيق نفس منطق الترتيب المستخدم في الحسابات
-const devTasksSorted = us.tasks
-    .filter(t => t.Activity !== 'Testing')
-    .sort((a, b) => {
-        let dateA = new Date(a['Activated Date'] || 0);
-        let dateB = new Date(b['Activated Date'] || 0);
-        return dateA - dateB;
-    });
+            const devTasksSorted = us.tasks
+                .filter(t => t.Activity !== 'Testing')
+                .sort((a, b) => {
+                    let dateA = new Date(a['Activated Date'] || 0);
+                    let dateB = new Date(b['Activated Date'] || 0);
+                    return dateA - dateB;
+                });
 
-const testingTasksSorted = us.tasks
-    .filter(t => t.Activity === 'Testing')
-    .sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
+            const testingTasksSorted = us.tasks
+                .filter(t => t.Activity === 'Testing')
+                .sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
 
-// دمج المجموعتين بالترتيب الصحيح (الديف أولاً ثم التستر)
-const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
+            // دمج المجموعتين بالترتيب الصحيح (الديف أولاً ثم التستر)
+            const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
 
             html += `
                 <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
@@ -615,30 +615,31 @@ const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
                                 <th>Exp. Start</th>
                                 <th>Exp. End</th>
                                 <th>Act. Start</th>
-                                <th>TS Total</th>
-                                <th>Dev %</th>
+                                <th>Act. End</th> <th>TS Total</th>
+                                <th>Delay</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${sortedTasks.map(t => {
                                 const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
                                 const est = parseFloat(t['Original Estimation']) || 0;
-                                const deviation = est > 0 ? ((tsTotal - est) / est * 100).toFixed(1) : 0;
+                                // استخدام Resolved Date كـ Actual End كما في منطق الحسابات
+                                const actualEnd = t['Actual End'] || t['Resolved Date'];
                           
-return `
-<tr>
-    <td>${t['ID']}</td>
-    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
-    <td>${t['Activity']}</td>
-    <td>${est}</td>
-    <td>${formatDate(t.expectedStart)}</td>
-    <td>${formatDate(t.expectedEnd)}</td>
-    <td>${formatDate(t['Activated Date'])}</td>
-    <td>${tsTotal}</td>
-    <td class="${calculateHourDiff(t.expectedStart, t['Activated Date']) > 0 ? 'alert-red' : ''}">
-        ${calculateHourDiff(t.expectedStart, t['Activated Date'])}h
-    </td>
-</tr>`;
+                                return `
+                                <tr>
+                                    <td>${t['ID']}</td>
+                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
+                                    <td>${t['Activity']}</td>
+                                    <td>${est}</td>
+                                    <td>${formatDate(t.expectedStart)}</td>
+                                    <td>${formatDate(t.expectedEnd)}</td>
+                                    <td>${formatDate(t['Activated Date'])}</td>
+                                    <td>${formatDate(actualEnd)}</td> <td>${tsTotal}</td>
+                                    <td class="${calculateHourDiff(t.expectedStart, t['Activated Date']) > 0 ? 'alert-red' : ''}">
+                                        ${calculateHourDiff(t.expectedStart, t['Activated Date'])}h
+                                    </td>
+                                </tr>`;
                             }).join('')}
                         </tbody>
                     </table>`;
@@ -651,13 +652,13 @@ return `
                 <div style="background: #fdfdfd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h5 style="margin: 0; color: #2c3e50;">Quality & Rework Analysis</h5>
-                <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
-             color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
-             padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
-    ${us.rework.missingTimesheet > 0 
-        ? `⚠️ ${us.rework.missingTimesheet} Bugs missing Timesheet` // هذا السطر يعرض الرقم بجانب النص
-        : '✅ All bugs recorded'}
-</span>
+                        <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
+                                     color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
+                                     padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
+                            ${us.rework.missingTimesheet > 0 
+                                ? `⚠️ ${us.rework.missingTimesheet} Bugs missing Timesheet` 
+                                : '✅ All bugs recorded'}
+                        </span>
                     </div>
 
                     <div style="display: flex; gap: 20px; align-items: center;">
@@ -677,9 +678,9 @@ return `
                         </div>
                     </div>
 
-<p style="margin-top: 10px; font-size: 0.85em; color: #555; background: #f9f9f9; padding: 5px 10px; border-radius: 4px;">
-    🔍 <b>Calculation Details:</b> Spent <b>${us.rework.actualTime.toFixed(1)}h</b> on bug fixes, compared to <b>${us.devEffort.actual.toFixed(1)}h</b> of actual development work.
-</p>
+                    <p style="margin-top: 10px; font-size: 0.85em; color: #555; background: #f9f9f9; padding: 5px 10px; border-radius: 4px;">
+                        🔍 <b>Calculation Details:</b> Spent <b>${us.rework.actualTime.toFixed(1)}h</b> on bug fixes, compared to <b>${us.devEffort.actual.toFixed(1)}h</b> of actual development work.
+                    </p>
                 </div>
             </div>`; 
         });
@@ -1201,6 +1202,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
