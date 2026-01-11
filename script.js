@@ -381,8 +381,8 @@ function calculateMetrics() {
             let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
             let bTestAct = parseFloat(b['TimeSheet_TestingActualTime']) || 0;
             
-            // حساب الوقت الفعلي الكلي للبوغ (تطوير + اختبار)
-            bugActualTotal += (bDevAct + bTestAct);
+          // حساب الوقت الفعلي للمطور فقط في الأخطاء
+bugActualTotal += bDevAct;
             
             if (bDevAct === 0) bugsNoTimesheet++;
         });
@@ -712,8 +712,8 @@ function renderTeamView() {
             // إحصائيات الأخطاء والريورك
             areaBugsCount += us.rework.count;
             let usBugActual = us.bugs.reduce((sum, b) => {
-                return sum + (parseFloat(b['TimeSheet_DevActualTime']) || 0) + (parseFloat(b['TimeSheet_TestingActualTime']) || 0);
-            }, 0);
+    return sum + (parseFloat(b['TimeSheet_DevActualTime']) || 0);
+}, 0);
             areaBugActualTotal += usBugActual;
         });
 
@@ -1067,7 +1067,7 @@ function renderIterationView() {
         totalReworkTime += us.rework.actualTime; 
     });
 
-    const totalEffort = (totalDevAct - totalReworkTime) + totalReworkTime + totalTestAct;
+    const totalEffort = totalDevAct + totalTestAct;
     
     // حساب المؤشرات المتقدمة
     const avgDevIndex = totalDevEst / (totalDevAct || 1);
@@ -1202,6 +1202,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
