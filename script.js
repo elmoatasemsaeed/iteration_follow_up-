@@ -637,7 +637,7 @@ html += `
                                 <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
                             </tr>
                         </tbody>
-                    </table>
+                </table> ;
 
                     <h5 style="margin: 20px 0 10px 0; color: #2c3e50;">Tasks Timeline & Schedule:</h5>
                     <table style="font-size: 0.85em; width: 100%;">
@@ -1227,6 +1227,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
