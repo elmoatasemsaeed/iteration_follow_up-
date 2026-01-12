@@ -582,73 +582,107 @@ function renderBusinessView() {
                 return new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
             };
 
-            // فصل المهام وتطبيق نفس منطق الترتيب المستخدم في الحسابات
             const devTasksSorted = us.tasks
                 .filter(t => t.Activity !== 'Testing')
-                .sort((a, b) => {
-                    let dateA = new Date(a['Activated Date'] || 0);
-                    let dateB = new Date(b['Activated Date'] || 0);
-                    return dateA - dateB;
-                });
+                .sort((a, b) => new Date(a['Activated Date'] || 0) - new Date(b['Activated Date'] || 0));
 
             const testingTasksSorted = us.tasks
                 .filter(t => t.Activity === 'Testing')
                 .sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
 
-            // دمج المجموعتين بالترتيب الصحيح (الديف أولاً ثم التستر)
             const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
 
-           // ابحث عن الجزء الخاص بالجدول داخل دالة renderBusinessView واستبدله بهذا:
-html += `
-    <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <h4>ID: ${us.id} - ${us.title}</h4>
-            <div style="text-align: right; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                <div><b>US Start:</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
-                <div><b>US End (Target):</b> ${formatDate(us.expectedEnd)}</div>
-            </div>
-        </div>
-        <p>
-            <b>Dev Lead:</b> ${us.devLead} | 
-            <b>Tester Lead:</b> ${us.testerLead} | 
-            <b style="color: #8e44ad;">DB Mod:</b> ${us.dbEffort.names}
-        </p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Est. (H)</th>
-                    <th>Actual (H)</th>
-                    <th>Bugs Count</th>
-                    <th>Rework (H)</th>
-                    <th>Index</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Dev (Excl. DB)</td>
-                    <td>${us.devEffort.orig.toFixed(1)}</td>
-                    <td>${us.devEffort.actual.toFixed(1)}</td>
-                    <td rowspan="3" style="text-align:center; vertical-align:middle; font-weight:bold; background:#fff5f5;">${us.rework.count}</td>
-                    <td rowspan="3" style="text-align:center; vertical-align:middle; font-weight:bold; background:#fff5f5; color:#c0392b;">${us.rework.actualTime.toFixed(1)}</td>
-                    <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
-                </tr>
-                <tr style="background: #f4ecf7;">
-                    <td>DB Modification</td>
-                    <td>${us.dbEffort.orig.toFixed(1)}</td>
-                    <td>${us.dbEffort.actual.toFixed(1)}</td>
-                    <td class="${us.dbEffort.dev < 1 ? 'alert-red' : ''}">${us.dbEffort.dev.toFixed(2)}</td>
-                </tr>
-                <tr>
-                    <td>Test</td>
-                    <td>${us.testEffort.orig.toFixed(1)}</td>
-                    <td>${us.testEffort.actual.toFixed(1)}</td>
-                    <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
-                </tr>
-            </tbody>
-        </table>
-`;
-            // Logic for Progress Bar calculations
+            // 1. الجدول العلوي المحدث مع بيانات البجات وتواريخ اليوزر ستوري
+            html += `
+                <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                        <h4>ID: ${us.id} - ${us.title}</h4>
+                        <div style="text-align: right; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; line-height: 1.6;">
+                            <div><b style="color: #27ae60;">US Start (First Task):</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
+                            <div><b style="color: #e67e22;">US End (Target):</b> ${formatDate(us.expectedEnd)}</div>
+                        </div>
+                    </div>
+                    <p>
+                        <b>Dev Lead:</b> ${us.devLead} | 
+                        <b>Tester Lead:</b> ${us.testerLead} | 
+                        <b style="color: #8e44ad;">DB Mod:</b> ${us.dbEffort.names}
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Est. (H)</th>
+                                <th>Actual (H)</th>
+                                <th>Bugs Count</th>
+                                <th>Bugs Work (H)</th>
+                                <th>Index</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Dev (Excl. DB)</td>
+                                <td>${us.devEffort.orig.toFixed(1)}</td>
+                                <td>${us.devEffort.actual.toFixed(1)}</td>
+                                <td rowspan="3" style="text-align:center; vertical-align:middle; font-weight:bold; background:#fff5f5; border: 1px solid #ffebeb;">${us.rework.count}</td>
+                                <td rowspan="3" style="text-align:center; vertical-align:middle; font-weight:bold; background:#fff5f5; color:#c0392b; border: 1px solid #ffebeb;">${us.rework.actualTime.toFixed(1)}h</td>
+                                <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
+                            </tr>
+                            <tr style="background: #f4ecf7;">
+                                <td>DB Modification</td>
+                                <td>${us.dbEffort.orig.toFixed(1)}</td>
+                                <td>${us.dbEffort.actual.toFixed(1)}</td>
+                                <td class="${us.dbEffort.dev < 1 ? 'alert-red' : ''}">${us.dbEffort.dev.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td>Test</td>
+                                <td>${us.testEffort.orig.toFixed(1)}</td>
+                                <td>${us.testEffort.actual.toFixed(1)}</td>
+                                <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h5 style="margin: 20px 0 10px 0; color: #2c3e50;">Tasks Timeline & Schedule:</h5>
+                    <table style="font-size: 0.85em; width: 100%;">
+                        <thead>
+                            <tr style="background:#eee;">
+                                <th>ID</th>
+                                <th>Task Name</th>
+                                <th>Activity</th>
+                                <th>Est</th>
+                                <th>Exp. Start</th>
+                                <th>Exp. End</th>
+                                <th>Act. Start</th>
+                                <th>Act. End</th> 
+                                <th>TS Total</th>
+                                <th>Delay</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedTasks.map(t => {
+                                const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
+                                const est = parseFloat(t['Original Estimation']) || 0;
+                                const actualEnd = t['Actual End'] || t['Resolved Date'];
+                                return `
+                                <tr>
+                                    <td>${t['ID']}</td>
+                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
+                                    <td>${t['Activity']}</td>
+                                    <td>${est}</td>
+                                    <td style="background-color: #e8f4fd; font-weight: 500;">${formatDate(t.expectedStart)}</td>
+                                    <td>${formatDate(t.expectedEnd)}</td>
+                                    <td style="background-color: #eafaf1; font-weight: 500;">${formatDate(t['Activated Date'])}</td>
+                                    <td>${formatDate(actualEnd)}</td> 
+                                    <td>${tsTotal}</td>
+                                    <td class="${calculateHourDiff(t.expectedStart, t['Activated Date']) > 0 ? 'alert-red' : ''}">
+                                        ${calculateHourDiff(t.expectedStart, t['Activated Date'])}h
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>`;
+
+            // إكمال باقي الدالة (Progress Bar & Rework Analysis)
             const progressWidth = Math.min(us.rework.percentage, 100);
             const progressBarColor = us.rework.percentage > 25 ? '#e74c3c' : '#f1c40f';
 
@@ -664,7 +698,6 @@ html += `
                                 : '✅ All bugs recorded'}
                         </span>
                     </div>
-
                     <div style="display: flex; gap: 20px; align-items: center;">
                         <div style="flex: 1;">
                             <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 5px;">
@@ -675,16 +708,7 @@ html += `
                                 <div style="width: ${progressWidth}%; background: ${progressBarColor}; height: 100%; transition: width 0.5s;"></div>
                             </div>
                         </div>
-                        
-                        <div style="text-align: center; border-left: 1px solid #eee; padding-left: 20px;">
-                            <div style="font-size: 0.75em; color: #7f8c8d;">Total Bugs</div>
-                            <div style="font-size: 1.5em; font-weight: bold; color: #2c3e50;">${us.rework.count}</div>
-                        </div>
                     </div>
-
-                    <p style="margin-top: 10px; font-size: 0.85em; color: #555; background: #f9f9f9; padding: 5px 10px; border-radius: 4px;">
-                        🔍 <b>Calculation Details:</b> Spent <b>${us.rework.actualTime.toFixed(1)}h</b> on bug fixes, compared to <b>${us.devEffort.actual.toFixed(1)}h</b> of actual development work.
-                    </p>
                 </div>
             </div>`; 
         });
@@ -1206,6 +1230,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
