@@ -578,37 +578,32 @@ function renderBusinessView() {
         html += `<div class="business-section"><h3 class="business-area-title">${area}</h3>`;
         
         grouped[area].forEach(us => {
-            const formatDate = (date) => {
-                if (!date || isNaN(new Date(date))) return 'N/A';
-                return new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
-            };
+    const formatDate = (date) => {
+    if (!date || isNaN(new Date(date))) return 'N/A';
+    return new Date(date).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+};
 
-            const devTasksSorted = us.tasks
-                .filter(t => t.Activity !== 'Testing')
-                .sort((a, b) => new Date(a['Activated Date'] || 0) - new Date(b['Activated Date'] || 0));
+// حساب التارجت بناءً على الأكشوال (Actual Velocity Target)
+// نستخدم الـ testedDate كمرجع للنهاية الفعلية إذا وجدت
+const targetByActual = us.testedDate ? new Date(us.testedDate) : 'In Progress';
 
-            const testingTasksSorted = us.tasks
-                .filter(t => t.Activity === 'Testing')
-                .sort((a, b) => parseInt(a.id || 0) - parseInt(b.id || 0));
-
-            const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
-
-            // 1. الجدول العلوي المحدث مع بيانات البجات وتواريخ اليوزر ستوري
-           html += `
-    <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-            <h4>ID: ${us.id} - ${us.title}</h4>
-            <div style="text-align: right; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; line-height: 1.6;">
-                <div><b style="color: #27ae60;">US Start (First Task):</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
-                <div><b style="color: #e67e22;">US End (Target):</b> ${formatDate(us.expectedEnd)}</div>
-                <div><b style="color: #3498db;">US Actual End (Tested):</b> ${formatDate(us.testedDate)}</div>
-            </div>
+html += `
+<div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+        <h4>ID: ${us.id} - ${us.title}</h4>
+        <div style="text-align: left; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; line-height: 1.6; min-width: 250px;">
+            <div><b style="color: #27ae60;">● US Start (First Task):</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
+            <div><b style="color: #e67e22;">● Target End (by Estimation):</b> ${formatDate(us.expectedEnd)}</div>
+            <div><b style="color: #d35400;">● Target End (by Actual):</b> ${formatDate(targetByActual)}</div>
+            <div><b style="color: #3498db;">● Actual End (Tested):</b> ${formatDate(us.testedDate)}</div>
         </div>
-                    <p>
-                        <b>Dev Lead:</b> ${us.devLead} | 
-                        <b>Tester Lead:</b> ${us.testerLead} | 
-                        <b style="color: #8e44ad;">DB Mod:</b> ${us.dbEffort.names}
-                    </p>
+    </div>
+    <p>
+        <b>Dev Lead:</b> ${us.devLead} | 
+        <b>Tester Lead:</b> ${us.testerLead} | 
+        <b style="color: #8e44ad;">DB Mod:</b> ${us.dbEffort.names}
+    </p>
+    `
                     <table>
                         <thead>
                             <tr>
@@ -1232,6 +1227,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
