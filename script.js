@@ -660,7 +660,7 @@ html += `
         </td>
     </tr>`;
 }).join('')}
-
+</tbody></table>`;
             // Logic for Progress Bar calculations
             const progressWidth = Math.min(us.rework.percentage, 100);
             const progressBarColor = us.rework.percentage > 25 ? '#e74c3c' : '#f1c40f';
@@ -1219,6 +1219,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
