@@ -356,14 +356,19 @@ function processData() {
 function calculateMetrics() {
     processedStories.forEach(us => {
         let devOrig = 0, devActual = 0, testOrig = 0, testActual = 0;
-        
+        let dbOrig = 0, dbActual = 0, dbNames = new Set(); // متغيرات جديدة للـ DB
+
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
             const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
             const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
 
-            if (activity === 'Development' || activity === 'DB Modification') {
+            if (activity === 'DB Modification') {
+                dbOrig += orig;
+                dbActual += actDev;
+                if (t['Assigned To']) dbNames.add(t['Assigned To']); // جمع أسماء مسؤولي الـ DB
+            } else if (activity === 'Development') {
                 devOrig += orig;
                 devActual += actDev;
             } else if (activity === 'Testing') {
@@ -372,34 +377,37 @@ function calculateMetrics() {
             }
         });
 
+        // تخزين بيانات الـ DB
+        us.dbEffort = { 
+            orig: dbOrig, 
+            actual: dbActual, 
+            dev: dbOrig / (dbActual || 1),
+            names: Array.from(dbNames).join(', ') || 'N/A'
+        };
+
         us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
+        // ... بقية الكود الخاص بالـ Rework والـ Timeline كما هو دون تغيير ...
         let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
         us.bugs.forEach(b => {
             bugOrig += parseFloat(b['Original Estimation']) || 0;
             let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
-            let bTestAct = parseFloat(b['TimeSheet_TestingActualTime']) || 0;
-            
-          // حساب الوقت الفعلي للمطور فقط في الأخطاء
-bugActualTotal += bDevAct;
-            
+            bugActualTotal += bDevAct;
             if (bDevAct === 0) bugsNoTimesheet++;
         });
 
         us.rework = {
-            timeEstimation: bugOrig, // الاستميشن الأصلي للأخطاء
-            actualTime: bugActualTotal, // الوقت الفعلي للأخطاء (هذا ما تحتاجه في الجملة)
+            timeEstimation: bugOrig,
+            actualTime: bugActualTotal,
             count: us.bugs.length,
             missingTimesheet: bugsNoTimesheet,
             deviation: bugOrig / (bugActualTotal || 1),
             percentage: (bugActualTotal / (devActual || 1)) * 100
         };
-
         calculateTimeline(us);
     });
 }
-
 function calculateTimeline(us) {
     let tasks = us.tasks;
     if (!tasks || tasks.length === 0) return;
@@ -590,19 +598,25 @@ function renderBusinessView() {
             // دمج المجموعتين بالترتيب الصحيح (الديف أولاً ثم التستر)
             const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
 
-            html += `
-                <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
-                    <h4>ID: ${us.id} - ${us.title}</h4>
-                    <p><b>Dev Lead:</b> ${us.devLead} | <b>Tester Lead:</b> ${us.testerLead}</p>
-                    <table>
-                        <thead>
-                            <tr><th>Type</th><th>Est. (H)</th><th>Actual (H)</th><th>Index</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Dev</td><td>${us.devEffort.orig}</td><td>${us.devEffort.actual}</td><td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td></tr>
-                            <tr><td>Test</td><td>${us.testEffort.orig}</td><td>${us.testEffort.actual}</td><td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td></tr>
-                        </tbody>
-                    </table>
+           // ابحث عن الجزء الخاص بالجدول داخل دالة renderBusinessView واستبدله بهذا:
+html += `
+    <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
+        <h4>ID: ${us.id} - ${us.title}</h4>
+        <p>
+            <b>Dev Lead:</b> ${us.devLead} | 
+            <b>Tester Lead:</b> ${us.testerLead} | 
+            <b style="color: #8e44ad;">DB Mod:</b> ${us.dbEffort.names}
+        </p>
+        <table>
+            <thead>
+                <tr><th>Type</th><th>Est. (H)</th><th>Actual (H)</th><th>Index</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Dev (Excl. DB)</td><td>${us.devEffort.orig.toFixed(1)}</td><td>${us.devEffort.actual.toFixed(1)}</td><td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td></tr>
+                <tr style="background: #f4ecf7;"><td>DB Modification</td><td>${us.dbEffort.orig.toFixed(1)}</td><td>${us.dbEffort.actual.toFixed(1)}</td><td class="${us.dbEffort.dev < 1 ? 'alert-red' : ''}">${us.dbEffort.dev.toFixed(2)}</td></tr>
+                <tr><td>Test</td><td>${us.testEffort.orig.toFixed(1)}</td><td>${us.testEffort.actual.toFixed(1)}</td><td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}">${us.testEffort.dev.toFixed(2)}</td></tr>
+            </tbody>
+        </table>
 
                     <h5 style="margin: 10px 0;">Tasks Timeline & Schedule:</h5>
                     <table style="font-size: 0.85em; width: 100%;">
@@ -1202,6 +1216,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
