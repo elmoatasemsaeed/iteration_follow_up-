@@ -600,7 +600,6 @@ function renderBusinessView() {
             <h4>ID: ${us.id} - ${us.title}</h4>
             <div style="text-align: right; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; line-height: 1.6;">
                 <div><b style="color: #27ae60;">US Start (First Task):</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
-                <div><b style="color: #e67e22;">US End (Target):</b> ${formatDate(us.expectedEnd)}</div>
                 <div><b style="color: #3498db;">US Actual End (Tested):</b> ${formatDate(us.testedDate)}</div>
             </div>
         </div>
@@ -1232,6 +1231,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
