@@ -603,7 +603,7 @@ html += `
         <b>Tester Lead:</b> ${us.testerLead} | 
         <b style="color: #8e44ad;">DB Mod:</b> ${us.dbEffort.names}
     </p>
-    `
+    
                     <table>
                         <thead>
                             <tr>
@@ -1227,6 +1227,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
