@@ -635,28 +635,31 @@ html += `
                         </thead>
                         <tbody>
                             ${sortedTasks.map(t => {
-                                const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
-                                const est = parseFloat(t['Original Estimation']) || 0;
-                                // استخدام Resolved Date كـ Actual End كما في منطق الحسابات
-                                const actualEnd = t['Actual End'] || t['Resolved Date'];
-                          
-                                return `
-                                <tr>
-                                    <td>${t['ID']}</td>
-                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
-                                    <td>${t['Activity']}</td>
-                                    <td>${est}</td>
-                                    <td>${formatDate(t.expectedStart)}</td>
-                                    <td>${formatDate(t.expectedEnd)}</td>
-                                    <td>${formatDate(t['Activated Date'])}</td>
-                                    <td>${formatDate(actualEnd)}</td> <td>${tsTotal}</td>
-                                    <td class="${calculateHourDiff(t.expectedStart, t['Activated Date']) > 0 ? 'alert-red' : ''}">
-                                        ${calculateHourDiff(t.expectedStart, t['Activated Date'])}h
-                                    </td>
-                                </tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>`;
+    const tsTotal = (parseFloat(t['TimeSheet_DevActualTime']) || 0) + (parseFloat(t['TimeSheet_TestingActualTime']) || 0);
+    const est = parseFloat(t['Original Estimation']) || 0;
+    // استخدام Resolved Date كـ Actual End كما في منطق الحسابات
+    const actualEnd = t['Actual End'] || t['Resolved Date'];
+
+    return `
+    <tr>
+        <td>${t['ID']}</td>
+        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t['Title']}">${t['Title'] || 'N/A'}</td>
+        <td>${t['Activity']}</td>
+        <td>${est}</td>
+        
+        <td style="background-color: #e8f4fd; font-weight: 500;">${formatDate(t.expectedStart)}</td>
+        
+        <td>${formatDate(t.expectedEnd)}</td>
+        
+        <td style="background-color: #eafaf1; font-weight: 500;">${formatDate(t['Activated Date'])}</td>
+        
+        <td>${formatDate(actualEnd)}</td> 
+        <td>${tsTotal}</td>
+        <td class="${calculateHourDiff(t.expectedStart, t['Activated Date']) > 0 ? 'alert-red' : ''}">
+            ${calculateHourDiff(t.expectedStart, t['Activated Date'])}h
+        </td>
+    </tr>`;
+}).join('')}
 
             // Logic for Progress Bar calculations
             const progressWidth = Math.min(us.rework.percentage, 100);
@@ -1216,6 +1219,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
