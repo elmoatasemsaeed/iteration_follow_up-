@@ -809,25 +809,34 @@ function renderTeamView() {
 }
 function renderPeopleView() {
     const container = document.getElementById('people-view');
+    if (!processedStories || processedStories.length === 0) {
+        container.innerHTML = "<div class='card'><h2>People Performance</h2><p>No data available. Please upload a file first.</p></div>";
+        return;
+    }
+
     const areaMap = {};
 
-    // 1. Data Aggregation
+    // 1. تجميع البيانات وتصنيفها
     processedStories.forEach(us => {
-        const area = us.businessArea;
-        if (!areaMap[area]) areaMap[area] = { devs: {}, testers: {} };
+        const area = us.businessArea || 'General';
+        if (!areaMap[area]) {
+            areaMap[area] = { devs: {}, testers: {}, dbMods: {} };
+        }
 
+        // إحصائيات المطورين (Development)
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
-                areaMap[area].devs[d] = { name: d, est: 0, act: 0, stories: 0, reworkTime: 0, totalBugs: 0 };
+                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, rwTime: 0, stories: 0 };
             }
             areaMap[area].devs[d].est += us.devEffort.orig;
             areaMap[area].devs[d].act += us.devEffort.actual;
-            areaMap[area].devs[d].reworkTime += (us.rework.time || 0);
-            areaMap[area].devs[d].totalBugs += us.rework.count;
+            areaMap[area].devs[d].bugs += us.rework.count;
+            areaMap[area].devs[d].rwTime += us.rework.actualTime;
             areaMap[area].devs[d].stories++;
         }
 
+        // إحصائيات المختبرين (Testing)
         if (us.testerLead) {
             const t = us.testerLead;
             if (!areaMap[area].testers[t]) {
@@ -837,151 +846,89 @@ function renderPeopleView() {
             areaMap[area].testers[t].act += us.testEffort.actual;
             areaMap[area].testers[t].stories++;
         }
+
+        // إحصائيات تعديل قواعد البيانات (DB Modification)
+        // نستخدم حقل us.dbEffort.names الذي قمت بتعريفه سابقاً في calculateMetrics
+        if (us.dbEffort && us.dbEffort.names !== 'N/A') {
+            const names = us.dbEffort.names.split(', ');
+            names.forEach(dbName => {
+                const name = dbName.trim();
+                if (!areaMap[area].dbMods[name]) {
+                    areaMap[area].dbMods[name] = { name: name, est: 0, act: 0, stories: 0 };
+                }
+                // توزيع الإحصائيات (تقريبياً لكل مسؤول في الستوري الواحدة)
+                areaMap[area].dbMods[name].est += (us.dbEffort.orig / names.length);
+                areaMap[area].dbMods[name].act += (us.dbEffort.actual / names.length);
+                areaMap[area].dbMods[name].stories++;
+            });
+        }
     });
 
-    // 2. Build View
-    let html = '<h2 style="margin-bottom:25px;">👥 People Performance Analytics</h2>';
+    // 2. بناء واجهة العرض
+    let html = '<h2 style="margin-bottom:25px; color: #2c3e50;">👥 Multi-Disciplinary Performance Analytics</h2>';
 
-    // --- Performance Logic Legend (English Version) ---
-    html += `
-    <div style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <h4 style="margin-top: 0; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 10px;">📊 Performance Logic & Criteria</h4>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 15px;">
-            <div style="font-size: 0.85em; line-height: 1.5;">
-                <strong style="color: #27ae60; font-size: 1.1em;">🏆 Star Performer:</strong><br>
-                High productivity <b style="color: #2c3e50;">(Index ≥ 95%)</b> <br> 
-                with excellent quality <b style="color: #2c3e50;">(Rework < 15%)</b>.
-            </div>
-            <div style="font-size: 0.85em; line-height: 1.5;">
-                <strong style="color: #e74c3c; font-size: 1.1em;">⚠️ High Rework:</strong><br>
-                Quality risk; bug fixing time exceeds <b style="color: #2c3e50;">30%</b> of total development time.
-            </div>
-            <div style="font-size: 0.85em; line-height: 1.5;">
-                <strong style="color: #f39c12; font-size: 1.1em;">🐢 Slow Pace:</strong><br>
-                Execution delay; productivity <b style="color: #2c3e50;">(Index < 70%)</b> compared to estimated time.
-            </div>
-            <div style="font-size: 0.85em; line-height: 1.5;">
-                <strong style="color: #7f8c8d; font-size: 1.1em;">⚪ Standard:</strong><br>
-                Balanced performance within the normal acceptable operating range.
-            </div>
-        </div>
-    </div>`;
-
-    // 3. Render Business Areas
     for (let area in areaMap) {
         html += `
-        <div class="business-section" style="margin-bottom: 40px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
-            <div style="background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin:0; font-size: 1.4em;">${area}</h3>
-                <span style="font-size: 0.9em; opacity: 0.8;">Section Overview</span>
+        <div class="business-section" style="margin-bottom: 50px; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; border-top: 5px solid #2c3e50;">
+            <div style="background: #2c3e50; color: white; padding: 15px 25px;">
+                <h3 style="margin:0; font-size: 1.5em; letter-spacing: 1px;">${area}</h3>
             </div>
             
-            <div style="padding: 20px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-                    <div>
-                        <h4 style="border-bottom: 2px solid #2ecc71; padding-bottom: 8px; color: #2ecc71;">💻 Developers</h4>
-                        ${generatePeopleCards(areaMap[area].devs, true)}
-                    </div>
-                    
-                    <div>
-                        <h4 style="border-bottom: 2px solid #3498db; padding-bottom: 8px; color: #3498db;">🔍 Testers</h4>
-                        ${generatePeopleCards(areaMap[area].testers, false)}
-                    </div>
+            <div style="padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                
+                <div style="background: #f9fdfa; border: 1px solid #d4edda; border-radius: 8px; padding: 15px;">
+                    <h4 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-top:0;">💻 Developers</h4>
+                    ${generateModernCards(areaMap[area].devs, 'dev')}
                 </div>
+
+                <div style="background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 8px; padding: 15px;">
+                    <h4 style="color: #2980b9; border-bottom: 2px solid #2980b9; padding-bottom: 10px; margin-top:0;">🔍 Testers</h4>
+                    ${generateModernCards(areaMap[area].testers, 'test')}
+                </div>
+
+                <div style="background: #fffbf0; border: 1px solid #ffeeba; border-radius: 8px; padding: 15px;">
+                    <h4 style="color: #f39c12; border-bottom: 2px solid #f39c12; padding-bottom: 10px; margin-top:0;">🗄️ DB Specialists</h4>
+                    ${generateModernCards(areaMap[area].dbMods, 'db')}
+                </div>
+
             </div>
         </div>`;
     }
     container.innerHTML = html;
 }
-function generatePeopleCards(statsObj, isDev) {
-    let cardsHtml = '';
-    
-    for (let p in statsObj) {
-        let person = statsObj[p];
-        let index = person.est / (person.act || 1);
-        let reworkPerc = isDev ? ((person.reworkTime / (person.act || 1)) * 100) : 0;
-        
-        // تحديد تقييم الأداء
-        let statusLabel = "Standard";
-        let labelColor = "#7f8c8d";
-        
-        if (isDev) {
-            if (index >= 0.95 && reworkPerc < 15) { statusLabel = "🏆 Star"; labelColor = "#27ae60"; }
-            else if (reworkPerc > 30) { statusLabel = "⚠️ High Rework"; labelColor = "#e74c3c"; }
-            else if (index < 0.7) { statusLabel = "🐢 Slow Pace"; labelColor = "#f39c12"; }
-        }
 
-        cardsHtml += `
-        <div style="border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 15px; transition: transform 0.2s; background: #fafafa;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                <div>
-                    <strong style="font-size: 1.1em; color: #2c3e50;">${person.name}</strong>
-                    <div style="font-size: 0.8em; color: #7f8c8d;">Stories: ${person.stories}</div>
-                </div>
-                <span style="background: ${labelColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold;">
-                    ${statusLabel}
-                </span>
+function generateModernCards(dataObj, type) {
+    const keys = Object.keys(dataObj);
+    if (keys.length === 0) return '<p style="color:#999; font-style:italic; font-size:0.9em;">No data in this section</p>';
+
+    return keys.map(name => {
+        const p = dataObj[name];
+        const index = p.est / (p.act || 1);
+        const efficiencyColor = index >= 0.9 ? '#27ae60' : (index >= 0.7 ? '#f39c12' : '#e74c3c');
+
+        return `
+        <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+            <div style="font-weight: bold; color: #34495e; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between;">
+                <span>${p.name}</span>
+                <span style="font-size: 0.75em; color: #7f8c8d;">${p.stories} Stories</span>
             </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; margin-bottom: 10px;">
-                <div style="background: white; padding: 5px; border-radius: 4px; border: 1px solid #f0f0f0; text-align: center;">
-                    <div style="color: #95a5a6; font-size: 0.75em;">Efficiency</div>
-                    <strong style="color: ${index < 0.8 ? '#e74c3c' : '#2c3e50'}">${(index * 100).toFixed(0)}%</strong>
-                </div>
-                <div style="background: white; padding: 5px; border-radius: 4px; border: 1px solid #f0f0f0; text-align: center;">
-                    <div style="color: #95a5a6; font-size: 0.75em;">Actual Hours</div>
-                    <strong>${person.act.toFixed(1)}h</strong>
-                </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
+                <div title="Estimated Hours">Est: <b>${p.est.toFixed(1)}h</b></div>
+                <div title="Actual Hours">Act: <b>${p.act.toFixed(1)}h</b></div>
+                <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(2)}</b></div>
+                ${type === 'dev' ? `
+                    <div style="color: #c0392b;" title="Bugs Count">Bugs: <b>${p.bugs}</b></div>
+                    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
+                        Rework: <b>${p.rwTime.toFixed(1)}h</b>
+                    </div>
+                ` : ''}
+                ${type === 'test' ? `<div style="grid-column: span 2; color: #2980b9;">QA Effort Recorded</div>` : ''}
+                ${type === 'db' ? `<div style="grid-column: span 2; color: #d35400;">Data Modification</div>` : ''}
             </div>
-
-            ${isDev ? `
-                <div style="margin-top: 10px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.75em; margin-bottom: 3px;">
-                        <span>Rework Ratio</span>
-                        <span style="font-weight: bold; color: ${reworkPerc > 25 ? '#e74c3c' : '#27ae60'}">${reworkPerc.toFixed(1)}%</span>
-                    </div>
-                    <div style="width: 100%; background: #eee; height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div style="width: ${Math.min(reworkPerc, 100)}%; background: ${reworkPerc > 25 ? '#e74c3c' : '#2ecc71'}; height: 100%;"></div>
-                    </div>
-                </div>
-            ` : ''}
         </div>`;
-    }
-    return cardsHtml || '<p style="color:#ccc; font-style:italic;">No data recorded</p>';
-}
-function generatePeopleTable(statsObj, isDev) {
-    // إضافة رأس الجدول الجديد (RW Time) إذا كان الشخص ديف
-    let tableHtml = `<table><thead><tr>
-        <th>Name</th>
-        <th>S.</th>
-        <th>Est</th>
-        <th>Act</th>
-        <th>Idx</th>
-        ${isDev ? '<th>RW Time</th><th>%RW</th>' : ''} 
-    </tr></thead><tbody>`;
-
-    for (let p in statsObj) {
-        let person = statsObj[p];
-        let index = person.est / (person.act || 1);
-        
-        // حساب نسبة الريورك
-        let reworkPerc = isDev ? ((person.reworkTime / (person.act || 1)) * 100).toFixed(1) : 0;
-        
-        tableHtml += `<tr>
-            <td>${person.name}</td>
-            <td>${person.stories}</td>
-            <td>${person.est.toFixed(1)}</td>
-            <td>${person.act.toFixed(1)}</td>
-            <td class="${index < 1 ? 'alert-red' : ''}">${index.toFixed(2)}</td>
-            ${isDev ? `
-                <td>${person.reworkTime.toFixed(1)}h</td>
-                <td style="color: ${reworkPerc > 25 ? '#e74c3c' : '#2c3e50'}">${reworkPerc}%</td>
-            ` : ''}
-        </tr>`;
-    }
-    return tableHtml + '</tbody></table>';
-}
-function renderNotTestedView() {
+    }).join('');
+}function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
     // تصفية القصص التي لم تختبر بعد
     const notTested = processedStories.filter(us => us.status !== 'Tested');
@@ -1231,6 +1178,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
