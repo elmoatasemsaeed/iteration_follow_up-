@@ -1083,152 +1083,144 @@ function groupBy(arr, key) {
 function renderIterationView() {
     const container = document.getElementById('iteration-view');
     if (!processedStories || processedStories.length === 0) {
-        container.innerHTML = "<div style='padding:20px;'><h2>Iteration Summary</h2><p>No data available. Please upload a file first.</p></div>";
+        container.innerHTML = "<div class='card'><h2>Iteration Summary</h2><p>No data available. Please upload a file first.</p></div>";
         return;
     }
 
-    // --- 1. الحسابات الأساسية وتجميع البيانات ---
-    let totalDevEst = 0, totalDevAct = 0;
-    let totalTestEst = 0, totalTestAct = 0;
-    let totalBugs = 0, totalReworkTime = 0;
-    let storyCount = processedStories.length;
+    // --- 1. الحسابات التجميعية الشاملة (Global Aggregation) ---
+    let stats = {
+        devEst: 0, devAct: 0,
+        testEst: 0, testAct: 0,
+        dbEst: 0, dbAct: 0,
+        reworkAct: 0, bugsCount: 0,
+        totalStories: processedStories.length,
+        completedStories: processedStories.filter(s => s.status === 'Tested').length
+    };
 
     processedStories.forEach(us => {
-        totalDevEst += us.devEffort.orig;
-        totalDevAct += us.devEffort.actual;
-        totalTestEst += us.testEffort.orig;
-        totalTestAct += us.testEffort.actual;
-        totalBugs += us.rework.count;
-        totalReworkTime += us.rework.actualTime; 
+        stats.devEst += us.devEffort.orig;
+        stats.devAct += us.devEffort.actual;
+        stats.testEst += us.testEffort.orig;
+        stats.testAct += us.testEffort.actual;
+        stats.dbEst += us.dbEffort.orig;
+        stats.dbAct += us.dbEffort.actual;
+        stats.reworkAct += us.rework.actualTime;
+        stats.bugsCount += us.rework.count;
     });
 
-    const totalEffort = totalDevAct + totalTestAct;
-    
-    // حساب المؤشرات المتقدمة
-    const avgDevIndex = totalDevEst / (totalDevAct || 1);
-    const iterationHealth = Math.max(0, 100 - (totalReworkTime / (totalDevAct || 1) * 100)).toFixed(1);
-    const lostDays = (totalReworkTime / 5).toFixed(1); // فرضية يوم العمل 5 ساعات
-    const reworkRatio = ((totalReworkTime / (totalDevAct || 1)) * 100).toFixed(1);
+    const totalActualTime = stats.devAct + stats.testAct + stats.dbAct + stats.reworkAct;
+    const deliveryIndex = (stats.devEst + stats.testEst + stats.dbEst) / (totalActualTime || 1);
+    const iterationHealth = Math.max(0, 100 - (stats.reworkAct / (stats.devAct || 1) * 100)).toFixed(1);
+    const reworkRatio = ((stats.reworkAct / (stats.devAct || 1)) * 100).toFixed(1);
 
-    // --- 2. تحليل أداء المطورين ---
-    let devStats = {};
-    processedStories.forEach(us => {
-        if (us.devLead) {
-            if (!devStats[us.devLead]) devStats[us.devLead] = { name: us.devLead, est: 0, act: 0, rwTime: 0, storyIds: [] };
-            devStats[us.devLead].est += us.devEffort.orig;
-            devStats[us.devLead].act += us.devEffort.actual;
-            devStats[us.devLead].rwTime += us.rework.actualTime;
-            devStats[us.devLead].storyIds.push(us.id);
-        }
-    });
-
-    let devArray = Object.values(devStats).map(d => ({
-        ...d,
-        index: d.est / (d.act || 1),
-        rwPerc: (d.rwTime / (d.act || 1) * 100).toFixed(1)
-    })).sort((a, b) => b.index - a.index);
-
-    // --- 3. تحديد أكثر القصص استهلاكاً للوقت (Bottlenecks) ---
-    const topBottlenecks = [...processedStories]
-        .sort((a, b) => b.rework.actualTime - a.rework.actualTime)
-        .slice(0, 5);
-
-    // --- 4. بناء واجهة العرض HTML ---
+    // --- 2. بناء الهيكل المرئي (UI Structure) ---
     let html = `
-    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f7f6; padding: 20px; border-radius: 15px;">
-        <h2 style="border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px; color: #2c3e50;">📊 Executive Iteration Dashboard</h2>
-        
-
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
-    
-    <div class="card" style="border-top: 5px solid #2ecc71; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Team Health Score</div>
-        <div style="font-size: 1.8em; font-weight: bold; color: #2ecc71;">${iterationHealth}%</div>
-        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
-            <i>(1 - Rework Time / Dev Actual) × 100</i>
-        </div>
-    </div>
-
-    <div class="card" style="border-top: 5px solid #e74c3c; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Productivity Loss</div>
-        <div style="font-size: 1.8em; font-weight: bold; color: #e74c3c;">${lostDays} <small style="font-size: 0.5em;">Days</small></div>
-        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
-            <i>Total Rework Hours / 5h workday</i>
-        </div>
-    </div>
-
-    <div class="card" style="border-top: 5px solid #3498db; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Delivery Index</div>
-        <div style="font-size: 1.8em; font-weight: bold; color: #3498db;">${avgDevIndex.toFixed(2)}</div>
-        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
-            <i>Total Estimated / Total Actual hours</i>
-        </div>
-    </div>
-
-    <div class="card" style="border-top: 5px solid #f1c40f; text-align: center; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <div style="font-size: 0.85em; color: #7f8c8d; font-weight: bold;">Total Rework</div>
-        <div style="font-size: 1.8em; font-weight: bold; color: #f39c12;">${reworkRatio}%</div>
-        <div style="font-size: 0.7em; color: #95a5a6; margin-top: 5px;">
-            <i>Rework Hours / Total Dev Hours</i>
-        </div>
-    </div>
-</div>
-
-        <div class="card" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-            <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">⏱️ Iteration Effort Allocation</h3>
-            <div style="display: flex; height: 35px; border-radius: 8px; overflow: hidden; margin: 15px 0; background: #eee; border: 1px solid #ddd;">
-                <div style="width: ${((totalDevAct - totalReworkTime) / totalEffort * 100).toFixed(1)}%; background: #2ecc71;" title="Feature Work"></div>
-                <div style="width: ${(totalReworkTime / totalEffort * 100).toFixed(1)}%; background: #e74c3c;" title="Rework"></div>
-                <div style="width: ${(totalTestAct / totalEffort * 100).toFixed(1)}%; background: #3498db;" title="QA / Testing"></div>
-            </div>
-            <div style="display: flex; justify-content: space-around; font-size: 0.85em; font-weight: bold;">
-                <span><i style="display:inline-block; width:10px; height:10px; background:#2ecc71; border-radius:50%; margin-right:5px;"></i> Features: ${(((totalDevAct - totalReworkTime)/totalEffort)*100).toFixed(1)}%</span>
-                <span><i style="display:inline-block; width:10px; height:10px; background:#e74c3c; border-radius:50%; margin-right:5px;"></i> Rework: ${((totalReworkTime/totalEffort)*100).toFixed(1)}%</span>
-                <span><i style="display:inline-block; width:10px; height:10px; background:#3498db; border-radius:50%; margin-right:5px;"></i> QA: ${((totalTestAct/totalEffort)*100).toFixed(1)}%</span>
+    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', sans-serif; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 3px solid #34495e; padding-bottom: 10px;">
+            <h2 style="margin:0; color: #2c3e50;">🚀 Iteration Executive Summary</h2>
+            <div style="background: #34495e; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9em;">
+                Iteration Scope: <b>${stats.totalStories} Stories</b>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            
+            <div class="card" style="border-top: 5px solid #2ecc71; background: #fff;">
+                <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Health Score</h5>
+                <div style="font-size: 2em; font-weight: bold; color: #2ecc71;">${iterationHealth}%</div>
+                <p style="font-size: 0.7em; color: #95a5a6; margin: 5px 0 0;">Overall Quality Stability</p>
+            </div>
 
-<div class="card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-    <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">⚖️ Performance Matrix</h3>
-    <div style="overflow-x: auto;">
-        <table style="width:100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em;">
-            <thead>
-                <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd; text-align: left;">
-                    <th style="padding:12px;">Developer</th>
-                    <th>Actual (H)</th>
-                    <th>Rework (H)</th>
-                    <th>Index</th>
-                    </tr>
-            </thead>
-            <tbody>
-                ${devArray.map(d => {
-                    // يمكنك ترك منطق الألوان للـ Index كما هو لتحسين الرؤية
-                    return `
-                    <tr style="border-bottom: 1px solid #eee; background: ${d.index < 0.7 ? '#fff9f9' : 'transparent'}">
-                        <td style="padding:12px;"><b>${d.name}</b></td>
-                        <td>${d.act.toFixed(1)}h</td>
-                        <td style="color: #e74c3c;">${d.rwTime.toFixed(1)}h</td>
-                        <td style="color: ${d.index < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${d.index.toFixed(2)}</b></td>
-                        </tr>`;
-                }).join('')}
-            </tbody>
-        </table>
-    </div>
-</div>
+            <div class="card" style="border-top: 5px solid #3498db; background: #fff;">
+                <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Delivery Index</h5>
+                <div style="font-size: 2em; font-weight: bold; color: #3498db;">${deliveryIndex.toFixed(2)}</div>
+                <p style="font-size: 0.7em; color: #95a5a6; margin: 5px 0 0;">Est. vs Actual Efficiency</p>
+            </div>
 
-            <div class="card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h3 style="margin-top:0; font-size: 1.1em; color: #34495e;">🚩 Top Bottlenecks</h3>
-                <p style="font-size: 0.75em; color: #7f8c8d; margin-bottom: 15px;">Stories with highest rework hours</p>
-                ${topBottlenecks.map(us => `
-                    <div style="border-left: 3px solid #e74c3c; padding: 8px 12px; background: #fff5f5; margin-bottom: 10px; border-radius: 0 5px 5px 0;">
-                        <div style="font-weight: bold; font-size: 0.85em; color: #c0392b;">ID: ${us.id}</div>
-                        <div style="font-size: 0.8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${us.title}</div>
-                        <div style="font-size: 0.75em; margin-top:4px;"><b>${us.rework.actualTime.toFixed(1)}h</b> wasted in fixes</div>
+            <div class="card" style="border-top: 5px solid #e74c3c; background: #fff;">
+                <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Rework Ratio</h5>
+                <div style="font-size: 2em; font-weight: bold; color: #e74c3c;">${reworkRatio}%</div>
+                <p style="font-size: 0.7em; color: #95a5a6; margin: 5px 0 0;">Time Spent Fixing Bugs</p>
+            </div>
+
+            <div class="card" style="border-top: 5px solid #f39c12; background: #fff;">
+                <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Completion</h5>
+                <div style="font-size: 2em; font-weight: bold; color: #f39c12;">${stats.completedStories}/${stats.totalStories}</div>
+                <p style="font-size: 0.7em; color: #95a5a6; margin: 5px 0 0;">Stories Marked as Tested</p>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 30px; background: #fdfdfd; border: 1px solid #eee;">
+            <h4 style="margin-top: 0; color: #34495e; font-size: 1.1em;">⏱️ Iteration Effort Allocation (Total: ${totalActualTime.toFixed(1)}h)</h4>
+            <div style="display: flex; height: 30px; border-radius: 15px; overflow: hidden; background: #eee; margin: 15px 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="width: ${(stats.devAct/totalActualTime*100).toFixed(1)}%; background: #2ecc71;" title="Pure Development"></div>
+                <div style="width: ${(stats.dbAct/totalActualTime*100).toFixed(1)}%; background: #f39c12;" title="DB Modification"></div>
+                <div style="width: ${(stats.reworkAct/totalActualTime*100).toFixed(1)}%; background: #e74c3c;" title="Rework (Fixes)"></div>
+                <div style="width: ${(stats.testAct/totalActualTime*100).toFixed(1)}%; background: #3498db;" title="Testing/QA"></div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 0.85em; justify-content: center;">
+                <span><i style="display:inline-block; width:12px; height:12px; background:#2ecc71; margin-right:5px;"></i> Dev: <b>${(stats.devAct/totalActualTime*100).toFixed(0)}%</b></span>
+                <span><i style="display:inline-block; width:12px; height:12px; background:#f39c12; margin-right:5px;"></i> DB: <b>${(stats.dbAct/totalActualTime*100).toFixed(0)}%</b></span>
+                <span><i style="display:inline-block; width:12px; height:12px; background:#e74c3c; margin-right:5px;"></i> Rework: <b>${(stats.reworkAct/totalActualTime*100).toFixed(0)}%</b></span>
+                <span><i style="display:inline-block; width:12px; height:12px; background:#3498db; margin-right:5px;"></i> QA: <b>${(stats.testAct/totalActualTime*100).toFixed(0)}%</b></span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+            <div class="card" style="background: white;">
+                <h4 style="margin-top:0; border-bottom: 2px solid #eee; padding-bottom: 10px;">🏢 Area Efficiency Matrix</h4>
+                <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
+                    <thead>
+                        <tr style="text-align: left; color: #7f8c8d; border-bottom: 2px solid #f4f4f4;">
+                            <th style="padding: 10px 5px;">Business Area</th>
+                            <th>Actual (H)</th>
+                            <th>Index</th>
+                            <th>Health</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(groupBy(processedStories, 'businessArea')).map(([area, stories]) => {
+                            let aDev = 0, aEst = 0, aRew = 0;
+                            stories.forEach(s => { 
+                                aDev += s.devEffort.actual; 
+                                aEst += s.devEffort.orig; 
+                                aRew += s.rework.actualTime;
+                            });
+                            const aIdx = aEst / (aDev || 1);
+                            const aHealth = Math.max(0, 100 - (aRew / (aDev || 1) * 100));
+                            return `
+                            <tr style="border-bottom: 1px solid #f9f9f9;">
+                                <td style="padding: 12px 5px;"><b>${area}</b></td>
+                                <td>${aDev.toFixed(1)}h</td>
+                                <td style="color: ${aIdx < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${aIdx.toFixed(2)}</b></td>
+                                <td>
+                                    <div style="width:50px; background:#eee; height:6px; border-radius:3px;">
+                                        <div style="width:${aHealth}%; background:${aHealth < 70 ? '#e74c3c' : '#2ecc71'}; height:100%; border-radius:3px;"></div>
+                                    </div>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card" style="background: white; border-left: 5px solid #e74c3c;">
+                <h4 style="margin-top:0; color: #c0392b;">🚩 Top Iteration Bottlenecks</h4>
+                <p style="font-size: 0.8em; color: #7f8c8d; margin-bottom: 15px;">Stories requiring the most rework effort</p>
+                ${processedStories
+                    .sort((a, b) => b.rework.actualTime - a.rework.actualTime)
+                    .slice(0, 4)
+                    .map(us => `
+                    <div style="padding: 10px; background: #fff5f5; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ffebeb;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
+                            <span style="font-weight: bold; color: #c0392b;">US: ${us.id}</span>
+                            <span style="color: #e74c3c; font-weight:bold;">${us.rework.actualTime.toFixed(1)}h Rework</span>
+                        </div>
+                        <div style="font-size: 0.8em; color: #34495e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 5px;">
+                            ${us.title}
+                        </div>
                     </div>
                 `).join('')}
-                
             </div>
         </div>
     </div>`;
@@ -1237,6 +1229,7 @@ function renderIterationView() {
 }
 // السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
 renderHolidays();
+
 
 
 
