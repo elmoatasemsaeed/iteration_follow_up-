@@ -1226,11 +1226,25 @@ function renderIterationView() {
     </div>`;
 
     container.innerHTML = html;
+
+function addHoliday() {
+    const picker = document.getElementById('holidayPicker');
+    const date = picker.value;
+    if (date && !holidays.includes(date)) {
+        holidays.push(date);
+        localStorage.setItem('holidays', JSON.stringify(holidays));
+        renderHolidays();
+        picker.value = '';
+    }
 }
-// السطر الأخير الصحيح لإغلاق الملف وتشغيل الدوال الأولية
+
+function removeHoliday(date) {
+    holidays = holidays.filter(h => h !== date);
+    localStorage.setItem('holidays', JSON.stringify(holidays));
+    renderHolidays();
+}
+
 renderHolidays();
-
-
 
 
 
