@@ -1226,7 +1226,7 @@ function renderIterationView() {
     </div>`;
 
     container.innerHTML = html;
-
+}
 function addHoliday() {
     const picker = document.getElementById('holidayPicker');
     const date = picker.value;
@@ -1245,6 +1245,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
