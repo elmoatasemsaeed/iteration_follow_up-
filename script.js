@@ -846,23 +846,29 @@ html += `
                     </div>
 
                     <div style="background: #fff5f5; border: 1px solid #f8d7da; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #c0392b; font-size: 0.9em; text-transform: uppercase;">Quality Metrics</h5>
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;">
-    <span>Bugs Found:</span>
-    <b title="Crit / High / Med">${stats.bugsCount} (${stats.sevCrit}/${stats.sevHigh}/${stats.sevMed})</b>
+    <h5 style="margin: 0 0 10px 0; color: #c0392b; font-size: 0.9em; text-transform: uppercase;">Quality Metrics</h5>
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
+        <div style="display: flex; justify-content: space-between;">
+            <span>Bugs Found:</span>
+            <b title="Critical / High / Medium Severity" style="cursor: help;">
+                ${stats.bugsCount} 
+                <span style="font-size: 0.85em; font-weight: normal; margin-left: 5px;">
+                    (<span style="color:#c0392b;" title="Critical">C:</span>${stats.sevCrit}/
+                    <span style="color:#e67e22;" title="High">H:</span>${stats.sevHigh}/
+                    <span style="color:#2980b9;" title="Medium">M:</span>${stats.sevMed})
+                </span>
+            </b>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Rework Time:</span>
+            <b style="color: #c0392b;">${stats.reworkTime.toFixed(1)}h</b>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Rework Ratio:</span>
+            <b style="color: #c0392b;">${reworkRatio}%</b>
+        </div>
+    </div>
 </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Rework Time:</span>
-                                <b style="color: #c0392b;">${stats.reworkTime.toFixed(1)}h</b>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Rework Ratio:</span>
-                                <b style="color: #c0392b;">${reworkRatio}%</b>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <div style="margin-top: 20px;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #7f8c8d; margin-bottom: 8px; font-weight: bold;">
@@ -1277,6 +1283,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
