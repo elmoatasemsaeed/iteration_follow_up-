@@ -390,22 +390,33 @@ function calculateMetrics() {
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
         // ... بقية الكود الخاص بالـ Rework والـ Timeline كما هو دون تغيير ...
-        let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
-        us.bugs.forEach(b => {
-            bugOrig += parseFloat(b['Original Estimation']) || 0;
-            let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
-            bugActualTotal += bDevAct;
-            if (bDevAct === 0) bugsNoTimesheet++;
-        });
+       let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
 
-        us.rework = {
-            timeEstimation: bugOrig,
-            actualTime: bugActualTotal,
-            count: us.bugs.length,
-            missingTimesheet: bugsNoTimesheet,
-            deviation: bugOrig / (bugActualTotal || 1),
-            percentage: (bugActualTotal / (devActual || 1)) * 100
-        };
+// كائن جديد لتخزين تفاصيل الخطورة
+us.severityCounts = { critical: 0, high: 0, medium: 0 };
+
+us.bugs.forEach(b => {
+    bugOrig += parseFloat(b['Original Estimation']) || 0;
+    let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
+    bugActualTotal += bDevAct;
+    if (bDevAct === 0) bugsNoTimesheet++;
+
+    // تصنيف الخطورة بناءً على العمود الجديد
+    const sev = b['Severity'] || "";
+    if (sev.includes("1 - Critical")) us.severityCounts.critical++;
+    else if (sev.includes("2 - High")) us.severityCounts.high++;
+    else if (sev.includes("3 - Medium")) us.severityCounts.medium++;
+});
+
+us.rework = {
+    timeEstimation: bugOrig,
+    actualTime: bugActualTotal,
+    count: us.bugs.length,
+    severity: us.severityCounts, // أضفناها هنا
+    missingTimesheet: bugsNoTimesheet,
+    deviation: bugOrig / (bugActualTotal || 1),
+    percentage: (bugActualTotal / (devActual || 1)) * 100
+};
         calculateTimeline(us);
     });
 }
@@ -624,9 +635,14 @@ function renderBusinessView() {
                                 <td>Dev (Excl. DB)</td>
                                 <td>${us.devEffort.orig.toFixed(1)}</td>
                                 <td>${us.devEffort.actual.toFixed(1)}</td>
-                                <td rowspan="3" style="text-align:center; vertical-align:middle; font-weight:bold; background:#fff5f5; border: 1px solid #ffebeb;">${us.rework.count}</td>
-                                <td rowspan="3" style="text-align:center; vertical-align:middle; font-weight:bold; background:#fff5f5; color:#c0392b; border: 1px solid #ffebeb;">${us.rework.actualTime.toFixed(1)}h</td>
-                                <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td>
+                                <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5; border: 1px solid #ffebeb;">
+    <div style="font-weight:bold; font-size:1.1em; border-bottom:1px solid #ddd; margin-bottom:5px;">${us.rework.count}</div>
+    <div style="font-size: 0.8em; display: flex; flex-direction: column; gap: 2px;">
+        <span style="color:#c0392b;">Crit: ${us.rework.severity.critical}</span>
+        <span style="color:#e67e22;">High: ${us.rework.severity.high}</span>
+        <span style="color:#2980b9;">Med: ${us.rework.severity.medium}</span>
+    </div>
+</td>
                             </tr>
                             <tr style="background: #f4ecf7;">
                                 <td>DB Modification</td>
@@ -738,6 +754,7 @@ function renderTeamView() {
             testEst: 0, testAct: 0,
             dbEst: 0, dbAct: 0,
             reworkTime: 0, bugsCount: 0,
+            sevCrit: 0, sevHigh: 0, sevMed: 0,
             totalStories: grouped[area].length,
             completedStories: grouped[area].filter(us => us.status === 'Tested').length,
             devLeads: new Set(),
@@ -753,6 +770,9 @@ function renderTeamView() {
             stats.dbAct += us.dbEffort.actual;
             stats.reworkTime += us.rework.actualTime;
             stats.bugsCount += us.rework.count;
+            stats.sevCrit += us.rework.severity.critical;
+            stats.sevHigh += us.rework.severity.high;
+            stats.sevMed += us.rework.severity.medium;
             if (us.devLead) stats.devLeads.add(us.devLead);
             if (us.testerLead) stats.testerLeads.add(us.testerLead);
         });
@@ -823,9 +843,9 @@ html += `
                         <h5 style="margin: 0 0 10px 0; color: #c0392b; font-size: 0.9em; text-transform: uppercase;">Quality Metrics</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
                             <div style="display: flex; justify-content: space-between;">
-                                <span>Bugs Found:</span>
-                                <b>${stats.bugsCount}</b>
-                            </div>
+    <span>Bugs Found:</span>
+    <b title="Crit / High / Med">${stats.bugsCount} (${stats.sevCrit}/${stats.sevHigh}/${stats.sevMed})</b>
+</div>
                             <div style="display: flex; justify-content: space-between;">
                                 <span>Rework Time:</span>
                                 <b style="color: #c0392b;">${stats.reworkTime.toFixed(1)}h</b>
@@ -884,8 +904,11 @@ function renderPeopleView() {
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
-                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, rwTime: 0, stories: 0 };
+                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, stories: 0 };
             }
+            areaMap[area].devs[d].crit += us.rework.severity.critical;
+            areaMap[area].devs[d].high += us.rework.severity.high;
+            areaMap[area].devs[d].med += us.rework.severity.medium;
             areaMap[area].devs[d].est += us.devEffort.orig;
             areaMap[area].devs[d].act += us.devEffort.actual;
             areaMap[area].devs[d].bugs += us.rework.count;
@@ -974,12 +997,17 @@ function generateModernCards(dataObj, type) {
                 <div title="Estimated Hours">Est: <b>${p.est.toFixed(1)}h</b></div>
                 <div title="Actual Hours">Act: <b>${p.act.toFixed(1)}h</b></div>
                 <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(2)}</b></div>
-                ${type === 'dev' ? `
-                    <div style="color: #c0392b;" title="Bugs Count">Bugs: <b>${p.bugs}</b></div>
-                    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
-                        Rework: <b>${p.rwTime.toFixed(1)}h</b>
-                    </div>
-                ` : ''}
+               ${type === 'dev' ? `
+    <div style="grid-column: span 2; display: flex; justify-content: space-between; font-size: 0.8em; background: #fff; padding: 4px; border: 1px solid #f8d7da; border-radius: 4px;">
+        <span style="color:#c0392b;">C: ${p.crit}</span>
+        <span style="color:#e67e22;">H: ${p.high}</span>
+        <span style="color:#2980b9;">M: ${p.med}</span>
+        <b style="border-left: 1px solid #ddd; padding-left: 5px;">Total: ${p.bugs}</b>
+    </div>
+    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
+        Rework: <b>${p.rwTime.toFixed(1)}h</b>
+    </div>
+` : ''}
                 ${type === 'test' ? `<div style="grid-column: span 2; color: #2980b9;">QA Effort Recorded</div>` : ''}
                 ${type === 'db' ? `<div style="grid-column: span 2; color: #d35400;">Data Modification</div>` : ''}
             </div>
@@ -1243,6 +1271,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
