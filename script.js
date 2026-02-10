@@ -803,7 +803,7 @@ const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
 html += `
 <div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
     <div style="padding: 20px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
             
             <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
                 <h5 style="margin: 0 0 10px 0; color: #27ae60; font-size: 0.9em; text-transform: uppercase;">Productivity Indices</h5>
@@ -1283,6 +1283,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
