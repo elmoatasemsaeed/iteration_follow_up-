@@ -761,47 +761,45 @@ function renderTeamView() {
         const completionRate = ((stats.completedStories / stats.totalStories) * 100).toFixed(1);
         
         // حساب المؤشرات
-        const devIndex = stats.devEst / (stats.devAct || 1);
-        const testIndex = stats.testEst / (stats.testAct || 1);
-        const dbIndex = stats.dbEst / (stats.dbAct || 1);
-        const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
+       const devIndex = stats.devEst / (stats.devAct || 1);
+const testIndex = stats.testEst / (stats.testAct || 1);
+const dbIndex = stats.dbEst / (stats.dbAct || 1);
 
-        html += `
-        <div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
+// 2. الحساب الجديد: مؤشر الفريق العام (Total Team Index)
+// يجمع (تقدير الديف + التستر + الدي بي) ويقسمه على (فعلي الديف + التستر + الدي بي)
+const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
+const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
+const teamIndex = totalTeamEst / (totalTeamAct || 1);
+
+const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
+
+// --- تعديل جزء الـ HTML لعرض المؤشر الرابع ---
+html += `
+<div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
+    <div style="padding: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px;">
             
-            <div style="background: #f8f9fa; padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="margin:0; color: #2c3e50; font-size: 1.4em;">${area}</h3>
-                    <div style="font-size: 0.85em; color: #7f8c8d; margin-top: 5px;">
-                        <b>Leads:</b> ${Array.from(stats.devLeads).join(', ')} | <b>Testers:</b> ${Array.from(stats.testerLeads).join(', ')}
+            <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
+                <h5 style="margin: 0 0 10px 0; color: #27ae60; font-size: 0.9em; text-transform: uppercase;">Productivity Indices</h5>
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Dev Index:</span>
+                        <b style="color: ${devIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${devIndex.toFixed(2)}</b>
                     </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 1.2em; font-weight: bold; color: #2ecc71;">${completionRate}%</div>
-                    <div style="font-size: 0.75em; color: #95a5a6;">${stats.completedStories} / ${stats.totalStories} Stories Tested</div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Test Index:</span>
+                        <b style="color: ${testIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${testIndex.toFixed(2)}</b>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>DB Index:</span>
+                        <b style="color: ${dbIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${dbIndex.toFixed(2)}</b>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc;">
+                        <span style="font-weight: bold;">Team Total Index:</span>
+                        <b style="color: ${teamIndex < 0.8 ? '#e74c3c' : '#2c3e50'}; font-size: 1.1em;">${teamIndex.toFixed(2)}</b>
+                    </div>
                 </div>
             </div>
-
-            <div style="padding: 20px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px;">
-                    
-                    <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #27ae60; font-size: 0.9em; text-transform: uppercase;">Productivity Indices</h5>
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Dev Index:</span>
-                                <b style="color: ${devIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${devIndex.toFixed(2)}</b>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Test Index:</span>
-                                <b style="color: ${testIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${testIndex.toFixed(2)}</b>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>DB Index:</span>
-                                <b style="color: ${dbIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${dbIndex.toFixed(2)}</b>
-                            </div>
-                        </div>
-                    </div>
 
                     <div style="background: #f0f7ff; border: 1px solid #d1ecf1; padding: 15px; border-radius: 10px;">
                         <h5 style="margin: 0 0 10px 0; color: #2980b9; font-size: 0.9em; text-transform: uppercase;">Effort Allocation</h5>
@@ -1245,6 +1243,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
