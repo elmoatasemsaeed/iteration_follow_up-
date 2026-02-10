@@ -870,24 +870,24 @@ html += `
     </div>
 </div>
 
-                <div style="margin-top: 20px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #7f8c8d; margin-bottom: 8px; font-weight: bold;">
-                        <span>TIME DISTRIBUTION ACROSS ROLES</span>
-                        <span>Total: ${totalActualHours.toFixed(1)} Hours</span>
-                    </div>
-                    <div style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: #eee; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="width: ${(stats.devAct/totalActualHours*100).toFixed(1)}%; background: #2ecc71;" title="Development"></div>
-                        <div style="width: ${(stats.dbAct/totalActualHours*100).toFixed(1)}%; background: #f39c12;" title="DB Modification"></div>
-                        <div style="width: ${(stats.reworkTime/totalActualHours*100).toFixed(1)}%; background: #e74c3c;" title="Rework (Bugs)"></div>
-                        <div style="width: ${(stats.testAct/totalActualHours*100).toFixed(1)}%; background: #3498db;" title="Testing"></div>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.75em; margin-top: 10px; color: #666;">
-                        <span><i style="display:inline-block; width:10px; height:10px; background:#2ecc71; border-radius:2px; margin-right:4px;"></i> Dev: ${((stats.devAct/totalActualHours)*100).toFixed(0)}%</span>
-                        <span><i style="display:inline-block; width:10px; height:10px; background:#f39c12; border-radius:2px; margin-right:4px;"></i> DB: ${((stats.dbAct/totalActualHours)*100).toFixed(0)}%</span>
-                        <span><i style="display:inline-block; width:10px; height:10px; background:#e74c3c; border-radius:2px; margin-right:4px;"></i> Rework: ${((stats.reworkTime/totalActualHours)*100).toFixed(0)}%</span>
-                        <span><i style="display:inline-block; width:10px; height:10px; background:#3498db; border-radius:2px; margin-right:4px;"></i> Test: ${((stats.testAct/totalActualHours)*100).toFixed(0)}%</span>
-                    </div>
-                </div>
+<div style="margin-top: 30px; width: 100%; clear: both;">
+    <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #7f8c8d; margin-bottom: 8px; font-weight: bold;">
+        <span>TIME DISTRIBUTION ACROSS ROLES</span>
+        <span>Total: ${totalActualHours.toFixed(1)} Hours</span>
+    </div>
+    <div style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: #eee; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="width: ${(stats.devAct/totalActualHours*100).toFixed(1)}%; background: #2ecc71;" title="Development"></div>
+        <div style="width: ${(stats.dbAct/totalActualHours*100).toFixed(1)}%; background: #f39c12;" title="DB Modification"></div>
+        <div style="width: ${(stats.reworkTime/totalActualHours*100).toFixed(1)}%; background: #e74c3c;" title="Rework (Bugs)"></div>
+        <div style="width: ${(stats.testAct/totalActualHours*100).toFixed(1)}%; background: #3498db;" title="Testing"></div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.75em; margin-top: 10px; color: #666;">
+        <span><i style="display:inline-block; width:10px; height:10px; background:#2ecc71; border-radius:2px; margin-right:4px;"></i> Dev: ${((stats.devAct/totalActualHours)*100).toFixed(0)}%</span>
+        <span><i style="display:inline-block; width:10px; height:10px; background:#f39c12; border-radius:2px; margin-right:4px;"></i> DB: ${((stats.dbAct/totalActualHours)*100).toFixed(0)}%</span>
+        <span><i style="display:inline-block; width:10px; height:10px; background:#e74c3c; border-radius:2px; margin-right:4px;"></i> Rework: ${((stats.reworkTime/totalActualHours)*100).toFixed(0)}%</span>
+        <span><i style="display:inline-block; width:10px; height:10px; background:#3498db; border-radius:2px; margin-right:4px;"></i> Test: ${((stats.testAct/totalActualHours)*100).toFixed(0)}%</span>
+    </div>
+</div>
             </div>
         </div>`;
     }
@@ -1283,6 +1283,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
