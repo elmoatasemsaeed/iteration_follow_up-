@@ -748,6 +748,8 @@ function renderTeamView() {
         </h2>`;
 
     for (let area in grouped) {
+
+    html += `<h3 style="color: #2c3e50; margin: 20px 0 10px 10px; border-bottom: 2px solid #eee; padding-bottom: 5px;">📍 Area: ${area}</h3>`;
         // --- 1. تجميع الإحصائيات للمنطقة ---
         let stats = {
             devEst: 0, devAct: 0,
@@ -1271,6 +1273,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
