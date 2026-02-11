@@ -1215,6 +1215,33 @@ function addHoliday() {
     }
 }
 
+function calculateCycleTimeDays(startDate, endDate) {
+    if (!startDate || !endDate || isNaN(new Date(startDate)) || isNaN(new Date(endDate))) return 0;
+    
+    let start = new Date(startDate);
+    let end = new Date(endDate);
+    if (end < start) return 0;
+
+    let days = 0;
+    let current = new Date(start);
+    current.setHours(0, 0, 0, 0);
+    let finalEnd = new Date(end);
+    finalEnd.setHours(0, 0, 0, 0);
+
+    while (current <= finalEnd) {
+        const dayOfWeek = current.getDay(); // 5 للجمعة و 6 للسبت
+        const dateString = current.toISOString().split('T')[0];
+        
+        // استثناء الجمعة (5) والسبت (6) والعطلات المسجلة في مصفوفة holidays
+        if (dayOfWeek !== 5 && dayOfWeek !== 6 && !holidays.includes(dateString)) {
+            days++;
+        }
+        current.setDate(current.getDate() + 1);
+    }
+    return days;
+}
+
+
 function removeHoliday(date) {
     holidays = holidays.filter(h => h !== date);
     localStorage.setItem('holidays', JSON.stringify(holidays));
@@ -1222,3 +1249,4 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
