@@ -891,13 +891,20 @@ function renderPeopleView() {
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
-                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, stories: 0, totalCycleTime: 0, testedStories: 0 };
-}
-if (us.status === 'Tested') {
-    areaMap[area].devs[d].totalCycleTime += us.cycleTime;
-    areaMap[area].devs[d].testedStories++;
-}
+                areaMap[area].devs[d] = { 
+                    name: d, est: 0, act: 0, bugs: 0, crit: 0, 
+                    high: 0, med: 0, rwTime: 0, stories: 0, 
+                    totalCycleTime: 0, testedStories: 0 
+                };
             }
+
+            // تحديث إحصائيات الدورة الزمنية
+            if (us.status === 'Tested') {
+                areaMap[area].devs[d].totalCycleTime += us.cycleTime;
+                areaMap[area].devs[d].testedStories++;
+            }
+
+            // تحديث باقي الإحصائيات - يجب أن تكون داخل شرط (if us.devLead)
             areaMap[area].devs[d].crit += us.rework.severity.critical;
             areaMap[area].devs[d].high += us.rework.severity.high;
             areaMap[area].devs[d].med += us.rework.severity.medium;
@@ -920,7 +927,6 @@ if (us.status === 'Tested') {
         }
 
         // إحصائيات تعديل قواعد البيانات (DB Modification)
-        // نستخدم حقل us.dbEffort.names الذي قمت بتعريفه سابقاً في calculateMetrics
         if (us.dbEffort && us.dbEffort.names !== 'N/A') {
             const names = us.dbEffort.names.split(', ');
             names.forEach(dbName => {
@@ -928,7 +934,6 @@ if (us.status === 'Tested') {
                 if (!areaMap[area].dbMods[name]) {
                     areaMap[area].dbMods[name] = { name: name, est: 0, act: 0, stories: 0 };
                 }
-                // توزيع الإحصائيات (تقريبياً لكل مسؤول في الستوري الواحدة)
                 areaMap[area].dbMods[name].est += (us.dbEffort.orig / names.length);
                 areaMap[area].dbMods[name].act += (us.dbEffort.actual / names.length);
                 areaMap[area].dbMods[name].stories++;
@@ -1272,6 +1277,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
