@@ -619,15 +619,18 @@ function renderBusinessView() {
             const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
 
             // 1. الجدول العلوي المحدث مع بيانات البجات وتواريخ اليوزر ستوري
-           html += `
-    <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-            <h4>ID: ${us.id} - ${us.title}</h4>
-            <div style="text-align: right; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; line-height: 1.6;">
-                <div><b style="color: #27ae60;">US Start (First Task):</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
-                <div><b style="color: #3498db;">US Actual End (Tested):</b> ${formatDate(us.testedDate)}</div>
+         html += `
+<div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+        <h4>ID: ${us.id} - ${us.title}</h4>
+        <div style="text-align: right; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; line-height: 1.6;">
+            <div><b style="color: #27ae60;">US Start:</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
+            <div><b style="color: #3498db;">US Actual End:</b> ${formatDate(us.testedDate)}</div>
+            <div style="margin-top:5px; padding-top:5px; border-top:1px solid #eee;">
+                <b style="color: #e67e22;">Cycle Time: ${us.cycleTime || 0} Working Days</b>
             </div>
         </div>
+    </div>
                     <p>
                         <b>Dev Lead:</b> ${us.devLead} | 
                         <b>Tester Lead:</b> ${us.testerLead} | 
@@ -1263,5 +1266,6 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
