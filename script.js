@@ -884,7 +884,8 @@ function renderPeopleView() {
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
-                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, stories: 0 };
+                // إضافة totalCycleTime للحساب المجمع
+                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, stories: 0, totalCycleTime: 0 };
             }
             areaMap[area].devs[d].crit += us.rework.severity.critical;
             areaMap[area].devs[d].high += us.rework.severity.high;
@@ -894,21 +895,23 @@ function renderPeopleView() {
             areaMap[area].devs[d].bugs += us.rework.count;
             areaMap[area].devs[d].rwTime += us.rework.actualTime;
             areaMap[area].devs[d].stories++;
+            areaMap[area].devs[d].totalCycleTime += (us.cycleTime || 0); // جمع أيام الـ Cycle Time
         }
 
         // إحصائيات المختبرين (Testing)
         if (us.testerLead) {
             const t = us.testerLead;
             if (!areaMap[area].testers[t]) {
-                areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0 };
+                // إضافة totalCycleTime للحساب المجمع
+                areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0, totalCycleTime: 0 };
             }
             areaMap[area].testers[t].est += us.testEffort.orig;
             areaMap[area].testers[t].act += us.testEffort.actual;
             areaMap[area].testers[t].stories++;
+            areaMap[area].testers[t].totalCycleTime += (us.cycleTime || 0); // جمع أيام الـ Cycle Time
         }
 
         // إحصائيات تعديل قواعد البيانات (DB Modification)
-        // نستخدم حقل us.dbEffort.names الذي قمت بتعريفه سابقاً في calculateMetrics
         if (us.dbEffort && us.dbEffort.names !== 'N/A') {
             const names = us.dbEffort.names.split(', ');
             names.forEach(dbName => {
@@ -916,7 +919,6 @@ function renderPeopleView() {
                 if (!areaMap[area].dbMods[name]) {
                     areaMap[area].dbMods[name] = { name: name, est: 0, act: 0, stories: 0 };
                 }
-                // توزيع الإحصائيات (تقريبياً لكل مسؤول في الستوري الواحدة)
                 areaMap[area].dbMods[name].est += (us.dbEffort.orig / names.length);
                 areaMap[area].dbMods[name].act += (us.dbEffort.actual / names.length);
                 areaMap[area].dbMods[name].stories++;
@@ -965,6 +967,9 @@ function generateModernCards(dataObj, type) {
         const p = dataObj[name];
         const index = p.est / (p.act || 1);
         const efficiencyColor = index >= 0.9 ? '#27ae60' : (index >= 0.7 ? '#f39c12' : '#e74c3c');
+        
+        // حساب متوسط Cycle Time (متاح للـ dev و test فقط في هذا الكود)
+        const avgCycleTime = p.totalCycleTime !== undefined ? (p.totalCycleTime / (p.stories || 1)).toFixed(1) : null;
 
         return `
         <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
@@ -977,23 +982,31 @@ function generateModernCards(dataObj, type) {
                 <div title="Estimated Hours">Est: <b>${p.est.toFixed(1)}h</b></div>
                 <div title="Actual Hours">Act: <b>${p.act.toFixed(1)}h</b></div>
                 <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(2)}</b></div>
+                
+                ${avgCycleTime !== null ? 
+                    `<div title="Average Cycle Time" style="color: #e67e22;">Avg CT: <b>${avgCycleTime}d</b></div>` : 
+                    `<div style="color: #7f8c8d;">Idx Only</div>`
+                }
+
                ${type === 'dev' ? `
-    <div style="grid-column: span 2; display: flex; justify-content: space-between; font-size: 0.8em; background: #fff; padding: 4px; border: 1px solid #f8d7da; border-radius: 4px;">
-        <span style="color:#c0392b;">C: ${p.crit}</span>
-        <span style="color:#e67e22;">H: ${p.high}</span>
-        <span style="color:#2980b9;">M: ${p.med}</span>
-        <b style="border-left: 1px solid #ddd; padding-left: 5px;">Total: ${p.bugs}</b>
-    </div>
-    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
-        Rework: <b>${p.rwTime.toFixed(1)}h</b>
-    </div>
-` : ''}
+                    <div style="grid-column: span 2; display: flex; justify-content: space-between; font-size: 0.8em; background: #fff; padding: 4px; border: 1px solid #f8d7da; border-radius: 4px;">
+                        <span style="color:#c0392b;">C: ${p.crit}</span>
+                        <span style="color:#e67e22;">H: ${p.high}</span>
+                        <span style="color:#2980b9;">M: ${p.med}</span>
+                        <b style="border-left: 1px solid #ddd; padding-left: 5px;">Total: ${p.bugs}</b>
+                    </div>
+                    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
+                        Rework: <b>${p.rwTime.toFixed(1)}h</b>
+                    </div>
+                ` : ''}
                 ${type === 'test' ? `<div style="grid-column: span 2; color: #2980b9;">QA Effort Recorded</div>` : ''}
                 ${type === 'db' ? `<div style="grid-column: span 2; color: #d35400;">Data Modification</div>` : ''}
             </div>
         </div>`;
     }).join('');
-}function renderNotTestedView() {
+}
+
+function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
     // تصفية القصص التي لم تختبر بعد
     const notTested = processedStories.filter(us => us.status !== 'Tested');
@@ -1278,6 +1291,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
