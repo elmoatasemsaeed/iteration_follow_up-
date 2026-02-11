@@ -417,6 +417,20 @@ us.rework = {
     deviation: bugOrig / (bugActualTotal || 1),
     percentage: (bugActualTotal / (devActual || 1)) * 100
 };
+
+        let minDate = Infinity;
+        us.tasks.forEach(t => {
+            const taskDate = new Date(t['Activated Date']).getTime();
+            if (!isNaN(taskDate) && taskDate < minDate) minDate = taskDate;
+        });
+
+        const firstTaskStart = minDate === Infinity ? null : new Date(minDate);
+        const storyEndDate = us.testedDate ? new Date(us.testedDate) : null;
+
+        // حساب السايكل تايم وتخزينه في كائن الستوري
+        us.cycleTime = calculateCycleTimeDays(firstTaskStart, storyEndDate);
+        // -----------------------
+
         calculateTimeline(us);
     });
 }
@@ -1249,4 +1263,5 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
