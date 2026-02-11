@@ -659,30 +659,24 @@ function renderBusinessView() {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Dev (Excl. DB)</td>
-                                <td>${us.devEffort.orig.toFixed(1)}</td>
-                                <td>${us.devEffort.actual.toFixed(1)}</td>
-                                <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5; border: 1px solid #ffebeb;">
-                                    <div style="font-weight:bold; font-size:1.1em; border-bottom:1px solid #ddd; margin-bottom:5px;">${us.rework.count}</div>
-                                    <div style="font-size: 0.8em; display: flex; flex-direction: column; gap: 2px;">
-                                        <span style="color:#c0392b;">Crit: ${us.rework.severity.critical}</span>
-                                        <span style="color:#e67e22;">High: ${us.rework.severity.high}</span>
-                                        <span style="color:#2980b9;">Med: ${us.rework.severity.medium}</span>
-                                    </div>
-                                </td>
-                                <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5;">
-                                    <b>${us.rework.actualTime.toFixed(1)}h</b>
-                                </td>
-                                <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
-                            </tr>
-                            <tr style="background: #f4ecf7;">
-                                <td>DB Modification</td>
-                                <td>${us.dbEffort.orig.toFixed(1)}</td>
-                                <td>${us.dbEffort.actual.toFixed(1)}</td>
-                                <td class="${us.dbEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.dbEffort.dev.toFixed(2)}</b></td>
-                            </tr>
-                            <tr>
+                           <tr>
+    <td>Dev (Excl. DB)</td>
+    <td>${us.devEffort.orig.toFixed(1)}</td>
+    <td>${us.devEffort.actual.toFixed(1)}</td>
+    <td class="${us.devEffort.ratio < 1 ? 'alert-red' : ''}"><b>${us.devEffort.ratio.toFixed(2)}</b></td>
+</tr>
+<tr style="background: #f4ecf7;">
+    <td>DB Modification</td>
+    <td>${us.dbEffort.orig.toFixed(1)}</td>
+    <td>${us.dbEffort.actual.toFixed(1)}</td>
+    <td class="${us.dbEffort.ratio < 1 ? 'alert-red' : ''}"><b>${us.dbEffort.ratio.toFixed(2)}</b></td>
+</tr>
+<tr>
+    <td>Test</td>
+    <td>${us.testEffort.orig.toFixed(1)}</td>
+    <td>${us.testEffort.actual.toFixed(1)}</td>
+    <td class="${us.testEffort.ratio < 1 ? 'alert-red' : ''}"><b>${us.testEffort.ratio.toFixed(2)}</b></td>
+</tr>
                                 <td>Test</td>
                                 <td>${us.testEffort.orig.toFixed(1)}</td>
                                 <td>${us.testEffort.actual.toFixed(1)}</td>
@@ -1277,6 +1271,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
