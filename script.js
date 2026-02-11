@@ -357,18 +357,23 @@ function processData() {
 function calculateMetrics() {
     processedStories.forEach(us => {
         let devOrig = 0, devActual = 0, testOrig = 0, testActual = 0;
-        let dbOrig = 0, dbActual = 0, dbNames = new Set(); // متغيرات جديدة للـ DB
+        let dbOrig = 0, dbActual = 0, dbNames = new Set();
+        let minDate = Infinity; // لتحديد أول تاريخ تشغيل
 
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
             const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
             const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
+            
+            // حساب التاريخ الأدنى أثناء المرور على الـ tasks بدلاً من عمل map منفصل
+            const taskDate = new Date(t['Activated Date']).getTime();
+            if (!isNaN(taskDate) && taskDate < minDate) minDate = taskDate;
 
             if (activity === 'DB Modification') {
                 dbOrig += orig;
                 dbActual += actDev;
-                if (t['Assigned To']) dbNames.add(t['Assigned To']); // جمع أسماء مسؤولي الـ DB
+                if (t['Assigned To']) dbNames.add(t['Assigned To']);
             } else if (activity === 'Development') {
                 devOrig += orig;
                 devActual += actDev;
@@ -378,46 +383,41 @@ function calculateMetrics() {
             }
         });
 
-        // تخزين بيانات الـ DB
-        us.dbEffort = { 
-            orig: dbOrig, 
-            actual: dbActual, 
-            dev: dbOrig / (dbActual || 1),
-            names: Array.from(dbNames).join(', ') || 'N/A'
+        // تجميع النتائج
+        us.dbEffort = { orig: dbOrig, actual: dbActual, ratio: dbOrig / (dbActual || 1), names: Array.from(dbNames).join(', ') || 'N/A' };
+        us.devEffort = { orig: devOrig, actual: devActual, ratio: devOrig / (devActual || 1) };
+        us.testEffort = { orig: testOrig, actual: testActual, ratio: testOrig / (testActual || 1) };
+
+        // حساب الـ Rework
+        let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
+        us.severityCounts = { critical: 0, high: 0, medium: 0 };
+
+        us.bugs.forEach(b => {
+            bugOrig += parseFloat(b['Original Estimation']) || 0;
+            let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
+            bugActualTotal += bDevAct;
+            if (bDevAct === 0) bugsNoTimesheet++;
+
+            const sev = b['Severity'] || "";
+            if (sev.includes("1 - Critical")) us.severityCounts.critical++;
+            else if (sev.includes("2 - High")) us.severityCounts.high++;
+            else if (sev.includes("3 - Medium")) us.severityCounts.medium++;
+        });
+
+        us.rework = {
+            timeEstimation: bugOrig,
+            actualTime: bugActualTotal,
+            count: us.bugs.length,
+            severity: us.severityCounts,
+            missingTimesheet: bugsNoTimesheet,
+            percentage: (bugActualTotal / (devActual || 1)) * 100
         };
 
-        us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
-        us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
-
-        // ... بقية الكود الخاص بالـ Rework والـ Timeline كما هو دون تغيير ...
-       let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
-
-// كائن جديد لتخزين تفاصيل الخطورة
-us.severityCounts = { critical: 0, high: 0, medium: 0 };
-
-us.bugs.forEach(b => {
-    bugOrig += parseFloat(b['Original Estimation']) || 0;
-    let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
-    bugActualTotal += bDevAct;
-    if (bDevAct === 0) bugsNoTimesheet++;
-
-    // تصنيف الخطورة بناءً على العمود الجديد
-    const sev = b['Severity'] || "";
-    if (sev.includes("1 - Critical")) us.severityCounts.critical++;
-    else if (sev.includes("2 - High")) us.severityCounts.high++;
-    else if (sev.includes("3 - Medium")) us.severityCounts.medium++;
-});
-
-us.rework = {
-    timeEstimation: bugOrig,
-    actualTime: bugActualTotal,
-    count: us.bugs.length,
-    severity: us.severityCounts, // أضفناها هنا
-    missingTimesheet: bugsNoTimesheet,
-    deviation: bugOrig / (bugActualTotal || 1),
-    percentage: (bugActualTotal / (devActual || 1)) * 100
-};
-        calculateTimeline(us);
+        // حساب الـ Cycle Time
+        const firstTaskStart = minDate === Infinity ? null : new Date(minDate);
+        us.cycleTime = calculateCycleTimeDays(firstTaskStart, us.testedDate);
+        
+        if (typeof calculateTimeline === "function") calculateTimeline(us);
     });
 }
 function calculateTimeline(us) {
@@ -580,6 +580,33 @@ function showView(viewId) {
     if (viewId === 'users-view') renderUsersTable();
 }
 
+
+function calculateCycleTimeDays(startDate, endDate) {
+    if (!startDate || !endDate || isNaN(new Date(startDate)) || isNaN(new Date(endDate))) return 0;
+    
+    let start = new Date(startDate);
+    let end = new Date(endDate);
+    if (end < start) return 0;
+
+    let days = 0;
+    let current = new Date(start);
+    current.setHours(0, 0, 0, 0);
+    let finalEnd = new Date(end);
+    finalEnd.setHours(0, 0, 0, 0);
+
+    while (current <= finalEnd) {
+        const dayOfWeek = current.getDay();
+        const dateString = current.toISOString().split('T')[0];
+        
+        // استثناء الجمعة (5) والسبت (6) والعطلات
+        if (dayOfWeek !== 5 && dayOfWeek !== 6 && !holidays.includes(dateString)) {
+            days++;
+        }
+        current.setDate(current.getDate() + 1);
+    }
+    return days;
+}
+
 function renderBusinessView() {
     const container = document.getElementById('business-view');
     const grouped = groupBy(processedStories, 'businessArea');
@@ -612,6 +639,7 @@ function renderBusinessView() {
             <div style="text-align: right; font-size: 0.85em; color: #2c3e50; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; line-height: 1.6;">
                 <div><b style="color: #27ae60;">US Start (First Task):</b> ${formatDate(sortedTasks[0]?.expectedStart)}</div>
                 <div><b style="color: #3498db;">US Actual End (Tested):</b> ${formatDate(us.testedDate)}</div>
+                <div><b style="color: #e67e22;">Cycle Time:</b> ${us.cycleTime} Working Days</div>
             </div>
         </div>
                     <p>
@@ -760,7 +788,9 @@ function renderBusinessView() {
             reworkTime: 0, bugsCount: 0,
             sevCrit: 0, sevHigh: 0, sevMed: 0,
             totalStories: grouped[area].length,
-            completedStories: grouped[area].filter(us => us.status === 'Tested').length
+            completedStories: grouped[area].filter(us => us.status === 'Tested').length,
+            totalCycleTime: 0,
+            testedCount: 0
         };
 
         grouped[area].forEach(us => {
@@ -775,6 +805,10 @@ function renderBusinessView() {
             stats.sevCrit += us.rework.severity.critical;
             stats.sevHigh += us.rework.severity.high;
             stats.sevMed += us.rework.severity.medium;
+            if (us.status === 'Tested' && us.cycleTime > 0) {
+                stats.totalCycleTime += us.cycleTime;
+            stats.testedCount++;
+}
         });
 
         const totalActualHours = stats.devAct + stats.testAct + stats.dbAct + stats.reworkTime;
@@ -786,6 +820,7 @@ function renderBusinessView() {
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
         const teamIndex = totalTeamEst / (totalTeamAct || 1);
         const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
+        const avgCycleTime = stats.testedCount > 0 ? (stats.totalCycleTime / stats.testedCount).toFixed(1) : 0;
 
         html += `
         <div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
@@ -811,6 +846,7 @@ function renderBusinessView() {
                             <div style="display: flex; justify-content: space-between;"><span>Total Actual:</span><b>${totalActualHours.toFixed(1)}h</b></div>
                             <div style="display: flex; justify-content: space-between;"><span>Pure Dev:</span><b>${stats.devAct.toFixed(1)}h</b></div>
                             <div style="display: flex; justify-content: space-between;"><span>DB Mods:</span><b>${stats.dbAct.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Avg Cycle Time:</span><b>${avgCycleTime} Days</b></div>
                         </div>
                     </div>
 
@@ -855,7 +891,12 @@ function renderPeopleView() {
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
-                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, stories: 0 };
+                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, stories: 0, totalCycleTime: 0, testedStories: 0 };
+}
+if (us.status === 'Tested') {
+    areaMap[area].devs[d].totalCycleTime += us.cycleTime;
+    areaMap[area].devs[d].testedStories++;
+}
             }
             areaMap[area].devs[d].crit += us.rework.severity.critical;
             areaMap[area].devs[d].high += us.rework.severity.high;
@@ -934,37 +975,46 @@ function generateModernCards(dataObj, type) {
 
     return keys.map(name => {
         const p = dataObj[name];
+        
+        // 1. حسابات الكفاءة ودورة الوقت لكل شخص
         const index = p.est / (p.act || 1);
         const efficiencyColor = index >= 0.9 ? '#27ae60' : (index >= 0.7 ? '#f39c12' : '#e74c3c');
+        const avgCycle = p.testedStories > 0 ? (p.totalCycleTime / p.testedStories).toFixed(1) : 0;
 
+        // 2. بناء محتوى الـ HTML
         return `
-        <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+        <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; shadow: 0 2px 4px rgba(0,0,0,0.03);">
             <div style="font-weight: bold; color: #34495e; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between;">
                 <span>${p.name}</span>
-                <span style="font-size: 0.75em; color: #7f8c8d;">${p.stories} Stories</span>
+                <span style="font-size: 0.75em; color: #7f8c8d;">${p.stories || 0} Stories</span>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
                 <div title="Estimated Hours">Est: <b>${p.est.toFixed(1)}h</b></div>
                 <div title="Actual Hours">Act: <b>${p.act.toFixed(1)}h</b></div>
                 <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(2)}</b></div>
-               ${type === 'dev' ? `
-    <div style="grid-column: span 2; display: flex; justify-content: space-between; font-size: 0.8em; background: #fff; padding: 4px; border: 1px solid #f8d7da; border-radius: 4px;">
-        <span style="color:#c0392b;">C: ${p.crit}</span>
-        <span style="color:#e67e22;">H: ${p.high}</span>
-        <span style="color:#2980b9;">M: ${p.med}</span>
-        <b style="border-left: 1px solid #ddd; padding-left: 5px;">Total: ${p.bugs}</b>
-    </div>
-    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
-        Rework: <b>${p.rwTime.toFixed(1)}h</b>
-    </div>
-` : ''}
-                ${type === 'test' ? `<div style="grid-column: span 2; color: #2980b9;">QA Effort Recorded</div>` : ''}
-                ${type === 'db' ? `<div style="grid-column: span 2; color: #d35400;">Data Modification</div>` : ''}
+                <div title="Avg Cycle Time">Avg Cycle: <b>${avgCycle}d</b></div>
+
+                ${type === 'dev' ? `
+                    <div style="grid-column: span 2; display: flex; justify-content: space-between; font-size: 0.8em; background: #fff; padding: 4px; border: 1px solid #f8d7da; border-radius: 4px; margin-top:4px;">
+                        <span style="color:#c0392b;">C: ${p.crit || 0}</span>
+                        <span style="color:#e67e22;">H: ${p.high || 0}</span>
+                        <span style="color:#2980b9;">M: ${p.med || 0}</span>
+                        <b style="border-left: 1px solid #ddd; padding-left: 5px;">Total: ${p.bugs || 0}</b>
+                    </div>
+                    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
+                        Rework: <b>${(p.rwTime || 0).toFixed(1)}h</b>
+                    </div>
+                ` : ''}
+
+                ${type === 'test' ? `<div style="grid-column: span 2; color: #2980b9; font-weight:bold; margin-top:5px;">QA Effort Recorded</div>` : ''}
+                ${type === 'db' ? `<div style="grid-column: span 2; color: #d35400; font-weight:bold; margin-top:5px;">Data Modification</div>` : ''}
             </div>
         </div>`;
     }).join('');
-}function renderNotTestedView() {
+}
+
+function renderNotTestedView() {
     const container = document.getElementById('not-tested-view');
     // تصفية القصص التي لم تختبر بعد
     const notTested = processedStories.filter(us => us.status !== 'Tested');
@@ -1222,6 +1272,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
