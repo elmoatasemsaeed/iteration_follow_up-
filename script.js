@@ -770,6 +770,8 @@ function renderTeamView() {
         </h2>`;
 
     for (let area in grouped) {
+        html += `<h3 style="color: #2c3e50; margin: 20px 0 10px 10px; border-bottom: 2px solid #eee; padding-bottom: 5px;">📍 Area: ${area}</h3>`;
+        
         let stats = {
             devEst: 0, devAct: 0,
             testEst: 0, testAct: 0,
@@ -777,7 +779,7 @@ function renderTeamView() {
             reworkTime: 0, bugsCount: 0,
             sevCrit: 0, sevHigh: 0, sevMed: 0,
             totalStories: grouped[area].length,
-            totalCycleTime: 0, // لتجميع أيام Cycle Time
+            totalCycleTime: 0, // إضافة لتجميع Cycle Time
             completedStories: grouped[area].filter(us => us.status === 'Tested').length
         };
 
@@ -793,19 +795,23 @@ function renderTeamView() {
             stats.sevCrit += us.rework.severity.critical;
             stats.sevHigh += us.rework.severity.high;
             stats.sevMed += us.rework.severity.medium;
-            stats.totalCycleTime += (us.cycleTime || 0); // إضافة قيمة الستوري الحالية
+            stats.totalCycleTime += (us.cycleTime || 0); // تجميع أيام Cycle Time
         });
 
-        const avgCycleTime = (stats.totalCycleTime / (stats.totalStories || 1)).toFixed(1);
+        const totalActualHours = stats.devAct + stats.testAct + stats.dbAct + stats.reworkTime;
         const devIndex = stats.devEst / (stats.devAct || 1);
         const testIndex = stats.testEst / (stats.testAct || 1);
+        const dbIndex = stats.dbEst / (stats.dbAct || 1);
+        
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
         const teamIndex = totalTeamEst / (totalTeamAct || 1);
         const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
+        
+        // حساب المتوسط
+        const avgCycleTime = (stats.totalCycleTime / (stats.totalStories || 1)).toFixed(1);
 
         html += `
-        <h3 style="color: #2c3e50; margin: 20px 0 10px 10px; border-bottom: 2px solid #eee; padding-bottom: 5px;">📍 Area: ${area}</h3>
         <div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
             <div style="padding: 20px;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
@@ -813,11 +819,16 @@ function renderTeamView() {
                     <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
                         <h5 style="margin: 0 0 10px 0; color: #27ae60; font-size: 0.9em; text-transform: uppercase;">Productivity Indices</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;"><span>Dev Index:</span><b>${devIndex.toFixed(2)}</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Test Index:</span><b>${testIndex.toFixed(2)}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Dev Index:</span><b style="color: ${devIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${devIndex.toFixed(2)}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Test Index:</span><b style="color: ${testIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${testIndex.toFixed(2)}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>DB Index:</span><b style="color: ${dbIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${dbIndex.toFixed(2)}</b></div>
                             <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc; color: #e67e22;">
-                                <span style="font-weight: bold;">Avg. Cycle Time:</span>
+                                <span style="font-weight: bold;">Avg Cycle Time:</span>
                                 <b>${avgCycleTime} Days</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc;">
+                                <span style="font-weight: bold;">Team Total Index:</span>
+                                <b style="color: ${teamIndex < 0.8 ? '#e74c3c' : '#2c3e50'}; font-size: 1.1em;">${teamIndex.toFixed(2)}</b>
                             </div>
                         </div>
                     </div>
@@ -825,16 +836,21 @@ function renderTeamView() {
                     <div style="background: #f0f7ff; border: 1px solid #d1ecf1; padding: 15px; border-radius: 10px;">
                         <h5 style="margin: 0 0 10px 0; color: #2980b9; font-size: 0.9em; text-transform: uppercase;">Effort Allocation</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;"><span>Total Stories:</span><b>${stats.totalStories}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Total Actual:</span><b>${totalActualHours.toFixed(1)}h</b></div>
                             <div style="display: flex; justify-content: space-between;"><span>Pure Dev:</span><b>${stats.devAct.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between; font-weight: bold; border-top: 1px solid #ddd; padding-top:5px;"><span>Team Index:</span><b style="color: ${teamIndex < 0.8 ? '#e74c3c' : '#2c3e50'}">${teamIndex.toFixed(2)}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>DB Mods:</span><b>${stats.dbAct.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Stories:</span><b>${stats.totalStories} (Done: ${stats.completedStories})</b></div>
                         </div>
                     </div>
 
                     <div style="background: #fff5f5; border: 1px solid #f8d7da; padding: 15px; border-radius: 10px;">
                         <h5 style="margin: 0 0 10px 0; color: #c0392b; font-size: 0.9em; text-transform: uppercase;">Quality Metrics</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;"><span>Bugs Found:</span><b>${stats.bugsCount}</b></div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Bugs Found:</span>
+                                <b>${stats.bugsCount} <span style="font-size: 0.8em; font-weight: normal;">(C:${stats.sevCrit}/H:${stats.sevHigh}/M:${stats.sevMed})</span></b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;"><span>Rework Time:</span><b style="color: #c0392b;">${stats.reworkTime.toFixed(1)}h</b></div>
                             <div style="display: flex; justify-content: space-between;"><span>Rework Ratio:</span><b style="color: #c0392b;">${reworkRatio}%</b></div>
                         </div>
                     </div>
@@ -1262,6 +1278,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
