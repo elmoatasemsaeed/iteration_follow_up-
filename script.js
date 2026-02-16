@@ -644,7 +644,7 @@ function renderBusinessView() {
                                 <th>Actual (H)</th>
                                 <th>Bugs Count</th>
                                 <th>Bugs Work (H)</th>
-                                <th>Index</th>
+                                <th>Effort Variance</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1050,7 +1050,7 @@ function renderNotTestedView() {
                     
                     <table>
                         <thead>
-                            <tr><th>Type</th><th>Est. (H)</th><th>Actual (H)</th><th>Index</th></tr>
+                            <tr><th>Type</th><th>Est. (H)</th><th>Actual (H)</th><th>Effort Variance</th></tr>
                         </thead>
                         <tbody>
                             <tr><td>Dev</td><td>${us.devEffort.orig}</td><td>${us.devEffort.actual}</td><td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}">${us.devEffort.dev.toFixed(2)}</td></tr>
@@ -1193,7 +1193,7 @@ function renderIterationView() {
                         <tr style="text-align: left; color: #7f8c8d; border-bottom: 2px solid #f4f4f4;">
                             <th style="padding: 10px 5px;">Business Area</th>
                             <th>Actual (H)</th>
-                            <th>Index</th>
+                            <th>Effort Variance</th>
                             <th>Health</th>
                         </tr>
                     </thead>
@@ -1291,6 +1291,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
