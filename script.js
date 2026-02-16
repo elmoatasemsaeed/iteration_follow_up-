@@ -819,15 +819,15 @@ function renderTeamView() {
                     <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
                         <h5 style="margin: 0 0 10px 0; color: #27ae60; font-size: 0.9em; text-transform: uppercase;">Productivity Indices</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;"><span>Dev Index:</span><b style="color: ${devIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${devIndex.toFixed(2)}</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Test Index:</span><b style="color: ${testIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${testIndex.toFixed(2)}</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>DB Index:</span><b style="color: ${dbIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${dbIndex.toFixed(2)}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Dev Effort Variance:</span><b style="color: ${devIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${devIndex.toFixed(2)}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Test Effort Variance:</span><b style="color: ${testIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${testIndex.toFixed(2)}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>DB Effort Variance:</span><b style="color: ${dbIndex < 0.8 ? '#e74c3c' : '#27ae60'}">${dbIndex.toFixed(2)}</b></div>
                             <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc; color: #e67e22;">
                                 <span style="font-weight: bold;">Avg Cycle Time:</span>
                                 <b>${avgCycleTime} Days</b>
                             </div>
                             <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc;">
-                                <span style="font-weight: bold;">Team Total Index:</span>
+                                <span style="font-weight: bold;">Team Total Effort Variance:</span>
                                 <b style="color: ${teamIndex < 0.8 ? '#e74c3c' : '#2c3e50'}; font-size: 1.1em;">${teamIndex.toFixed(2)}</b>
                             </div>
                         </div>
@@ -1151,7 +1151,7 @@ function renderIterationView() {
             </div>
 
             <div class="card" style="border-top: 5px solid #3498db; background: #fff;">
-                <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Delivery Index</h5>
+                <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Effort Variance</h5>
                 <div style="font-size: 2em; font-weight: bold; color: #3498db;">${deliveryIndex.toFixed(2)}</div>
                 <p style="font-size: 0.7em; color: #95a5a6; margin: 5px 0 0;">Est. vs Actual Efficiency</p>
             </div>
@@ -1291,6 +1291,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
