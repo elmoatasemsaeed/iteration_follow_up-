@@ -422,31 +422,34 @@ function calculateMetrics() {
             estimation: 0,
             devActual: 0,
             testActual: 0,
-            count: us.reviews ? us.reviews.length : 0,
+            count: 0,
             severity: { critical: 0, high: 0, medium: 0 }
         };
 
         if (us.reviews) {
-            us.reviews.forEach(r => {
-                const rEst = parseFloat(r['Original Estimation']) || 0;
-                const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
-                const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
-                const activity = r['Activity'];
-                const sev = r['Severity'] || "";
+    us.reviews.forEach(r => {
+        const rEst = parseFloat(r['Original Estimation']) || 0;
+        const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
+        const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
+        const activity = r['Activity'];
+        const sev = r['Severity'] || "";
 
-                us.reviewStats.estimation += rEst;
+        // نجمع التقدير الكلي وساعات التيستر (للاستخدام اللاحق)
+        us.reviewStats.estimation += rEst;
+        us.reviewStats.testActual += rTestAct;
 
-                if (activity === 'Development') {
-                    us.reviewStats.devActual += rDevAct;
-                } else if (activity === 'Testing') {
-                    us.reviewStats.testActual += rTestAct;
-                }
+        // التعديل المطلوب: حساب الريفيو الخاص بالمطورين فقط في العدد والساعات
+        if (activity === 'Development') {
+            us.reviewStats.devActual += rDevAct;
+            us.reviewStats.count++; // زيادة العدد فقط إذا كانت المهمة تطوير
 
-                if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
-                else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
-                else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
-            });
+            // حساب الخطورة (Severity) بناءً على ريفيو المطورين أيضاً
+            if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
+            else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
+            else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
         }
+    });
+}
 
         // 4. حساب التوقيت والـ Cycle Time
         let minDate = Infinity;
@@ -1402,6 +1405,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
