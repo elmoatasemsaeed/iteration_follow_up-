@@ -422,6 +422,7 @@ function calculateMetrics() {
             estimation: 0,
             devActual: 0, 
             testActual: 0,
+            totalActual: 0,
             devCount: 0, // عدد البجات التي عمل عليها المطور
             testCount: 0,
             count: us.reviews ? us.reviews.length : 0,
@@ -439,19 +440,20 @@ function calculateMetrics() {
                 us.reviewStats.estimation += rEst;
 
                 // التعديل: فصل العد والوقت بناءً على الـ Activity
-                if (activity === 'Development') {
-                    us.reviewStats.devActual += rDevAct;
-                    us.reviewStats.devCount++; // عد بجات المطور فقط
-                } else if (activity === 'Testing') {
-                    us.reviewStats.testActual += rTestAct;
-                    us.reviewStats.testCount++;
-                }
+               if (activity === 'Development') {
+            us.reviewStats.devActual += rDevAct;
+            us.reviewStats.devCount++;
+        } else if (activity === 'Testing') {
+            us.reviewStats.testActual += rTestAct;
+            us.reviewStats.testCount++;
+        }
 
                 if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
                 else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
                 else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
             });
-        }
+        us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
+}
         // 4. حساب التوقيت والـ Cycle Time
         let minDate = Infinity;
         us.tasks.forEach(t => {
@@ -703,7 +705,7 @@ function renderBusinessView() {
             </td>
             <td rowspan="3" style="text-align:center; vertical-align:middle; background:#f5f3ff;">
                 <b style="color:#8e44ad;">${(us.reviewStats.devActual + us.reviewStats.testActual).toFixed(1)}h</b>
-            </td>
+</td>
             <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
         </tr>
         <tr style="background: #f4ecf7;">
@@ -1406,6 +1408,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
