@@ -388,7 +388,7 @@ function calculateMetrics() {
             dev: dbOrig / (dbActual || 1),
             names: Array.from(dbNames).join(', ') || 'N/A'
         };
-        us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (actDev || 1) };
+        us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
         // 2. حساب الـ Rework (Bugs العادية)
@@ -1323,6 +1323,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
