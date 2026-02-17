@@ -418,29 +418,28 @@ function calculateMetrics() {
         };
 
         // 3. حساب الـ Review (الطلب الجديد)
-       us.reviewStats = {
-            estimation: 0,
-            devActual: 0, 
-            testActual: 0,
-            totalActual: 0,
-            devCount: 0, // عدد البجات التي عمل عليها المطور
-            testCount: 0,
-            count: us.reviews ? us.reviews.length : 0,
-            severity: { critical: 0, high: 0, medium: 0 }
-        };
+us.reviewStats = {
+    estimation: 0,
+    devActual: 0, 
+    testActual: 0,
+    totalActual: 0, // سيتم تحديثه في النهاية
+    devCount: 0,
+    testCount: 0,
+    count: us.reviews ? us.reviews.length : 0,
+    severity: { critical: 0, high: 0, medium: 0 }
+};
 
-        if (us.reviews) {
-            us.reviews.forEach(r => {
-                const rEst = parseFloat(r['Original Estimation']) || 0;
-                const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
-                const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
-                const activity = r['Activity'];
-                const sev = r['Severity'] || "";
+if (us.reviews) {
+    us.reviews.forEach(r => {
+        const rEst = parseFloat(r['Original Estimation']) || 0;
+        const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
+        const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
+        const activity = r['Activity'];
+        const sev = r['Severity'] || "";
 
-                us.reviewStats.estimation += rEst;
+        us.reviewStats.estimation += rEst;
 
-                // التعديل: فصل العد والوقت بناءً على الـ Activity
-               if (activity === 'Development') {
+        if (activity === 'Development') {
             us.reviewStats.devActual += rDevAct;
             us.reviewStats.devCount++;
         } else if (activity === 'Testing') {
@@ -448,11 +447,12 @@ function calculateMetrics() {
             us.reviewStats.testCount++;
         }
 
-                if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
-                else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
-                else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
-            });
-        us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
+        if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
+        else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
+        else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
+    });
+
+    us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
 }
         // 4. حساب التوقيت والـ Cycle Time
         let minDate = Infinity;
@@ -1408,6 +1408,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
