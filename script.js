@@ -666,48 +666,56 @@ function renderBusinessView() {
                         <b style="color: #8e44ad;">DB Mod:</b> ${us.dbEffort.names}
                     </p>
 <table>
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Est. (H)</th>
-                                <th>Actual (H)</th>
-                                <th>Bugs Count</th>
-                                <th>Bugs Work (H)</th>
-                                <th>Effort Variance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Dev (Excl. DB)</td>
-                                <td>${us.devEffort.orig.toFixed(1)}</td>
-                                <td>${us.devEffort.actual.toFixed(1)}</td>
-                                <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5; border: 1px solid #ffebeb;">
-                                    <div style="font-weight:bold; font-size:1.1em; border-bottom:1px solid #ddd; margin-bottom:5px;">${us.rework.count}</div>
-                                    <div style="font-size: 0.8em; display: flex; flex-direction: column; gap: 2px;">
-                                        <span style="color:#c0392b;">Crit: ${us.rework.severity.critical}</span>
-                                        <span style="color:#e67e22;">High: ${us.rework.severity.high}</span>
-                                        <span style="color:#2980b9;">Med: ${us.rework.severity.medium}</span>
-                                    </div>
-                                </td>
-                                <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5;">
-                                    <b>${us.rework.actualTime.toFixed(1)}h</b>
-                                </td>
-                                <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
-                            </tr>
-                            <tr style="background: #f4ecf7;">
-                                <td>DB Modification</td>
-                                <td>${us.dbEffort.orig.toFixed(1)}</td>
-                                <td>${us.dbEffort.actual.toFixed(1)}</td>
-                                <td class="${us.dbEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.dbEffort.dev.toFixed(2)}</b></td>
-                            </tr>
-                            <tr>
-                                <td>Test</td>
-                                <td>${us.testEffort.orig.toFixed(1)}</td>
-                                <td>${us.testEffort.actual.toFixed(1)}</td>
-                                <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.testEffort.dev.toFixed(2)}</b></td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Est. (H)</th>
+            <th>Actual (H)</th>
+            <th>Bugs / Reviews</th> <th>Bugs Work (H)</th>
+            <th>Review Work (H)</th> <th>Effort Variance</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Dev (Excl. DB)</td>
+            <td>${us.devEffort.orig.toFixed(1)}</td>
+            <td>${us.devEffort.actual.toFixed(1)}</td>
+            <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fcfcfc; border: 1px solid #eee;">
+                <div style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
+                    <b style="color:#c0392b;">Bugs: ${us.rework.count}</b>
+                    <div style="font-size: 0.75em; color: #666;">
+                        (C:${us.rework.severity.critical} | H:${us.rework.severity.high} | M:${us.rework.severity.medium})
+                    </div>
+                </div>
+                <div>
+                    <b style="color:#8e44ad;">Reviews: ${us.reviewStats.count}</b>
+                    <div style="font-size: 0.75em; color: #666;">
+                        (C:${us.reviewStats.severity.critical} | H:${us.reviewStats.severity.high} | M:${us.reviewStats.severity.medium})
+                    </div>
+                </div>
+            </td>
+            <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5;">
+                <b style="color:#c0392b;">${us.rework.actualTime.toFixed(1)}h</b>
+            </td>
+            <td rowspan="3" style="text-align:center; vertical-align:middle; background:#f5f3ff;">
+                <b style="color:#8e44ad;">${(us.reviewStats.devActual + us.reviewStats.testActual).toFixed(1)}h</b>
+            </td>
+            <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
+        </tr>
+        <tr style="background: #f4ecf7;">
+            <td>DB Modification</td>
+            <td>${us.dbEffort.orig.toFixed(1)}</td>
+            <td>${us.dbEffort.actual.toFixed(1)}</td>
+            <td class="${us.dbEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.dbEffort.dev.toFixed(2)}</b></td>
+        </tr>
+        <tr>
+            <td>Test</td>
+            <td>${us.testEffort.orig.toFixed(1)}</td>
+            <td>${us.testEffort.actual.toFixed(1)}</td>
+            <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.testEffort.dev.toFixed(2)}</b></td>
+        </tr>
+    </tbody>
+</table>
 
                     <h5 style="margin: 20px 0 10px 0; color: #2c3e50;">Tasks Timeline & Schedule:</h5>
                     <table style="font-size: 0.85em; width: 100%;">
@@ -755,28 +763,33 @@ function renderBusinessView() {
 
             html += `
                 <div style="background: #fdfdfd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h5 style="margin: 0; color: #2c3e50;">Quality & Rework Analysis</h5>
-                        <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
-                                     color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
-                                     padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
-                            ${us.rework.missingTimesheet > 0 
-                                ? `⚠️ ${us.rework.missingTimesheet} Bugs missing Timesheet` 
-                                : '✅ All bugs recorded'}
-                        </span>
-                    </div>
-                    <div style="display: flex; gap: 20px; align-items: center;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 5px;">
-                                <span>Rework Ratio: <b>${us.rework.percentage.toFixed(1)}%</b></span>
-                                <span style="color: #7f8c8d;">Formula: (Bug Time / Dev Time)</span>
-                            </div>
-                            <div style="width: 100%; background: #eee; height: 10px; border-radius: 5px; overflow: hidden;">
-                                <div style="width: ${progressWidth}%; background: ${progressBarColor}; height: 100%; transition: width 0.5s;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h5 style="margin: 0; color: #2c3e50;">Quality & Review Analysis</h5>
+        <div style="display: flex; gap: 10px;">
+            <span style="background: #f5f3ff; color: #5b21b6; padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid #ddd;">
+                🔎 ${us.reviewStats.count} Review Bugs
+            </span>
+            <span style="background: ${us.rework.missingTimesheet > 0 ? '#fff3cd' : '#d4edda'}; 
+                         color: ${us.rework.missingTimesheet > 0 ? '#856404' : '#155724'}; 
+                         padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid">
+                ${us.rework.missingTimesheet > 0 ? `⚠️ Timesheet Missing` : '✅ Bugs Logged'}
+            </span>
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 20px; align-items: center;">
+        <div style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 5px;">
+                <span>Combined Rework & Review Ratio: <b>${(( (us.rework.actualTime + us.reviewStats.devActual) / (us.devEffort.actual || 1)) * 100).toFixed(1)}%</b></span>
+                <span style="color: #7f8c8d;">(Bugs + Review Dev Time) / Pure Dev Time</span>
+            </div>
+            <div style="width: 100%; background: #eee; height: 10px; border-radius: 5px; overflow: hidden; display: flex;">
+                <div style="width: ${Math.min((us.rework.actualTime / (us.devEffort.actual || 1) * 100), 100)}%; background: #e74c3c; height: 100%;"></div>
+                <div style="width: ${Math.min((us.reviewStats.devActual / (us.devEffort.actual || 1) * 100), 100)}%; background: #8e44ad; height: 100%;"></div>
+            </div>
+        </div>
+    </div>
+</div>               </div>
             </div>`; 
         });
         html += `</div>`;
@@ -1320,6 +1333,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
