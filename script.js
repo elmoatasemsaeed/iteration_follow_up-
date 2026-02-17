@@ -342,12 +342,14 @@ function processData() {
                 activatedDate: row['Activated Date'],
                 status: row['State'],
                 tasks: [],
-                bugs: []
+                bugs: [],
+                reviews: []
             };
             processedStories.push(currentStory);
         } else if (currentStory) {
             if (type === 'Task') currentStory.tasks.push(row);
             if (type === 'Bug') currentStory.bugs.push(row);
+            if (type === 'Review') currentStory.reviews.push(row);
         }
     });
 
@@ -357,8 +359,9 @@ function processData() {
 function calculateMetrics() {
     processedStories.forEach(us => {
         let devOrig = 0, devActual = 0, testOrig = 0, testActual = 0;
-        let dbOrig = 0, dbActual = 0, dbNames = new Set(); // متغيرات جديدة للـ DB
+        let dbOrig = 0, dbActual = 0, dbNames = new Set(); 
 
+        // 1. حساب مهام الـ Tasks (Development, Testing, DB)
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
             const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
@@ -368,7 +371,7 @@ function calculateMetrics() {
             if (activity === 'DB Modification') {
                 dbOrig += orig;
                 dbActual += actDev;
-                if (t['Assigned To']) dbNames.add(t['Assigned To']); // جمع أسماء مسؤولي الـ DB
+                if (t['Assigned To']) dbNames.add(t['Assigned To']); 
             } else if (activity === 'Development') {
                 devOrig += orig;
                 devActual += actDev;
@@ -378,46 +381,77 @@ function calculateMetrics() {
             }
         });
 
-        // تخزين بيانات الـ DB
+        // تخزين بيانات الـ DB والـ Effort الأساسي
         us.dbEffort = { 
             orig: dbOrig, 
             actual: dbActual, 
             dev: dbOrig / (dbActual || 1),
             names: Array.from(dbNames).join(', ') || 'N/A'
         };
-
-        us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
+        us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (actDev || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
-        // ... بقية الكود الخاص بالـ Rework والـ Timeline كما هو دون تغيير ...
-       let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
+        // 2. حساب الـ Rework (Bugs العادية)
+        let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
+        us.severityCounts = { critical: 0, high: 0, medium: 0 };
 
-// كائن جديد لتخزين تفاصيل الخطورة
-us.severityCounts = { critical: 0, high: 0, medium: 0 };
+        us.bugs.forEach(b => {
+            bugOrig += parseFloat(b['Original Estimation']) || 0;
+            let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
+            bugActualTotal += bDevAct;
+            if (bDevAct === 0) bugsNoTimesheet++;
 
-us.bugs.forEach(b => {
-    bugOrig += parseFloat(b['Original Estimation']) || 0;
-    let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
-    bugActualTotal += bDevAct;
-    if (bDevAct === 0) bugsNoTimesheet++;
+            const sev = b['Severity'] || "";
+            if (sev.includes("1 - Critical")) us.severityCounts.critical++;
+            else if (sev.includes("2 - High")) us.severityCounts.high++;
+            else if (sev.includes("3 - Medium")) us.severityCounts.medium++;
+        });
 
-    // تصنيف الخطورة بناءً على العمود الجديد
-    const sev = b['Severity'] || "";
-    if (sev.includes("1 - Critical")) us.severityCounts.critical++;
-    else if (sev.includes("2 - High")) us.severityCounts.high++;
-    else if (sev.includes("3 - Medium")) us.severityCounts.medium++;
-});
+        us.rework = {
+            timeEstimation: bugOrig,
+            actualTime: bugActualTotal,
+            count: us.bugs.length,
+            severity: us.severityCounts,
+            missingTimesheet: bugsNoTimesheet,
+            deviation: bugOrig / (bugActualTotal || 1),
+            percentage: (bugActualTotal / (devActual || 1)) * 100
+        };
 
-us.rework = {
-    timeEstimation: bugOrig,
-    actualTime: bugActualTotal,
-    count: us.bugs.length,
-    severity: us.severityCounts, // أضفناها هنا
-    missingTimesheet: bugsNoTimesheet,
-    deviation: bugOrig / (bugActualTotal || 1),
-    percentage: (bugActualTotal / (devActual || 1)) * 100
-};
+        // 3. الطلب الجديد: حساب الـ Review (معاملة خاصة بخانة منفصلة)
+        // يتم تقسيم الوقت بناءً على الـ Activity: Dev وقت المطور، Testing وقت التستر
+        us.reviewStats = {
+            estimation: 0,
+            devActual: 0,
+            testActual: 0,
+            count: us.reviews ? us.reviews.length : 0,
+            severity: { critical: 0, high: 0, medium: 0 }
+        };
 
+        if (us.reviews) {
+            us.reviews.forEach(r => {
+                const rEst = parseFloat(r['Original Estimation']) || 0;
+                const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
+                const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
+                const activity = r['Activity'];
+                const sev = r['Severity'] || "";
+
+                us.reviewStats.estimation += rEst;
+
+                // توزيع الوقت حسب الـ Activity المطلوبة
+                if (activity === 'Development') {
+                    us.reviewStats.devActual += rDevAct;
+                } else if (activity === 'Testing') {
+                    us.reviewStats.testActual += rTestAct;
+                }
+
+                // حساب الـ Severity للـ Review
+                if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
+                else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
+                else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
+            });
+        }
+
+        // 4. حساب التوقيت والـ Cycle Time
         let minDate = Infinity;
         us.tasks.forEach(t => {
             const taskDate = new Date(t['Activated Date']).getTime();
@@ -426,14 +460,12 @@ us.rework = {
 
         const firstTaskStart = minDate === Infinity ? null : new Date(minDate);
         const storyEndDate = us.testedDate ? new Date(us.testedDate) : null;
-
-        // حساب السايكل تايم وتخزينه في كائن الستوري
         us.cycleTime = calculateCycleTimeDays(firstTaskStart, storyEndDate);
-        // -----------------------
 
         calculateTimeline(us);
     });
 }
+
 function calculateTimeline(us) {
     let tasks = us.tasks;
     if (!tasks || tasks.length === 0) return;
