@@ -963,31 +963,53 @@ function renderPeopleView() {
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
-                // إضافة totalCycleTime للحساب المجمع
-                areaMap[area].devs[d] = { name: d, est: 0, act: 0, bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, stories: 0, totalCycleTime: 0 };
+                areaMap[area].devs[d] = { 
+                    name: d, est: 0, act: 0, stories: 0, totalCycleTime: 0,
+                    bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, // البجز العادية
+                    revCount: 0, revCrit: 0, revHigh: 0, revMed: 0, revTime: 0 // الريفيو
+                };
             }
-            areaMap[area].devs[d].crit += us.rework.severity.critical;
-            areaMap[area].devs[d].high += us.rework.severity.high;
-            areaMap[area].devs[d].med += us.rework.severity.medium;
-            areaMap[area].devs[d].est += us.devEffort.orig;
-            areaMap[area].devs[d].act += us.devEffort.actual;
-            areaMap[area].devs[d].bugs += us.rework.count;
-            areaMap[area].devs[d].rwTime += us.rework.actualTime;
-            areaMap[area].devs[d].stories++;
-            areaMap[area].devs[d].totalCycleTime += (us.cycleTime || 0); // جمع أيام الـ Cycle Time
+            const devData = areaMap[area].devs[d];
+            // البجز العادية
+            devData.crit += us.rework.severity.critical;
+            devData.high += us.rework.severity.high;
+            devData.med += us.rework.severity.medium;
+            devData.bugs += us.rework.count;
+            devData.rwTime += us.rework.actualTime;
+            
+            // إضافة وقت التطوير الأساسي + وقت الريفيو الخاص بالمطور
+            devData.est += us.devEffort.orig + us.reviewStats.estimation; 
+            devData.act += us.devEffort.actual + us.reviewStats.devActual;
+
+            // إحصائيات الريفيو المنفصلة
+            devData.revCount += us.reviewStats.count;
+            devData.revCrit += us.reviewStats.severity.critical;
+            devData.revHigh += us.reviewStats.severity.high;
+            devData.revMed += us.reviewStats.severity.medium;
+            devData.revTime += us.reviewStats.devActual;
+
+            devData.stories++;
+            devData.totalCycleTime += (us.cycleTime || 0);
         }
 
         // إحصائيات المختبرين (Testing)
         if (us.testerLead) {
             const t = us.testerLead;
             if (!areaMap[area].testers[t]) {
-                // إضافة totalCycleTime للحساب المجمع
-                areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0, totalCycleTime: 0 };
+                areaMap[area].testers[t] = { 
+                    name: t, est: 0, act: 0, stories: 0, totalCycleTime: 0,
+                    revCount: 0, revTime: 0 // الريفيو للتستر
+                };
             }
-            areaMap[area].testers[t].est += us.testEffort.orig;
-            areaMap[area].testers[t].act += us.testEffort.actual;
-            areaMap[area].testers[t].stories++;
-            areaMap[area].testers[t].totalCycleTime += (us.cycleTime || 0); // جمع أيام الـ Cycle Time
+            const testData = areaMap[area].testers[t];
+            testData.est += us.testEffort.orig;
+            testData.act += us.testEffort.actual + us.reviewStats.testActual;
+            
+            testData.revCount += us.reviewStats.count;
+            testData.revTime += us.reviewStats.testActual;
+            
+            testData.stories++;
+            testData.totalCycleTime += (us.cycleTime || 0);
         }
 
         // إحصائيات تعديل قواعد البيانات (DB Modification)
@@ -1015,10 +1037,10 @@ function renderPeopleView() {
                 <h3 style="margin:0; font-size: 1.5em; letter-spacing: 1px;">${area}</h3>
             </div>
             
-            <div style="padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            <div style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                 
                 <div style="background: #f9fdfa; border: 1px solid #d4edda; border-radius: 8px; padding: 15px;">
-                    <h4 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-top:0;">💻 Developers</h4>
+                    <h4 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-top:0;">💻 Developers (Inc. Review Time)</h4>
                     ${generateModernCards(areaMap[area].devs, 'dev')}
                 </div>
 
@@ -1046,8 +1068,6 @@ function generateModernCards(dataObj, type) {
         const p = dataObj[name];
         const index = p.est / (p.act || 1);
         const efficiencyColor = index >= 0.9 ? '#27ae60' : (index >= 0.7 ? '#f39c12' : '#e74c3c');
-        
-        // حساب متوسط Cycle Time (متاح للـ dev و test فقط في هذا الكود)
         const avgCycleTime = p.totalCycleTime !== undefined ? (p.totalCycleTime / (p.stories || 1)).toFixed(1) : null;
 
         return `
@@ -1058,28 +1078,40 @@ function generateModernCards(dataObj, type) {
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
-                <div title="Estimated Hours">Est: <b>${p.est.toFixed(1)}h</b></div>
-                <div title="Actual Hours">Act: <b>${p.act.toFixed(1)}h</b></div>
+                <div title="Estimated Hours">Total Est: <b>${p.est.toFixed(1)}h</b></div>
+                <div title="Actual Hours">Total Act: <b>${p.act.toFixed(1)}h</b></div>
                 <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(2)}</b></div>
-                
-                ${avgCycleTime !== null ? 
-                    `<div title="Average Cycle Time" style="color: #e67e22;">Avg CT: <b>${avgCycleTime}d</b></div>` : 
-                    `<div style="color: #7f8c8d;">Idx Only</div>`
-                }
+                ${avgCycleTime !== null ? `<div title="Average Cycle Time" style="color: #e67e22;">Avg CT: <b>${avgCycleTime}d</b></div>` : `<div></div>`}
 
                ${type === 'dev' ? `
-                    <div style="grid-column: span 2; display: flex; justify-content: space-between; font-size: 0.8em; background: #fff; padding: 4px; border: 1px solid #f8d7da; border-radius: 4px;">
-                        <span style="color:#c0392b;">C: ${p.crit}</span>
-                        <span style="color:#e67e22;">H: ${p.high}</span>
-                        <span style="color:#2980b9;">M: ${p.med}</span>
-                        <b style="border-left: 1px solid #ddd; padding-left: 5px;">Total: ${p.bugs}</b>
+                    <div style="grid-column: span 2; margin-top: 5px; padding: 5px; background: #fff5f5; border: 1px solid #f8d7da; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                            <b style="color:#c0392b; font-size: 0.85em;">🪲 Standard Bugs: ${p.bugs}</b>
+                            <span style="color:#c0392b;">${p.rwTime.toFixed(1)}h</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; font-size: 0.75em; color: #666;">
+                            <span>C: ${p.crit}</span><span>H: ${p.high}</span><span>M: ${p.med}</span>
+                        </div>
                     </div>
-                    <div style="grid-column: span 2; background: #fff5f5; padding: 4px; border-radius: 4px; margin-top: 4px; color: #c0392b;">
-                        Rework: <b>${p.rwTime.toFixed(1)}h</b>
+                    <div style="grid-column: span 2; margin-top: 5px; padding: 5px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                            <b style="color:#6d28d9; font-size: 0.85em;">🔎 Review Bugs: ${p.revCount}</b>
+                            <span style="color:#6d28d9;">${p.revTime.toFixed(1)}h</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; font-size: 0.75em; color: #666;">
+                            <span>C: ${p.revCrit}</span><span>H: ${p.revHigh}</span><span>M: ${p.revMed}</span>
+                        </div>
                     </div>
                 ` : ''}
-                ${type === 'test' ? `<div style="grid-column: span 2; color: #2980b9;">QA Effort Recorded</div>` : ''}
-                ${type === 'db' ? `<div style="grid-column: span 2; color: #d35400;">Data Modification</div>` : ''}
+
+                ${type === 'test' ? `
+                    <div style="grid-column: span 2; margin-top: 5px; padding: 5px; background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <b style="color:#2980b9; font-size: 0.85em;">🔎 Review Effort:</b>
+                            <span style="color:#2980b9;">${p.revTime.toFixed(1)}h</span>
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         </div>`;
     }).join('');
@@ -1370,6 +1402,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
