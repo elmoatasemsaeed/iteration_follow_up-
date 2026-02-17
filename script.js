@@ -808,7 +808,7 @@ function renderTeamView() {
     let html = `
     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', sans-serif;">
         <h2 style="margin-bottom:25px; color: #2c3e50; border-left: 5px solid #2ecc71; padding-left: 15px;">
-            🚀 Team Performance Analytics <small style="font-size: 0.5em; color: #7f8c8d; display: block;">Aggregated by Business Area</small>
+            🚀 Team Performance Analytics <small style="font-size: 0.5em; color: #7f8c8d; display: block;">Aggregated by Business Area (Including Reviews)</small>
         </h2>`;
 
     for (let area in grouped) {
@@ -818,29 +818,48 @@ function renderTeamView() {
             devEst: 0, devAct: 0,
             testEst: 0, testAct: 0,
             dbEst: 0, dbAct: 0,
+            // البجز العادية
             reworkTime: 0, bugsCount: 0,
             sevCrit: 0, sevHigh: 0, sevMed: 0,
+            // الريفيو بجز
+            reviewDevTime: 0, reviewTestTime: 0, reviewCount: 0,
+            revCrit: 0, revHigh: 0, revMed: 0,
+            
             totalStories: grouped[area].length,
-            totalCycleTime: 0, // إضافة لتجميع Cycle Time
+            totalCycleTime: 0,
             completedStories: grouped[area].filter(us => us.status === 'Tested').length
         };
 
         grouped[area].forEach(us => {
+            // الأساسيات
             stats.devEst += us.devEffort.orig;
             stats.devAct += us.devEffort.actual;
             stats.testEst += us.testEffort.orig;
             stats.testAct += us.testEffort.actual;
             stats.dbEst += us.dbEffort.orig;
             stats.dbAct += us.dbEffort.actual;
+            stats.totalCycleTime += (us.cycleTime || 0);
+
+            // البجز العادية (Rework)
             stats.reworkTime += us.rework.actualTime;
             stats.bugsCount += us.rework.count;
             stats.sevCrit += us.rework.severity.critical;
             stats.sevHigh += us.rework.severity.high;
             stats.sevMed += us.rework.severity.medium;
-            stats.totalCycleTime += (us.cycleTime || 0); // تجميع أيام Cycle Time
+
+            // الريفيو (Reviews)
+            stats.reviewCount += us.reviewStats.count;
+            stats.reviewDevTime += us.reviewStats.devActual;
+            stats.reviewTestTime += us.reviewStats.testActual;
+            stats.revCrit += us.reviewStats.severity.critical;
+            stats.revHigh += us.reviewStats.severity.high;
+            stats.revMed += us.reviewStats.severity.medium;
         });
 
-        const totalActualHours = stats.devAct + stats.testAct + stats.dbAct + stats.reworkTime;
+        // الحسابات
+        const totalReviewTime = stats.reviewDevTime + stats.reviewTestTime;
+        const totalQualityTime = stats.reworkTime + totalReviewTime;
+        
         const devIndex = stats.devEst / (stats.devAct || 1);
         const testIndex = stats.testEst / (stats.testAct || 1);
         const dbIndex = stats.dbEst / (stats.dbAct || 1);
@@ -848,15 +867,17 @@ function renderTeamView() {
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
         const teamIndex = totalTeamEst / (totalTeamAct || 1);
-        const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
         
-        // حساب المتوسط
+        // نسبة الـ Rework والـ Review مقارنة بوقت التطوير الصافي
+        const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
+        const reviewRatio = ((stats.reviewDevTime / (stats.devAct || 1)) * 100).toFixed(1);
+        
         const avgCycleTime = (stats.totalCycleTime / (stats.totalStories || 1)).toFixed(1);
 
         html += `
         <div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
             <div style="padding: 20px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
                     
                     <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
                         <h5 style="margin: 0 0 10px 0; color: #27ae60; font-size: 0.9em; text-transform: uppercase;">Productivity Indices</h5>
@@ -869,8 +890,34 @@ function renderTeamView() {
                                 <b>${avgCycleTime} Days</b>
                             </div>
                             <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc;">
-                                <span style="font-weight: bold;">Team Total Effort Variance:</span>
+                                <span style="font-weight: bold;">Team Total Index:</span>
                                 <b style="color: ${teamIndex < 0.8 ? '#e74c3c' : '#2c3e50'}; font-size: 1.1em;">${teamIndex.toFixed(2)}</b>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #fff5f5; border: 1px solid #f8d7da; padding: 15px; border-radius: 10px;">
+                        <h5 style="margin: 0 0 10px 0; color: #c0392b; font-size: 0.9em; text-transform: uppercase;">Quality Analysis (Bugs vs Reviews)</h5>
+                        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.95em;">
+                            <div style="padding-bottom: 8px; border-bottom: 1px solid #f8d7da;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #c0392b; font-weight: bold;">🪲 Standard Bugs:</span>
+                                    <b>${stats.bugsCount} <span style="font-size: 0.8em; font-weight: normal;">(C:${stats.sevCrit}/H:${stats.sevHigh}/M:${stats.sevMed})</span></b>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-top: 3px;">
+                                    <span>Rework Time: <b>${stats.reworkTime.toFixed(1)}h</b></span>
+                                    <span>Ratio: <b>${reworkRatio}%</b></span>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #8e44ad; font-weight: bold;">🔎 Review Bugs:</span>
+                                    <b>${stats.reviewCount} <span style="font-size: 0.8em; font-weight: normal;">(C:${stats.revCrit}/H:${stats.revHigh}/M:${stats.revMed})</span></b>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-top: 3px;">
+                                    <span>Review Time: <b>${totalReviewTime.toFixed(1)}h</b></span>
+                                    <span>Ratio: <b>${reviewRatio}%</b></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -878,22 +925,13 @@ function renderTeamView() {
                     <div style="background: #f0f7ff; border: 1px solid #d1ecf1; padding: 15px; border-radius: 10px;">
                         <h5 style="margin: 0 0 10px 0; color: #2980b9; font-size: 0.9em; text-transform: uppercase;">Effort Allocation</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;"><span>Total Actual:</span><b>${totalActualHours.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Pure Dev:</span><b>${stats.devAct.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>DB Mods:</span><b>${stats.dbAct.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Stories:</span><b>${stats.totalStories} (Done: ${stats.completedStories})</b></div>
-                        </div>
-                    </div>
-
-                    <div style="background: #fff5f5; border: 1px solid #f8d7da; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #c0392b; font-size: 0.9em; text-transform: uppercase;">Quality Metrics</h5>
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Bugs Found:</span>
-                                <b>${stats.bugsCount} <span style="font-size: 0.8em; font-weight: normal;">(C:${stats.sevCrit}/H:${stats.sevHigh}/M:${stats.sevMed})</span></b>
+                            <div style="display: flex; justify-content: space-between;"><span>Pure Dev Time:</span><b>${stats.devAct.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>QA Testing Time:</span><b>${stats.testAct.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Total Quality Time:</span><b style="color: #c0392b;">${totalQualityTime.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc;">
+                                <span>Total Area Stories:</span>
+                                <b>${stats.totalStories} (Done: ${stats.completedStories})</b>
                             </div>
-                            <div style="display: flex; justify-content: space-between;"><span>Rework Time:</span><b style="color: #c0392b;">${stats.reworkTime.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Rework Ratio:</span><b style="color: #c0392b;">${reworkRatio}%</b></div>
                         </div>
                     </div>
 
@@ -905,7 +943,6 @@ function renderTeamView() {
     html += `</div>`;
     container.innerHTML = html;
 }
-
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!processedStories || processedStories.length === 0) {
@@ -1333,6 +1370,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
