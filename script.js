@@ -418,10 +418,12 @@ function calculateMetrics() {
         };
 
         // 3. حساب الـ Review (الطلب الجديد)
-        us.reviewStats = {
+       us.reviewStats = {
             estimation: 0,
-            devActual: 0,
+            devActual: 0, 
             testActual: 0,
+            devCount: 0, // عدد البجات التي عمل عليها المطور
+            testCount: 0,
             count: us.reviews ? us.reviews.length : 0,
             severity: { critical: 0, high: 0, medium: 0 }
         };
@@ -436,10 +438,13 @@ function calculateMetrics() {
 
                 us.reviewStats.estimation += rEst;
 
+                // التعديل: فصل العد والوقت بناءً على الـ Activity
                 if (activity === 'Development') {
                     us.reviewStats.devActual += rDevAct;
+                    us.reviewStats.devCount++; // عد بجات المطور فقط
                 } else if (activity === 'Testing') {
                     us.reviewStats.testActual += rTestAct;
+                    us.reviewStats.testCount++;
                 }
 
                 if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
@@ -447,7 +452,6 @@ function calculateMetrics() {
                 else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
             });
         }
-
         // 4. حساب التوقيت والـ Cycle Time
         let minDate = Infinity;
         us.tasks.forEach(t => {
@@ -1402,5 +1406,6 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
