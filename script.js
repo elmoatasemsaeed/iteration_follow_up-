@@ -364,13 +364,13 @@ function calculateMetrics() {
         // 1. حساب مهام الـ Tasks (Development, Testing, DB)
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
-            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
+            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0; // التأكد من تعريف actDev هنا
             const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
 
             if (activity === 'DB Modification') {
                 dbOrig += orig;
-                dbActual += actDev;
+                dbActual += actDev; // الآن actDev معرف ولن يظهر الخطأ
                 if (t['Assigned To']) dbNames.add(t['Assigned To']); 
             } else if (activity === 'Development') {
                 devOrig += orig;
@@ -417,8 +417,7 @@ function calculateMetrics() {
             percentage: (bugActualTotal / (devActual || 1)) * 100
         };
 
-        // 3. الطلب الجديد: حساب الـ Review (معاملة خاصة بخانة منفصلة)
-        // يتم تقسيم الوقت بناءً على الـ Activity: Dev وقت المطور، Testing وقت التستر
+        // 3. حساب الـ Review (الطلب الجديد)
         us.reviewStats = {
             estimation: 0,
             devActual: 0,
@@ -437,14 +436,12 @@ function calculateMetrics() {
 
                 us.reviewStats.estimation += rEst;
 
-                // توزيع الوقت حسب الـ Activity المطلوبة
                 if (activity === 'Development') {
                     us.reviewStats.devActual += rDevAct;
                 } else if (activity === 'Testing') {
                     us.reviewStats.testActual += rTestAct;
                 }
 
-                // حساب الـ Severity للـ Review
                 if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
                 else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
                 else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
@@ -1323,6 +1320,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
