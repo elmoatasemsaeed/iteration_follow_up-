@@ -815,7 +815,7 @@ function renderTeamView() {
 
     const grouped = groupBy(processedStories, 'businessArea');
     let html = `
-    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
         <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #2ecc71; padding-left: 20px; font-size: 1.8em;">
             🚀 Team Performance Analytics
         </h2>`;
@@ -854,82 +854,99 @@ function renderTeamView() {
             stats.revMed += us.reviewStats.severity.medium;
         });
 
+        // حساب نسبة الـ Rework
         const totalQualityTime = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
         const reworkRatio = (totalQualityTime / (stats.devAct || 1)) * 100;
         const reworkColor = reworkRatio > 15 ? '#d32f2f' : '#2e7d32';
 
+        // حساب Effort Variance (Efficiency Index)
+        const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
+        const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
+        const teamEfficiency = (totalTeamEst / (totalTeamAct || 1)) * 100;
+        const efficiencyColor = teamEfficiency >= 85 ? '#2e7d32' : '#d32f2f';
+
         const getSevBadges = (c, h, m, t) => {
-            if (!t) return '<span style="color:#999; font-size:1.1em;">No data</span>';
+            if (!t) return '<div style="color:#999; margin-top:5px;">No bugs recorded</div>';
             const calc = (v) => ((v/t)*100).toFixed(0);
             return `
                 <div style="display: flex; gap: 8px; margin-top: 10px;">
-                    <div style="background:#ffeaed; color:#c62828; padding:5px 10px; border-radius:6px; text-align:center; flex:1; border:1px solid #ffcdd2;">
-                        <div style="font-size:0.75em; font-weight:bold;">CRIT</div>
-                        <div style="font-size:1.2em; font-weight:900;">${c}</div>
-                        <div style="font-size:0.7em;">${calc(c)}%</div>
+                    <div style="background:#ffeaed; color:#c62828; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #ffcdd2;">
+                        <div style="font-size:0.7em; font-weight:bold;">CRIT</div>
+                        <div style="font-size:1.3em; font-weight:900;">${c}</div>
+                        <div style="font-size:0.75em; opacity:0.8;">${calc(c)}%</div>
                     </div>
-                    <div style="background:#fff3e0; color:#ef6c00; padding:5px 10px; border-radius:6px; text-align:center; flex:1; border:1px solid #ffe0b2;">
-                        <div style="font-size:0.75em; font-weight:bold;">HIGH</div>
-                        <div style="font-size:1.2em; font-weight:900;">${h}</div>
-                        <div style="font-size:0.7em;">${calc(h)}%</div>
+                    <div style="background:#fff3e0; color:#ef6c00; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #ffe0b2;">
+                        <div style="font-size:0.7em; font-weight:bold;">HIGH</div>
+                        <div style="font-size:1.3em; font-weight:900;">${h}</div>
+                        <div style="font-size:0.75em; opacity:0.8;">${calc(h)}%</div>
                     </div>
-                    <div style="background:#e8f5e9; color:#2e7d32; padding:5px 10px; border-radius:6px; text-align:center; flex:1; border:1px solid #c8e6c9;">
-                        <div style="font-size:0.75em; font-weight:bold;">MED</div>
-                        <div style="font-size:1.2em; font-weight:900;">${m}</div>
-                        <div style="font-size:0.7em;">${calc(m)}%</div>
+                    <div style="background:#e8f5e9; color:#2e7d32; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #c8e6c9;">
+                        <div style="font-size:0.7em; font-weight:bold;">MED</div>
+                        <div style="font-size:1.3em; font-weight:900;">${m}</div>
+                        <div style="font-size:0.75em; opacity:0.8;">${calc(m)}%</div>
                     </div>
                 </div>`;
         };
 
         html += `
         <div class="business-section" style="margin-bottom: 50px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
-            <div style="background: #2c3e50; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin:0; font-size: 1.4em;">📍 Area: ${area}</h3>
-                <span style="background:rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px;">${stats.totalStories} User Stories</span>
+            <div style="background: #2c3e50; color: white; padding: 18px 25px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; font-size: 1.5em;">📍 Area: ${area}</h3>
+                <span style="background:rgba(255,255,255,0.2); padding: 6px 15px; border-radius: 20px; font-weight:bold;">${stats.totalStories} Stories</span>
             </div>
+            
             <div style="padding: 25px;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px;">
                     
-                    <div style="grid-column: span 1; background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                        <span style="font-size: 1em; color: #555; font-weight: bold; margin-bottom: 5px;">TOTAL REWORK RATIO</span>
-                        <div style="font-size: 3.5em; font-weight: 900; color: ${reworkColor}; line-height: 1;">${reworkRatio.toFixed(1)}<span style="font-size: 0.4em;">%</span></div>
-                        <div style="margin-top: 10px; font-size: 0.9em; color: white; background: ${reworkColor}; padding: 3px 12px; border-radius: 12px;">
-                            ${reworkRatio > 15 ? '⚠️ Exceeds Limit' : '✅ Healthy'}
+                    <div style="background: ${efficiencyColor}0a; border: 2px solid ${efficiencyColor}; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                        <span style="font-size: 0.9em; color: #555; font-weight: bold; margin-bottom: 8px; text-transform: uppercase;">Effort Variance Index</span>
+                        <div style="font-size: 3.5em; font-weight: 900; color: ${efficiencyColor}; line-height: 1;">${teamEfficiency.toFixed(1)}<span style="font-size: 0.4em;">%</span></div>
+                        <div style="margin-top: 12px; font-size: 0.85em; color: white; background: ${efficiencyColor}; padding: 4px 15px; border-radius: 20px; font-weight:bold;">
+                            ${teamEfficiency >= 85 ? '🎯 On Track' : '⚠️ Low Efficiency'}
                         </div>
                     </div>
 
-                    <div style="background: #fdfdfd; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs (${stats.reworkTime.toFixed(1)}h)</h5>
-                            <b style="font-size: 1.5em; color: #c62828;">${stats.bugsCount}</b>
+                    <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                        <span style="font-size: 0.9em; color: #555; font-weight: bold; margin-bottom: 8px; text-transform: uppercase;">Total Rework Ratio</span>
+                        <div style="font-size: 3.5em; font-weight: 900; color: ${reworkColor}; line-height: 1;">${reworkRatio.toFixed(1)}<span style="font-size: 0.4em;">%</span></div>
+                        <div style="margin-top: 12px; font-size: 0.85em; color: white; background: ${reworkColor}; padding: 4px 15px; border-radius: 20px; font-weight:bold;">
+                            Limit: 15% ${reworkRatio > 15 ? '(Exceeded)' : '(Passed)'}
+                        </div>
+                    </div>
+
+                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: inset 0 0 15px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f8d7da; padding-bottom: 8px; margin-bottom: 12px;">
+                            <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs</h5>
+                            <b style="font-size: 1.4em; color: #c62828;">${stats.bugsCount} <small style="font-size:0.6em; color:#666;">(${stats.reworkTime.toFixed(1)}h)</small></b>
                         </div>
                         ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsCount)}
                         
-                        <div style="margin-top: 25px; border-top: 2px dashed #eee; padding-top: 15px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Bugs (${(stats.reviewDevTime + stats.reviewTestTime).toFixed(1)}h)</h5>
-                                <b style="font-size: 1.5em; color: #6a1b9a;">${stats.reviewCount}</b>
+                        <div style="margin-top: 25px; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
+                                <b style="font-size: 1.4em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${(stats.reviewDevTime + stats.reviewTestTime).toFixed(1)}h)</small></b>
                             </div>
-                            ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.reviewCount)}
                         </div>
+                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.reviewCount)}
                     </div>
 
-                    <div style="background: #f8fbff; border: 1px solid #e3f2fd; padding: 20px; border-radius: 12px;">
-                        <h5 style="margin:0 0 15px 0; color: #1565c0; font-size: 1.1em; border-bottom: 1px solid #e3f2fd; padding-bottom: 10px;">Productivity & Effort</h5>
-                        <div style="display: flex; flex-direction: column; gap: 15px;">
-                            <div style="text-align:center; padding: 10px; background: white; border-radius: 8px; border: 1px solid #e3f2fd;">
-                                <div style="font-size: 0.8em; color: #777;">Avg Cycle Time</div>
-                                <div style="font-size: 1.6em; font-weight: bold; color: #1565c0;">${(stats.totalCycleTime / stats.totalStories).toFixed(1)} <span style="font-size: 0.5em;">Days</span></div>
+                    <div style="grid-column: 1 / -1; background: #f8fbff; border: 1px solid #e3f2fd; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #1565c0; font-weight: bold;">Avg Cycle Time:</span>
+                            <b style="font-size: 1.3em; color: #1565c0;">${(stats.totalCycleTime / stats.totalStories).toFixed(1)} Days</b>
+                        </div>
+                        <div style="display: flex; gap: 30px;">
+                            <div style="text-align:center;">
+                                <div style="font-size: 0.75em; color: #777; text-transform: uppercase;">Planned Effort</div>
+                                <div style="font-size: 1.1em; font-weight: bold;">${totalTeamEst.toFixed(1)}h</div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                <div style="padding: 10px; background: #fff; border-radius: 8px; border: 1px solid #eee;">
-                                    <div style="font-size: 0.7em; color: #777;">Dev Act</div>
-                                    <div style="font-size: 1.1em; font-weight: bold;">${stats.devAct.toFixed(1)}h</div>
-                                </div>
-                                <div style="padding: 10px; background: #fff; border-radius: 8px; border: 1px solid #eee;">
-                                    <div style="font-size: 0.7em; color: #777;">Quality Act</div>
-                                    <div style="font-size: 1.1em; font-weight: bold; color: #c62828;">${totalQualityTime.toFixed(1)}h</div>
-                                </div>
+                            <div style="text-align:center;">
+                                <div style="font-size: 0.75em; color: #777; text-transform: uppercase;">Actual Effort</div>
+                                <div style="font-size: 1.1em; font-weight: bold;">${totalTeamAct.toFixed(1)}h</div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size: 0.75em; color: #777; text-transform: uppercase;">Quality Total</div>
+                                <div style="font-size: 1.1em; font-weight: bold; color: #c62828;">${totalQualityTime.toFixed(1)}h</div>
                             </div>
                         </div>
                     </div>
@@ -1408,6 +1425,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
