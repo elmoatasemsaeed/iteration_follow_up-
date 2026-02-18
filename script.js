@@ -875,7 +875,7 @@ function renderTeamView() {
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
                             <div style="display: flex; justify-content: space-between;"><span>Avg Cycle Time:</span><b>${(stats.totalCycleTime / stats.totalStories).toFixed(1)} Days</b></div>
                             <div style="display: flex; justify-content: space-between; border-top: 1px dashed #ccc; padding-top: 5px;">
-                                <span style="font-weight: bold;">Efficiency Index:</span>
+                                <span style="font-weight: bold;">Effort Variance:</span>
                                 <b style="color: ${teamIndex < 80 ? '#e74c3c' : '#2c3e50'};">${teamIndex.toFixed(2)}</b>
                             </div>
                         </div>
@@ -1056,7 +1056,7 @@ function generateModernCards(dataObj, type) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
                 <div>Est: <b>${p.est.toFixed(1)}h</b></div>
                 <div>Act: <b>${p.act.toFixed(1)}h</b></div>
-                <div style="grid-column: span 2; font-weight:bold;">Efficiency Index: <span style="color: ${efficiencyColor}">${index.toFixed(2)}</span></div>
+                <div style="grid-column: span 2; font-weight:bold;">Effort Variance: <span style="color: ${efficiencyColor}">${index.toFixed(2)}</span></div>
 
                ${type === 'dev' ? `
                     <div style="grid-column: span 2; margin-top: 8px; padding: 6px; background: #fff5f5; border: 1px solid #f8d7da; border-radius: 4px;">
@@ -1374,6 +1374,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
