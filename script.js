@@ -1035,7 +1035,7 @@ function generateModernCards(dataObj, type) {
     return keys.map(name => {
         const p = dataObj[name];
         const index = (p.est / (p.act || 1)) * 100;
-        onst efficiencyColor = index >= 85 ? '#27ae60' : '#e74c3c';
+        const efficiencyColor = index >= 85 ? '#27ae60' : '#e74c3c';
         
         const renderSevMini = (c, h, m, t) => {
             if (!t) return '';
