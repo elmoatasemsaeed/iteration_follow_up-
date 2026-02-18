@@ -653,6 +653,14 @@ function renderBusinessView() {
 
             const sortedTasks = [...devTasksSorted, ...testingTasksSorted];
 
+            // دالة مساعدة لعرض السيفيرتي كعدد ونسبة
+            const renderSev = (sevObj, total) => {
+                if (!total) return 'N/A';
+                return `C: ${sevObj.critical} (${((sevObj.critical/total)*100).toFixed(0)}%) | 
+                        H: ${sevObj.high} (${((sevObj.high/total)*100).toFixed(0)}%) | 
+                        M: ${sevObj.medium} (${((sevObj.medium/total)*100).toFixed(0)}%)`;
+            };
+
          html += `
 <div class="card" style="margin-bottom: 30px; border-left: 5px solid #2980b9; overflow-x: auto;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
@@ -690,10 +698,16 @@ function renderBusinessView() {
             <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fcfcfc; border: 1px solid #eee;">
                 <div style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
                     <b style="color:#c0392b;">Bugs: ${us.rework.count}</b>
+                    <div style="font-size: 0.7em; color: #666; margin-top:3px;">
+                        ${renderSev(us.rework.severity, us.rework.count)}
+                    </div>
                 </div>
                 <div>
                     <b style="color:#8e44ad;">Reviews: ${us.reviewStats.count}</b>
-                    <div style="font-size: 0.75em; color: #666;">
+                    <div style="font-size: 0.7em; color: #666; margin-top:3px;">
+                        ${renderSev(us.reviewStats.severity, us.reviewStats.count)}
+                    </div>
+                    <div style="font-size: 0.75em; color: #444; font-weight:bold;">
                         (D:${us.reviewStats.devCount} | T:${us.reviewStats.testCount})
                     </div>
                 </div>
@@ -702,8 +716,8 @@ function renderBusinessView() {
                 <b style="color:#c0392b;">${us.rework.actualTime.toFixed(1)}h</b>
             </td>
             <td rowspan="3" style="text-align:center; vertical-align:middle; background:#f5f3ff;">
-                <div style="color:#6d28d9; font-size:0.9em;">Dev: <b>${us.reviewStats.devActual.toFixed(1)}h</b></div>
-                <div style="color:#2980b9; font-size:0.9em;">Test: <b>${us.reviewStats.testActual.toFixed(1)}h</b></div>
+                <div style="color:#6d28d9; font-size:0.85em;">Dev: <b>${us.reviewStats.devActual.toFixed(1)}h</b></div>
+                <div style="color:#2980b9; font-size:0.85em; margin-top:5px;">Test: <b>${us.reviewStats.testActual.toFixed(1)}h</b></div>
             </td>
             <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
         </tr>
@@ -768,7 +782,7 @@ function renderBusinessView() {
                         <h5 style="margin: 0; color: #2c3e50;">Quality & Review Analysis</h5>
                         <div style="display: flex; gap: 10px;">
                             <span style="background: #f5f3ff; color: #5b21b6; padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; border: 1px solid #ddd;">
-                                🔎 Review: Dev ${us.reviewStats.devActual.toFixed(1)}h | Test ${us.reviewStats.testActual.toFixed(1)}h
+                                🔎 Review Actual: Dev ${us.reviewStats.devActual.toFixed(1)}h | Test ${us.reviewStats.testActual.toFixed(1)}h
                             </span>
                         </div>
                     </div>
@@ -779,9 +793,9 @@ function renderBusinessView() {
                                 <span>Quality Ratio: <b>${(( (us.rework.actualTime + us.reviewStats.totalActual) / (us.devEffort.actual || 1)) * 100).toFixed(1)}%</b></span>
                             </div>
                             <div style="width: 100%; background: #eee; height: 10px; border-radius: 5px; overflow: hidden; display: flex;">
-                                <div style="width: ${Math.min((us.rework.actualTime / (us.devEffort.actual || 1) * 100), 100)}%; background: #e74c3c; height: 100%;"></div>
-                                <div style="width: ${Math.min((us.reviewStats.devActual / (us.devEffort.actual || 1) * 100), 100)}%; background: #8e44ad; height: 100%;"></div>
-                                <div style="width: ${Math.min((us.reviewStats.testActual / (us.devEffort.actual || 1) * 100), 100)}%; background: #3498db; height: 100%;"></div>
+                                <div style="width: ${Math.min((us.rework.actualTime / (us.devEffort.actual || 1) * 100), 100)}%; background: #e74c3c;" title="Standard Bugs"></div>
+                                <div style="width: ${Math.min((us.reviewStats.devActual / (us.devEffort.actual || 1) * 100), 100)}%; background: #8e44ad;" title="Dev Review"></div>
+                                <div style="width: ${Math.min((us.reviewStats.testActual / (us.devEffort.actual || 1) * 100), 100)}%; background: #3498db;" title="Test Review"></div>
                             </div>
                         </div>
                     </div>
@@ -807,12 +821,12 @@ function renderTeamView() {
         </h2>`;
 
     for (let area in grouped) {
-        html += `<h3 style="color: #2c3e50; margin: 20px 0 10px 10px; border-bottom: 2px solid #eee; padding-bottom: 5px;">📍 Area: ${area}</h3>`;
-        
         let stats = {
             devEst: 0, devAct: 0, testEst: 0, testAct: 0, dbEst: 0, dbAct: 0,
             reworkTime: 0, bugsCount: 0,
+            bugsCrit: 0, bugsHigh: 0, bugsMed: 0,
             reviewDevTime: 0, reviewTestTime: 0, reviewCount: 0,
+            revCrit: 0, revHigh: 0, revMed: 0,
             totalStories: grouped[area].length,
             totalCycleTime: 0
         };
@@ -828,54 +842,66 @@ function renderTeamView() {
 
             stats.reworkTime += us.rework.actualTime;
             stats.bugsCount += us.rework.count;
+            stats.bugsCrit += us.rework.severity.critical;
+            stats.bugsHigh += us.rework.severity.high;
+            stats.bugsMed += us.rework.severity.medium;
 
             stats.reviewCount += us.reviewStats.count;
             stats.reviewDevTime += us.reviewStats.devActual;
             stats.reviewTestTime += us.reviewStats.testActual;
+            stats.revCrit += us.reviewStats.severity.critical;
+            stats.revHigh += us.reviewStats.severity.high;
+            stats.revMed += us.reviewStats.severity.medium;
         });
 
-        const totalReviewTime = stats.reviewDevTime + stats.reviewTestTime;
+        const totalQualityTime = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
         const teamIndex = (totalTeamEst / (totalTeamAct || 1)) * 100;
 
+        const getSevString = (c, h, m, t) => {
+            if (!t) return 'N/A';
+            return `C: ${c} (${((c/t)*100).toFixed(0)}%) | H: ${h} (${((h/t)*100).toFixed(0)}%) | M: ${m} (${((m/t)*100).toFixed(0)}%)`;
+        };
+
         html += `
         <div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
             <div style="padding: 20px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                <h3 style="margin-top:0;">📍 Area: ${area}</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
                     
                     <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #27ae60; font-size: 0.9em;">Productivity Indices</h5>
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
+                        <h5 style="margin: 0 0 10px 0; color: #27ae60;">Productivity Metrics</h5>
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
                             <div style="display: flex; justify-content: space-between;"><span>Avg Cycle Time:</span><b>${(stats.totalCycleTime / stats.totalStories).toFixed(1)} Days</b></div>
                             <div style="display: flex; justify-content: space-between; border-top: 1px dashed #ccc; padding-top: 5px;">
-                                <span style="font-weight: bold;">Team Total Index:</span>
+                                <span style="font-weight: bold;">Efficiency Index:</span>
                                 <b style="color: ${teamIndex < 80 ? '#e74c3c' : '#2c3e50'};">${teamIndex.toFixed(2)}</b>
                             </div>
                         </div>
                     </div>
 
                     <div style="background: #fff5f5; border: 1px solid #f8d7da; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #c0392b; font-size: 0.9em;">Quality Split (Bugs vs Reviews)</h5>
-                        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.95em;">
+                        <h5 style="margin: 0 0 10px 0; color: #c0392b;">Quality Breakdown</h5>
+                        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85em;">
                             <div>
-                                <div style="display: flex; justify-content: space-between;"><span style="color: #c0392b; font-weight: bold;">🪲 Standard Bugs:</span><b>${stats.bugsCount}</b></div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.85em;"><span>Rework Time:</span><b>${stats.reworkTime.toFixed(1)}h</b></div>
+                                <div style="display: flex; justify-content: space-between;"><b style="color: #c0392b;">Standard Bugs: ${stats.bugsCount}</b> <span>${stats.reworkTime.toFixed(1)}h</span></div>
+                                <div style="color: #666; font-size: 0.8em;">${getSevString(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsCount)}</div>
                             </div>
-                            <div style="border-top: 1px solid #f8d7da; padding-top: 5px;">
-                                <div style="display: flex; justify-content: space-between;"><span style="color: #8e44ad; font-weight: bold;">🔎 Review Bugs:</span><b>${stats.reviewCount}</b></div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.85em;"><span>Dev Review:</span><b>${stats.reviewDevTime.toFixed(1)}h</b></div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.85em;"><span>Test Review:</span><b>${stats.reviewTestTime.toFixed(1)}h</b></div>
+                            <div style="border-top: 1px solid #f8d7da; padding-top: 8px;">
+                                <div style="display: flex; justify-content: space-between;"><b style="color: #8e44ad;">Review Bugs: ${stats.reviewCount}</b></div>
+                                <div style="color: #666; font-size: 0.8em; margin-bottom:5px;">${getSevString(stats.revCrit, stats.revHigh, stats.revMed, stats.reviewCount)}</div>
+                                <div style="display: flex; justify-content: space-between;"><span>Dev Work: <b>${stats.reviewDevTime.toFixed(1)}h</b></span> <span>Test Work: <b>${stats.reviewTestTime.toFixed(1)}h</b></span></div>
                             </div>
                         </div>
                     </div>
 
                     <div style="background: #f0f7ff; border: 1px solid #d1ecf1; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #2980b9; font-size: 0.9em;">Effort Allocation</h5>
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.95em;">
+                        <h5 style="margin: 0 0 10px 0; color: #2980b9;">Effort Analysis</h5>
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
                             <div style="display: flex; justify-content: space-between;"><span>Pure Dev Time:</span><b>${stats.devAct.toFixed(1)}h</b></div>
                             <div style="display: flex; justify-content: space-between;"><span>Pure Test Time:</span><b>${stats.testAct.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between; color: #c0392b; font-weight: bold;"><span>Total Quality Time:</span><b>${(stats.reworkTime + totalReviewTime).toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between; color: #c0392b; font-weight: bold; border-top: 1px solid #d1ecf1; padding-top: 5px;"><span>Total Quality Effort:</span><b>${totalQualityTime.toFixed(1)}h</b></div>
                         </div>
                     </div>
                 </div>
@@ -884,6 +910,7 @@ function renderTeamView() {
     }
     container.innerHTML = html;
 }
+
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!processedStories || processedStories.length === 0) {
@@ -1009,7 +1036,15 @@ function generateModernCards(dataObj, type) {
         const p = dataObj[name];
         const index = (p.est / (p.act || 1)) * 100;
         const efficiencyColor = index >= 90 ? '#27ae60' : (index >= 85 ? '#f39c12' : '#e74c3c');
-        const avgCycleTime = p.totalCycleTime !== undefined ? (p.totalCycleTime / (p.stories || 1)).toFixed(1) : null;
+        
+        const renderSevMini = (c, h, m, t) => {
+            if (!t) return '';
+            return `<div style="display: flex; gap: 8px; font-size: 0.7em; color: #777; margin-top:2px;">
+                        <span>C: ${c} (${((c/t)*100).toFixed(0)}%)</span>
+                        <span>H: ${h} (${((h/t)*100).toFixed(0)}%)</span>
+                        <span>M: ${m} (${((m/t)*100).toFixed(0)}%)</span>
+                    </div>`;
+        };
 
         return `
         <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
@@ -1019,32 +1054,34 @@ function generateModernCards(dataObj, type) {
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
-                <div title="Estimated Hours">Total Est: <b>${p.est.toFixed(1)}h</b></div>
-                <div title="Actual Hours">Total Act: <b>${p.act.toFixed(1)}h</b></div>
-                <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(2)}</b></div>
-                ${avgCycleTime !== null ? `<div title="Average Cycle Time" style="color: #e67e22;">Avg CT: <b>${avgCycleTime}d</b></div>` : `<div></div>`}
+                <div>Est: <b>${p.est.toFixed(1)}h</b></div>
+                <div>Act: <b>${p.act.toFixed(1)}h</b></div>
+                <div style="grid-column: span 2; font-weight:bold;">Efficiency Index: <span style="color: ${efficiencyColor}">${index.toFixed(2)}</span></div>
 
                ${type === 'dev' ? `
-                    <div style="grid-column: span 2; margin-top: 5px; padding: 5px; background: #fff5f5; border: 1px solid #f8d7da; border-radius: 4px;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <b style="color:#c0392b; font-size: 0.85em;">🪲 Standard Bugs: ${p.bugs}</b>
-                            <span style="color:#c0392b;">${p.rwTime.toFixed(1)}h</span>
+                    <div style="grid-column: span 2; margin-top: 8px; padding: 6px; background: #fff5f5; border: 1px solid #f8d7da; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items:center;">
+                            <b style="color:#c0392b;">🪲 Bugs: ${p.bugs}</b>
+                            <span style="font-weight:bold;">${p.rwTime.toFixed(1)}h</span>
                         </div>
+                        ${renderSevMini(p.crit, p.high, p.med, p.bugs)}
                     </div>
-                    <div style="grid-column: span 2; margin-top: 5px; padding: 5px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 4px;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <b style="color:#6d28d9; font-size: 0.85em;">🔎 Review Bugs (Dev): ${p.revCount}</b>
-                            <span style="color:#6d28d9;">${p.revTime.toFixed(1)}h</span>
+                    <div style="grid-column: span 2; margin-top: 5px; padding: 6px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items:center;">
+                            <b style="color:#6d28d9;">🔎 Review (Dev): ${p.revCount}</b>
+                            <span style="font-weight:bold;">${p.revTime.toFixed(1)}h</span>
                         </div>
+                        ${renderSevMini(p.revCrit, p.revHigh, p.revMed, p.revCount)}
                     </div>
                 ` : ''}
 
                 ${type === 'test' ? `
-                    <div style="grid-column: span 2; margin-top: 5px; padding: 5px; background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 4px;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <b style="color:#2980b9; font-size: 0.85em;">🔎 Review Bugs (Test): ${p.revCount}</b>
-                            <span style="color:#2980b9;">${p.revTime.toFixed(1)}h</span>
+                    <div style="grid-column: span 2; margin-top: 8px; padding: 6px; background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items:center;">
+                            <b style="color:#2980b9;">🔎 Review (Test): ${p.revCount}</b>
+                            <span style="font-weight:bold;">${p.revTime.toFixed(1)}h</span>
                         </div>
+                        <div style="font-size:0.75em; color:#555; margin-top:2px;">Effort spent on Review Bugs detection/testing.</div>
                     </div>
                 ` : ''}
             </div>
@@ -1337,6 +1374,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
