@@ -1253,129 +1253,142 @@ function groupBy(arr, key) {
 function renderIterationView() {
     const container = document.getElementById('iteration-view');
     if (!processedStories || processedStories.length === 0) {
-        container.innerHTML = "<div class='card'><h2>Iteration Summary</h2><p>No data available. Please load data first.</p></div>";
+        container.innerHTML = "<div class='card'><h2>Iteration Summary</h2><p>No data available.</p></div>";
         return;
     }
 
-    // إحصائيات الإيتريشن العامة
-    let iterStats = {
+    // 1. تجميع البيانات لكل التيمز (Global Aggregation)
+    let globalStats = {
         totalStories: processedStories.length,
         devEst: 0, devAct: 0,
         testEst: 0, testAct: 0,
-        reworkTime: 0, // البجات العادية
-        reviewTime: 0, // ريفيو بجز (Dev + Test)
-        totalCycleTime: 0,
-        storiesWithCycleTime: 0
+        reworkHrs: 0, reviewHrs: 0,
+        totalCycleTime: 0, ctCount: 0,
+        sev: { crit: 0, high: 0, med: 0, low: 0, totalBugs: 0 }
     };
 
     processedStories.forEach(us => {
-        iterStats.devEst += us.devEffort.orig;
-        iterStats.devAct += us.devEffort.actual;
-        iterStats.testEst += us.testEffort.orig;
-        iterStats.testAct += us.testEffort.actual;
+        globalStats.devEst += us.devEffort.orig;
+        globalStats.devAct += us.devEffort.actual;
+        globalStats.testEst += us.testEffort.orig;
+        globalStats.testAct += us.testEffort.actual;
         
-        // حساب السايكل تايم الكلي
+        // Cycle Time
         if (us.cycleTime > 0) {
-            iterStats.totalCycleTime += us.cycleTime;
-            iterStats.storiesWithCycleTime++;
+            globalStats.totalCycleTime += us.cycleTime;
+            globalStats.ctCount++;
         }
 
-        // تجميع ساعات الريورك (بجات عادية)
-        iterStats.reworkTime += us.rework.actualTime;
+        // Rework (Bugs + Reviews)
+        globalStats.reworkHrs += us.rework.actualTime;
+        globalStats.reviewHrs += (us.reviewStats.devActual + us.reviewStats.testActual);
 
-        // تجميع ساعات الريفيو بجز (Dev + Test)
-        iterStats.reviewTime += (us.reviewStats.devActual + us.reviewStats.testActual);
+        // Severity Tracking (Combined)
+        const allBugs = [us.rework.severity, us.reviewStats.severity];
+        allBugs.forEach(s => {
+            globalStats.sev.crit += s.critical;
+            globalStats.sev.high += s.high;
+            globalStats.sev.med += s.medium;
+            globalStats.sev.low += s.low;
+        });
     });
 
-    const avgIterationCycleTime = iterStats.storiesWithCycleTime > 0 
-        ? (iterStats.totalCycleTime / iterStats.storiesWithCycleTime).toFixed(1) 
-        : 0;
+    globalStats.sev.totalBugs = globalStats.sev.crit + globalStats.sev.high + globalStats.sev.med + globalStats.sev.low;
 
-    // المعادلة الجديدة للـ Rework Ratio (بجات + ريفيو)
-    const totalQualityHours = iterStats.reworkTime + iterStats.reviewTime;
-    const combinedReworkRatio = (totalQualityHours / (iterStats.devAct || 1)) * 100;
+    // 2. حساب المؤشرات الرئيسية (Key Metrics)
+    const effortVariance = (((globalStats.devAct + globalStats.testAct) - (globalStats.devEst + globalStats.testEst)) / (globalStats.devEst + globalStats.testEst || 1)) * 100;
+    const combinedReworkRatio = ((globalStats.reworkHrs + globalStats.reviewHrs) / (globalStats.devAct || 1)) * 100;
+    const avgCycleTime = globalStats.ctCount > 0 ? (globalStats.totalCycleTime / globalStats.ctCount).toFixed(1) : 0;
 
+    const getSevPct = (val) => globalStats.sev.totalBugs > 0 ? ((val / globalStats.sev.totalBugs) * 100).toFixed(1) : 0;
+
+    // 3. بناء الواجهة
     let html = `
-    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', sans-serif; padding: 20px;">
-        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 25px;">
-            📊 Iteration Summary Report
-        </h2>
+    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 10px;">
+        <h2 style="color: #2c3e50; border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">Team-Wide Iteration Insights</h2>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
             
-            <div style="background: #ebf5fb; border-left: 5px solid #3498db; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <span style="color: #5d6d7e; font-size: 0.9em; font-weight: bold;">ITERATION CYCLE TIME</span>
-                <div style="font-size: 2em; font-weight: bold; color: #2980b9;">${avgIterationCycleTime} <span style="font-size: 0.4em;">Days</span></div>
+            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid ${effortVariance <= 10 ? '#27ae60' : '#e74c3c'};">
+                <div style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;">EFFORT VARIANCE</div>
+                <div style="font-size: 2.2em; font-weight: bold; color: ${effortVariance <= 10 ? '#27ae60' : '#e74c3c'};">${effortVariance.toFixed(1)}%</div>
+                <div style="font-size: 0.8em; color: #95a5a6; margin-top: 5px;">Actual vs Estimated (Dev+Test)</div>
             </div>
 
-            <div style="background: #fdf2e9; border-left: 5px solid #e67e22; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <span style="color: #5d6d7e; font-size: 0.9em; font-weight: bold;">COMBINED REWORK RATIO</span>
-                <div style="font-size: 2em; font-weight: bold; color: #d35400;">${combinedReworkRatio.toFixed(1)}%</div>
-                <div style="font-size: 0.75em; color: #a04000;">Bugs: ${iterStats.reworkTime.toFixed(1)}h | Reviews: ${iterStats.reviewTime.toFixed(1)}h</div>
+            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid #f39c12;">
+                <div style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;">REWORK RATIO (BUGS + REVIEWS)</div>
+                <div style="font-size: 2.2em; font-weight: bold; color: #e67e22;">${combinedReworkRatio.toFixed(1)}%</div>
+                <div style="font-size: 0.8em; color: #95a5a6; margin-top: 5px;">${(globalStats.reworkHrs + globalStats.reviewHrs).toFixed(1)} Total Quality Hours</div>
             </div>
 
-            <div style="background: #e9f7ef; border-left: 5px solid #27ae60; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <span style="color: #5d6d7e; font-size: 0.9em; font-weight: bold;">TOTAL STORIES</span>
-                <div style="font-size: 2em; font-weight: bold; color: #219150;">${iterStats.totalStories}</div>
+            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid #3498db;">
+                <div style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;">AVG CYCLE TIME</div>
+                <div style="font-size: 2.2em; font-weight: bold; color: #2980b9;">${avgCycleTime} <span style="font-size: 0.5em;">Days</span></div>
+                <div style="font-size: 0.8em; color: #95a5a6; margin-top: 5px;">From Activation to Completion</div>
             </div>
-
-            <div style="background: #f4f6f7; border-left: 5px solid #7f8c8d; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <span style="color: #5d6d7e; font-size: 0.9em; font-weight: bold;">TOTAL ACTUAL HOURS</span>
-                <div style="font-size: 2em; font-weight: bold; color: #2c3e50;">${(iterStats.devAct + iterStats.testAct).toFixed(1)}h</div>
-            </div>
-
         </div>
 
-        <div style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden;">
-            <table style="width: 100%; border-collapse: collapse; background: white;">
-                <thead>
-                    <tr style="background: #2c3e50; color: white; text-align: left;">
-                        <th style="padding: 15px;">Area / Team</th>
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px;">
+            <h4 style="margin: 0 0 20px 0; color: #34495e; font-size: 1.1em;">Defect Severity Distribution (Global)</h4>
+            <div style="display: flex; height: 40px; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
+                <div title="Critical" style="width: ${getSevPct(globalStats.sev.crit)}%; background: #c0392b; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em;">${getSevPct(globalStats.sev.crit)}%</div>
+                <div title="High" style="width: ${getSevPct(globalStats.sev.high)}%; background: #e67e22; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em;">${getSevPct(globalStats.sev.high)}%</div>
+                <div title="Medium" style="width: ${getSevPct(globalStats.sev.med)}%; background: #f1c40f; display: flex; align-items: center; justify-content: center; color: #2c3e50; font-size: 0.8em;">${getSevPct(globalStats.sev.med)}%</div>
+                <div title="Low" style="width: ${getSevPct(globalStats.sev.low)}%; background: #2ecc71; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em;">${getSevPct(globalStats.sev.low)}%</div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
+                <div><b style="color:#c0392b;">Critical:</b> ${globalStats.sev.crit}</div>
+                <div><b style="color:#e67e22;">High:</b> ${globalStats.sev.high}</div>
+                <div><b style="color:#f39c12;">Medium:</b> ${globalStats.sev.med}</div>
+                <div><b style="color:#27ae60;">Low:</b> ${globalStats.sev.low}</div>
+            </div>
+        </div>
+
+        <div style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                <thead style="background: #f8f9fa;">
+                    <tr style="text-align: left; border-bottom: 2px solid #edf2f7;">
+                        <th style="padding: 15px;">Business Area</th>
                         <th style="padding: 15px;">Stories</th>
-                        <th style="padding: 15px;">Avg Cycle Time</th>
-                        <th style="padding: 15px;">Bugs Rework</th>
-                        <th style="padding: 15px;">Review Rework</th>
-                        <th style="padding: 15px;">Combined Ratio</th>
+                        <th style="padding: 15px;">Effort Var.</th>
+                        <th style="padding: 15px;">Cycle Time</th>
+                        <th style="padding: 15px;">Rework (Bug+Rev)</th>
                     </tr>
                 </thead>
                 <tbody>`;
 
     const grouped = groupBy(processedStories, 'businessArea');
     for (let area in grouped) {
-        let areaStories = grouped[area];
-        let aStats = { devAct: 0, bugsH: 0, revH: 0, ct: 0, count: 0 };
+        const areaStories = grouped[area];
+        let a = { devEst:0, devAct:0, testEst:0, testAct:0, rw:0, rv:0, ct:0, ctCount:0 };
         
         areaStories.forEach(s => {
-            aStats.devAct += s.devEffort.actual;
-            aStats.bugsH += s.rework.actualTime;
-            aStats.revH += (s.reviewStats.devActual + s.reviewStats.testActual);
-            if(s.cycleTime > 0) { aStats.ct += s.cycleTime; aStats.count++; }
+            a.devEst += s.devEffort.orig; a.devAct += s.devEffort.actual;
+            a.testEst += s.testEffort.orig; a.testAct += s.testEffort.actual;
+            a.rw += s.rework.actualTime;
+            a.rv += (s.reviewStats.devActual + s.reviewStats.testActual);
+            if(s.cycleTime > 0) { a.ct += s.cycleTime; a.ctCount++; }
         });
 
-        const areaCT = aStats.count > 0 ? (aStats.ct / aStats.count).toFixed(1) : 0;
-        const areaRatio = ((aStats.bugsH + aStats.revH) / (aStats.devAct || 1)) * 100;
+        const aVar = (((a.devAct+a.testAct)-(a.devEst+a.testEst))/(a.devEst+a.testEst||1))*100;
+        const aCT = a.ctCount > 0 ? (a.ct/a.ctCount).toFixed(1) : 0;
+        const aRwRatio = ((a.rw + a.rv)/(a.devAct||1))*100;
 
         html += `
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 15px; font-weight: bold; color: #2980b9;">${area}</td>
+            <tr style="border-bottom: 1px solid #edf2f7;">
+                <td style="padding: 15px; font-weight: 600;">${area}</td>
                 <td style="padding: 15px;">${areaStories.length}</td>
-                <td style="padding: 15px;">${areaCT} Days</td>
-                <td style="padding: 15px;">${aStats.bugsH.toFixed(1)}h</td>
-                <td style="padding: 15px;">${aStats.revH.toFixed(1)}h</td>
-                <td style="padding: 15px; font-weight: bold; color: ${areaRatio > 15 ? '#c0392b' : '#27ae60'};">
-                    ${areaRatio.toFixed(1)}%
-                </td>
+                <td style="padding: 15px; color: ${aVar > 15 ? '#e74c3c' : '#27ae60'};">${aVar.toFixed(1)}%</td>
+                <td style="padding: 15px;">${aCT} d</td>
+                <td style="padding: 15px; font-weight: bold; color: ${aRwRatio > 15 ? '#e67e22' : '#27ae60'};">${aRwRatio.toFixed(1)}%</td>
             </tr>`;
     }
 
-    html += `
-                </tbody>
-            </table>
-        </div>
-    </div>`;
-
+    html += `</tbody></table></div></div>`;
     container.innerHTML = html;
 }
+
 function addHoliday() {
     const picker = document.getElementById('holidayPicker');
     const date = picker.value;
@@ -1421,6 +1434,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
