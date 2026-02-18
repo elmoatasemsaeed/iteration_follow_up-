@@ -854,7 +854,11 @@ function renderTeamView() {
             stats.revMed += us.reviewStats.severity.medium;
         });
 
-        const totalQualityTime = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
+        // الحسابات الجديدة للـ Rework Ratio
+        const totalReworkEffort = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
+        const reworkRatio = (totalReworkEffort / (stats.devAct || 1)) * 100;
+        const reworkColor = reworkRatio > 15 ? '#e74c3c' : '#2ecc71';
+
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
         const teamIndex = (totalTeamEst / (totalTeamAct || 1)) * 100;
@@ -876,22 +880,28 @@ function renderTeamView() {
                             <div style="display: flex; justify-content: space-between;"><span>Avg Cycle Time:</span><b>${(stats.totalCycleTime / stats.totalStories).toFixed(1)} Days</b></div>
                             <div style="display: flex; justify-content: space-between; border-top: 1px dashed #ccc; padding-top: 5px;">
                                 <span style="font-weight: bold;">Effort Variance:</span>
-<b style="color: ${teamIndex < 85 ? '#e74c3c' : '#2ecc71'};">${teamIndex.toFixed(2)}</b>
+                                <b style="color: ${teamIndex < 85 ? '#e74c3c' : '#2ecc71'};">${teamIndex.toFixed(2)}</b>
                             </div>
                         </div>
                     </div>
 
                     <div style="background: #fff5f5; border: 1px solid #f8d7da; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #c0392b;">Quality Breakdown</h5>
+                        <h5 style="margin: 0 0 10px 0; color: #c0392b;">Quality & Rework Ratio</h5>
                         <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85em;">
+                            <div style="padding: 8px; border-radius: 6px; background: ${reworkColor}22; border: 1px solid ${reworkColor}; text-align: center;">
+                                <span style="font-weight: bold;">Total Rework Ratio:</span>
+                                <b style="color: ${reworkColor}; font-size: 1.2em; margin-left: 5px;">${reworkRatio.toFixed(1)}%</b>
+                            </div>
                             <div>
                                 <div style="display: flex; justify-content: space-between;"><b style="color: #c0392b;">Standard Bugs: ${stats.bugsCount}</b> <span>${stats.reworkTime.toFixed(1)}h</span></div>
                                 <div style="color: #666; font-size: 0.8em;">${getSevString(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsCount)}</div>
                             </div>
                             <div style="border-top: 1px solid #f8d7da; padding-top: 8px;">
                                 <div style="display: flex; justify-content: space-between;"><b style="color: #8e44ad;">Review Bugs: ${stats.reviewCount}</b></div>
-                                <div style="color: #666; font-size: 0.8em; margin-bottom:5px;">${getSevString(stats.revCrit, stats.revHigh, stats.revMed, stats.reviewCount)}</div>
-                                <div style="display: flex; justify-content: space-between;"><span>Dev Work: <b>${stats.reviewDevTime.toFixed(1)}h</b></span> <span>Test Work: <b>${stats.reviewTestTime.toFixed(1)}h</b></span></div>
+                                <div style="display: flex; justify-content: space-between; margin-top:5px;">
+                                    <span>Dev Work: <b>${stats.reviewDevTime.toFixed(1)}h</b></span> 
+                                    <span>Test Work: <b>${stats.reviewTestTime.toFixed(1)}h</b></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -901,7 +911,9 @@ function renderTeamView() {
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
                             <div style="display: flex; justify-content: space-between;"><span>Pure Dev Time:</span><b>${stats.devAct.toFixed(1)}h</b></div>
                             <div style="display: flex; justify-content: space-between;"><span>Pure Test Time:</span><b>${stats.testAct.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between; color: #c0392b; font-weight: bold; border-top: 1px solid #d1ecf1; padding-top: 5px;"><span>Total Quality Effort:</span><b>${totalQualityTime.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between; color: #c0392b; font-weight: bold; border-top: 1px solid #d1ecf1; padding-top: 5px;">
+                                <span>Total Quality Effort:</span><b>${totalReworkEffort.toFixed(1)}h</b>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -910,7 +922,6 @@ function renderTeamView() {
     }
     container.innerHTML = html;
 }
-
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!processedStories || processedStories.length === 0) {
@@ -1028,27 +1039,27 @@ function renderPeopleView() {
     container.innerHTML = html;
 }
 
+// ابحث عن دالة generateModernCards وقم بتحديث جزء الـ type === 'dev'
 function generateModernCards(dataObj, type) {
     const keys = Object.keys(dataObj);
-    if (keys.length === 0) return '<p style="color:#999; font-style:italic; font-size:0.9em;">No data in this section</p>';
+    if (keys.length === 0) return '<p ...>No data</p>';
 
     return keys.map(name => {
         const p = dataObj[name];
         const index = (p.est / (p.act || 1)) * 100;
         const efficiencyColor = index >= 85 ? '#27ae60' : '#e74c3c';
         
-        const renderSevMini = (c, h, m, t) => {
-            if (!t) return '';
-            return `<div style="display: flex; gap: 8px; font-size: 0.7em; color: #777; margin-top:2px;">
-                        <span>C: ${c} (${((c/t)*100).toFixed(0)}%)</span>
-                        <span>H: ${h} (${((h/t)*100).toFixed(0)}%)</span>
-                        <span>M: ${m} (${((m/t)*100).toFixed(0)}%)</span>
-                    </div>`;
-        };
+        // حساب نسبة الريورك للشخص
+        // المعادلة: (وقت بجز الديف + وقت ريفيو الديف) / وقت الديف الفعلي
+        const personalReworkTime = (p.rwTime || 0) + (p.revTime || 0);
+        // نستخدم p.act - p.revTime للحصول على وقت التطوير الصافي إذا أردت دقة متناهية، 
+        // لكن حسب طلبك سنقسم على وقت الديف الفعلي (p.act)
+        const personalReworkRatio = (personalReworkTime / (p.act || 1)) * 100;
+        const pReworkColor = personalReworkRatio > 15 ? '#e74c3c' : '#27ae60';
 
         return `
         <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
-            <div style="font-weight: bold; color: #34495e; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between;">
+            <div style="font-weight: bold; ...">
                 <span>${p.name}</span>
                 <span style="font-size: 0.75em; color: #7f8c8d;">${p.stories} Stories</span>
             </div>
@@ -1059,29 +1070,29 @@ function generateModernCards(dataObj, type) {
                 <div style="grid-column: span 2; font-weight:bold;">Effort Variance: <span style="color: ${efficiencyColor}">${index.toFixed(2)}</span></div>
 
                ${type === 'dev' ? `
+                    <div style="grid-column: span 2; margin-top: 5px; padding: 8px; background: ${pReworkColor}11; border: 1px solid ${pReworkColor}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                        <b style="color: ${pReworkColor}">Rework Ratio:</b>
+                        <b style="color: ${pReworkColor}; font-size: 1.1em;">${personalReworkRatio.toFixed(1)}%</b>
+                    </div>
+
                     <div style="grid-column: span 2; margin-top: 8px; padding: 6px; background: #fff5f5; border: 1px solid #f8d7da; border-radius: 4px;">
                         <div style="display: flex; justify-content: space-between; align-items:center;">
-                            <b style="color:#c0392b;">🪲 Bugs: ${p.bugs}</b>
+                            <b style="color:#c0392b;">🪲 Standard Bugs: ${p.bugs}</b>
                             <span style="font-weight:bold;">${p.rwTime.toFixed(1)}h</span>
                         </div>
-                        ${renderSevMini(p.crit, p.high, p.med, p.bugs)}
                     </div>
                     <div style="grid-column: span 2; margin-top: 5px; padding: 6px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 4px;">
                         <div style="display: flex; justify-content: space-between; align-items:center;">
                             <b style="color:#6d28d9;">🔎 Review (Dev): ${p.revCount}</b>
                             <span style="font-weight:bold;">${p.revTime.toFixed(1)}h</span>
                         </div>
-                        ${renderSevMini(p.revCrit, p.revHigh, p.revMed, p.revCount)}
                     </div>
                 ` : ''}
-
+                
                 ${type === 'test' ? `
                     <div style="grid-column: span 2; margin-top: 8px; padding: 6px; background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 4px;">
-                        <div style="display: flex; justify-content: space-between; align-items:center;">
-                            <b style="color:#2980b9;">🔎 Review (Test): ${p.revCount}</b>
-                            <span style="font-weight:bold;">${p.revTime.toFixed(1)}h</span>
-                        </div>
-                        <div style="font-size:0.75em; color:#555; margin-top:2px;">Effort spent on Review Bugs detection/testing.</div>
+                         <b style="color:#2980b9;">🔎 Review Detected: ${p.revCount}</b>
+                         <div style="font-size: 0.8em;">Effort: <b>${p.revTime.toFixed(1)}h</b></div>
                     </div>
                 ` : ''}
             </div>
@@ -1213,6 +1224,7 @@ function renderIterationView() {
     const totalActualTime = stats.devAct + stats.testAct + stats.dbAct + stats.reworkAct;
     const deliveryIndex = ((stats.devEst + stats.testEst + stats.dbEst) / (totalActualTime || 1)) * 100;
     const iterationHealth = Math.max(0, 100 - (stats.reworkAct / (stats.devAct || 1) * 100)).toFixed(1);
+    const totalReworkTime = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
     const reworkRatio = ((stats.reworkAct / (stats.devAct || 1)) * 100).toFixed(1);
     const reworkColor = reworkRatio > 15 ? '#e74c3c' : '#2ecc71';
 
@@ -1374,6 +1386,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
