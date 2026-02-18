@@ -868,34 +868,38 @@ function renderTeamView() {
         const efficiencyColor = teamEfficiency >= 85 ? '#2e7d32' : '#d32f2f';
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
 
-        // الدالة المعدلة لعرض الرقم والنسبة المئوية
+        // التعديل هنا: تكبير النسبة وتصغير الرقم
         const getSevBadges = (c, h, m, l, t) => {
-            if (!t) return '<div style="color:#999; margin-top:5px;">No items recorded</div>';
+            if (!t) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
             
-            // حساب النسبة المئوية
             const pct = (v) => ((v / t) * 100).toFixed(0);
+
+            const badgeStyle = (bg, color, border) => `
+                background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; 
+                text-align:center; flex:1; border:1px solid ${border}; 
+                display: flex; flex-direction: column; justify-content: center;`;
 
             return `
             <div style="display: flex; gap: 8px; margin-top: 10px;">
-                <div style="background:#ffeaed; color:#c62828; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #ffcdd2;">
-                    <div style="font-size:0.65em; font-weight:bold;">CRIT</div>
-                    <div style="font-size:1.1em; font-weight:900;">${c}</div>
-                    <div style="font-size:0.7em; opacity:0.8;">${pct(c)}%</div>
+                <div style="${badgeStyle('#ffeaed', '#c62828', '#ffcdd2')}">
+                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">CRIT</div>
+                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(c)}%</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${c}</div>
                 </div>
-                <div style="background:#fff3e0; color:#ef6c00; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #ffe0b2;">
-                    <div style="font-size:0.65em; font-weight:bold;">HIGH</div>
-                    <div style="font-size:1.1em; font-weight:900;">${h}</div>
-                    <div style="font-size:0.7em; opacity:0.8;">${pct(h)}%</div>
+                <div style="${badgeStyle('#fff3e0', '#ef6c00', '#ffe0b2')}">
+                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">HIGH</div>
+                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(h)}%</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${h}</div>
                 </div>
-                <div style="background:#e8f5e9; color:#2e7d32; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #c8e6c9;">
-                    <div style="font-size:0.65em; font-weight:bold;">MED</div>
-                    <div style="font-size:1.1em; font-weight:900;">${m}</div>
-                    <div style="font-size:0.7em; opacity:0.8;">${pct(m)}%</div>
+                <div style="${badgeStyle('#e8f5e9', '#2e7d32', '#c8e6c9')}">
+                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">MED</div>
+                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(m)}%</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${m}</div>
                 </div>
-                <div style="background:#e3f2fd; color:#1565c0; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #bbdefb;">
-                    <div style="font-size:0.65em; font-weight:bold;">LOW</div>
-                    <div style="font-size:1.1em; font-weight:900;">${l}</div>
-                    <div style="font-size:0.7em; opacity:0.8;">${pct(l)}%</div>
+                <div style="${badgeStyle('#e3f2fd', '#1565c0', '#bbdefb')}">
+                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">LOW</div>
+                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(l)}%</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${l}</div>
                 </div>
             </div>`;
         };
@@ -1439,6 +1443,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
