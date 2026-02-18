@@ -862,34 +862,40 @@ function renderTeamView() {
         const totalQualityTime = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
         const reworkRatio = (totalQualityTime / (stats.devAct || 1)) * 100;
         const reworkColor = reworkRatio > 15 ? '#d32f2f' : '#2e7d32';
-
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
         const teamEfficiency = (totalTeamEst / (totalTeamAct || 1)) * 100;
         const efficiencyColor = teamEfficiency >= 85 ? '#2e7d32' : '#d32f2f';
-        
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
 
+        // الدالة المعدلة لعرض الرقم والنسبة المئوية
         const getSevBadges = (c, h, m, l, t) => {
             if (!t) return '<div style="color:#999; margin-top:5px;">No items recorded</div>';
-            const calc = (v) => ((v/t)*100).toFixed(0);
+            
+            // حساب النسبة المئوية
+            const pct = (v) => ((v / t) * 100).toFixed(0);
+
             return `
             <div style="display: flex; gap: 8px; margin-top: 10px;">
                 <div style="background:#ffeaed; color:#c62828; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #ffcdd2;">
                     <div style="font-size:0.65em; font-weight:bold;">CRIT</div>
                     <div style="font-size:1.1em; font-weight:900;">${c}</div>
+                    <div style="font-size:0.7em; opacity:0.8;">${pct(c)}%</div>
                 </div>
                 <div style="background:#fff3e0; color:#ef6c00; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #ffe0b2;">
                     <div style="font-size:0.65em; font-weight:bold;">HIGH</div>
                     <div style="font-size:1.1em; font-weight:900;">${h}</div>
+                    <div style="font-size:0.7em; opacity:0.8;">${pct(h)}%</div>
                 </div>
                 <div style="background:#e8f5e9; color:#2e7d32; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #c8e6c9;">
                     <div style="font-size:0.65em; font-weight:bold;">MED</div>
                     <div style="font-size:1.1em; font-weight:900;">${m}</div>
+                    <div style="font-size:0.7em; opacity:0.8;">${pct(m)}%</div>
                 </div>
                 <div style="background:#e3f2fd; color:#1565c0; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #bbdefb;">
                     <div style="font-size:0.65em; font-weight:bold;">LOW</div>
                     <div style="font-size:1.1em; font-weight:900;">${l}</div>
+                    <div style="font-size:0.7em; opacity:0.8;">${pct(l)}%</div>
                 </div>
             </div>`;
         };
@@ -899,10 +905,8 @@ function renderTeamView() {
             <div style="background: #2c3e50; color: white; padding: 18px 25px; display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin:0; font-size: 1.5em;">📍 Area: ${area}</h3>
             </div>
-            
             <div style="padding: 25px;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                    
                     <div style="background: ${efficiencyColor}0a; border: 2px solid ${efficiencyColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Effort Variance</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: ${efficiencyColor}; margin: 10px 0;">${teamEfficiency.toFixed(1)}%</div>
@@ -910,7 +914,6 @@ function renderTeamView() {
                             ${teamEfficiency >= 85 ? '🎯 On Track' : '⚠️ Low Efficiency'}
                         </div>
                     </div>
-
                     <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Rework Ratio</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${reworkRatio.toFixed(1)}%</div>
@@ -918,19 +921,16 @@ function renderTeamView() {
                             Limit: 15% ${reworkRatio > 15 ? '⚠️' : '✅'}
                         </div>
                     </div>
-
                     <div style="background: #e3f2fd; border: 2px solid #1565c0; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #1565c0; font-weight: bold; text-transform: uppercase;">Avg Cycle Time</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: #1565c0; margin: 10px 0;">${avgCycleTime}</div>
                         <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">Working Days</div>
                     </div>
-
                     <div style="background: #fdfaf3; border: 2px solid #f39c12; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #f39c12; font-weight: bold; text-transform: uppercase;">Total Stories</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: #f39c12; margin: 10px 0;">${stats.totalStories}</div>
                         <div style="font-size: 0.8em; color: #f39c12; font-weight: bold;">Completed</div>
                     </div>
-
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
