@@ -930,7 +930,7 @@ function renderTeamView() {
                             <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs</h5>
                             <b style="font-size: 1.4em; color: #c62828;">${stats.bugsCount} <small style="font-size:0.6em; color:#666;">(${stats.reworkTime.toFixed(1)}h)</small></b>
                         </div>
-                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsCount)}
+                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
                         
                         <div style="margin-top: 25px; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -938,7 +938,7 @@ function renderTeamView() {
                                 <b style="font-size: 1.4em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${(stats.reviewDevTime + stats.reviewTestTime).toFixed(1)}h)</small></b>
                             </div>
                         </div>
-                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.reviewCount)}
+                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
                     </div>
 
                     <div style="grid-column: 1 / -1; background: #f8fbff; border: 1px solid #e3f2fd; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
@@ -1436,6 +1436,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
