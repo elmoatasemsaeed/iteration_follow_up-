@@ -385,11 +385,11 @@ function calculateMetrics() {
         us.dbEffort = { 
             orig: dbOrig, 
             actual: dbActual, 
-            dev: dbOrig / (dbActual || 1),
+            dev: ((dbActual - dbOrig) / (dbOrig || 1)) * 100,
             names: Array.from(dbNames).join(', ') || 'N/A'
         };
-        us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
-        us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
+        us.devEffort = { orig: devOrig, actual: devActual, dev: ((devActual - devOrig) / (devOrig || 1)) * 100 };
+        us.testEffort = { orig: testOrig, actual: testActual, dev: ((testActual - testOrig) / (testOrig || 1)) * 100 };
 
         // 2. حساب الـ Rework (Bugs العادية)
         let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
@@ -866,13 +866,13 @@ function renderTeamView() {
         const totalReviewTime = stats.reviewDevTime + stats.reviewTestTime;
         const totalQualityTime = stats.reworkTime + totalReviewTime;
         
-        const devIndex = stats.devEst / (stats.devAct || 1);
-        const testIndex = stats.testEst / (stats.testAct || 1);
-        const dbIndex = stats.dbEst / (stats.dbAct || 1);
+        const devIndex = ((stats.devAct - stats.devEst) / (stats.devEst || 1)) * 100;
+const testIndex = ((stats.testAct - stats.testEst) / (stats.testEst || 1)) * 100;
+const dbIndex = ((stats.dbAct - stats.dbEst) / (stats.dbEst || 1)) * 100;
         
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
-        const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
-        const teamIndex = totalTeamEst / (totalTeamAct || 1);
+const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
+const teamIndex = ((totalTeamAct - totalTeamEst) / (totalTeamEst || 1)) * 100;
         
         // نسبة الـ Rework والـ Review مقارنة بوقت التطوير الصافي
         const reworkRatio = ((stats.reworkTime / (stats.devAct || 1)) * 100).toFixed(1);
@@ -1072,7 +1072,7 @@ function generateModernCards(dataObj, type) {
 
     return keys.map(name => {
         const p = dataObj[name];
-        const index = p.est / (p.act || 1);
+        const index = ((p.act - p.est) / (p.est || 1)) * 100;
         const efficiencyColor = index >= 0.9 ? '#27ae60' : (index >= 0.7 ? '#f39c12' : '#e74c3c');
         const avgCycleTime = p.totalCycleTime !== undefined ? (p.totalCycleTime / (p.stories || 1)).toFixed(1) : null;
 
@@ -1086,7 +1086,7 @@ function generateModernCards(dataObj, type) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
                 <div title="Estimated Hours">Total Est: <b>${p.est.toFixed(1)}h</b></div>
                 <div title="Actual Hours">Total Act: <b>${p.act.toFixed(1)}h</b></div>
-                <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(2)}</b></div>
+                <div title="Efficiency Index" style="color: ${efficiencyColor}">Idx: <b>${index.toFixed(1)}%</b></div>
                 ${avgCycleTime !== null ? `<div title="Average Cycle Time" style="color: #e67e22;">Avg CT: <b>${avgCycleTime}d</b></div>` : `<div></div>`}
 
                ${type === 'dev' ? `
@@ -1322,7 +1322,7 @@ function renderIterationView() {
                                 aEst += s.devEffort.orig; 
                                 aRew += s.rework.actualTime;
                             });
-                            const aIdx = aEst / (aDev || 1);
+                            const aIdx = ((aDev - aEst) / (aEst || 1)) * 100;
                             const aHealth = Math.max(0, 100 - (aRew / (aDev || 1) * 100));
                             return `
                             <tr style="border-bottom: 1px solid #f9f9f9;">
@@ -1408,6 +1408,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
