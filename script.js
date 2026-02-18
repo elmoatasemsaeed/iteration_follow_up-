@@ -719,19 +719,19 @@ function renderBusinessView() {
                 <div style="color:#6d28d9; font-size:0.85em;">Dev: <b>${us.reviewStats.devActual.toFixed(1)}h</b></div>
                 <div style="color:#2980b9; font-size:0.85em; margin-top:5px;">Test: <b>${us.reviewStats.testActual.toFixed(1)}h</b></div>
             </td>
-            <td class="${us.devEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
+           <td class="${us.devEffort.dev < 0.85 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
         </tr>
         <tr style="background: #f4ecf7;">
             <td>DB Modification</td>
             <td>${us.dbEffort.orig.toFixed(1)}</td>
             <td>${us.dbEffort.actual.toFixed(1)}</td>
-            <td class="${us.dbEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.dbEffort.dev.toFixed(2)}</b></td>
+            <td class="${us.dbEffort.dev < 0.85 ? 'alert-red' : ''}"><b>${us.dbEffort.dev.toFixed(2)}</b></td>
         </tr>
         <tr>
             <td>Test</td>
             <td>${us.testEffort.orig.toFixed(1)}</td>
             <td>${us.testEffort.actual.toFixed(1)}</td>
-            <td class="${us.testEffort.dev < 1 ? 'alert-red' : ''}"><b>${us.testEffort.dev.toFixed(2)}</b></td>
+            <td class="${us.testEffort.dev < 0.85 ? 'alert-red' : ''}"><b>${us.testEffort.dev.toFixed(2)}</b></td>
         </tr>
     </tbody>
 </table>
@@ -876,7 +876,7 @@ function renderTeamView() {
                             <div style="display: flex; justify-content: space-between;"><span>Avg Cycle Time:</span><b>${(stats.totalCycleTime / stats.totalStories).toFixed(1)} Days</b></div>
                             <div style="display: flex; justify-content: space-between; border-top: 1px dashed #ccc; padding-top: 5px;">
                                 <span style="font-weight: bold;">Effort Variance:</span>
-                                <b style="color: ${teamIndex < 80 ? '#e74c3c' : '#2c3e50'};">${teamIndex.toFixed(2)}</b>
+<b style="color: ${teamIndex < 85 ? '#e74c3c' : '#2ecc71'};">${teamIndex.toFixed(2)}</b>
                             </div>
                         </div>
                     </div>
@@ -1035,7 +1035,7 @@ function generateModernCards(dataObj, type) {
     return keys.map(name => {
         const p = dataObj[name];
         const index = (p.est / (p.act || 1)) * 100;
-        const efficiencyColor = index >= 90 ? '#27ae60' : (index >= 85 ? '#f39c12' : '#e74c3c');
+        onst efficiencyColor = index >= 85 ? '#27ae60' : '#e74c3c';
         
         const renderSevMini = (c, h, m, t) => {
             if (!t) return '';
@@ -1214,6 +1214,7 @@ function renderIterationView() {
     const deliveryIndex = ((stats.devEst + stats.testEst + stats.dbEst) / (totalActualTime || 1)) * 100;
     const iterationHealth = Math.max(0, 100 - (stats.reworkAct / (stats.devAct || 1) * 100)).toFixed(1);
     const reworkRatio = ((stats.reworkAct / (stats.devAct || 1)) * 100).toFixed(1);
+    const reworkColor = reworkRatio > 15 ? '#e74c3c' : '#2ecc71';
 
     // --- 2. بناء الهيكل المرئي (UI Structure) ---
     let html = `
@@ -1239,11 +1240,10 @@ function renderIterationView() {
                 <p style="font-size: 0.7em; color: #95a5a6; margin: 5px 0 0;">Est. vs Actual Efficiency</p>
             </div>
 
-            <div class="card" style="border-top: 5px solid #e74c3c; background: #fff;">
-                <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Rework Ratio</h5>
-                <div style="font-size: 2em; font-weight: bold; color: #e74c3c;">${reworkRatio}%</div>
-                <p style="font-size: 0.7em; color: #95a5a6; margin: 5px 0 0;">Time Spent Fixing Bugs</p>
-            </div>
+           <div class="card" style="border-top: 5px solid ${reworkColor}; background: #fff;">
+    <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Rework Ratio</h5>
+    <div style="font-size: 2em; font-weight: bold; color: ${reworkColor};">${reworkRatio}%</div>
+</div>
 
             <div class="card" style="border-top: 5px solid #f39c12; background: #fff;">
                 <h5 style="color: #7f8c8d; margin: 0; font-size: 0.8em; text-transform: uppercase;">Completion</h5>
@@ -1294,7 +1294,7 @@ function renderIterationView() {
                             <tr style="border-bottom: 1px solid #f9f9f9;">
                                 <td style="padding: 12px 5px;"><b>${area}</b></td>
                                 <td>${aDev.toFixed(1)}h</td>
-                                <td style="color: ${aIdx < 0.8 ? '#e74c3c' : '#27ae60'}"><b>${aIdx.toFixed(2)}</b></td>
+                                <td style="color: ${aIdx < 85 ? '#e74c3c' : '#27ae60'}"><b>${aIdx.toFixed(2)}</b></td>
                                 <td>
                                     <div style="width:50px; background:#eee; height:6px; border-radius:3px;">
                                         <div style="width:${aHealth}%; background:${aHealth < 70 ? '#e74c3c' : '#2ecc71'}; height:100%; border-radius:3px;"></div>
@@ -1374,6 +1374,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
