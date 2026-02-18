@@ -393,7 +393,7 @@ function calculateMetrics() {
 
         // 2. حساب الـ Rework (Bugs العادية)
         let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
-        us.severityCounts = { critical: 0, high: 0, medium: 0 };
+        us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
 
         us.bugs.forEach(b => {
             bugOrig += parseFloat(b['Original Estimation']) || 0;
@@ -405,6 +405,7 @@ function calculateMetrics() {
             if (sev.includes("1 - Critical")) us.severityCounts.critical++;
             else if (sev.includes("2 - High")) us.severityCounts.high++;
             else if (sev.includes("3 - Medium")) us.severityCounts.medium++;
+            else if (sev.includes("4 - Low")) us.severityCounts.low++;
         });
 
         us.rework = {
@@ -426,7 +427,7 @@ us.reviewStats = {
     devCount: 0,
     testCount: 0,
     count: us.reviews ? us.reviews.length : 0,
-    severity: { critical: 0, high: 0, medium: 0 }
+    severity: { critical: 0, high: 0, medium: 0, low: 0}
 };
 
 if (us.reviews) {
@@ -450,6 +451,7 @@ if (us.reviews) {
         if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
         else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
         else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
+        else if (sev.includes("4 - Low")) us.reviewStats.severity.low++;
     });
 
     us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
@@ -658,7 +660,8 @@ function renderBusinessView() {
                 if (!total) return 'N/A';
                 return `C: ${sevObj.critical} (${((sevObj.critical/total)*100).toFixed(0)}%) | 
                         H: ${sevObj.high} (${((sevObj.high/total)*100).toFixed(0)}%) | 
-                        M: ${sevObj.medium} (${((sevObj.medium/total)*100).toFixed(0)}%)`;
+                        M: ${sevObj.medium} (${((sevObj.medium/total)*100).toFixed(0)}%) |
+                        L: ${sevObj.low} (${((sevObj.low/total)*100).toFixed(0)}%)`;
             };
 
          html += `
@@ -828,7 +831,8 @@ function renderTeamView() {
             reviewDevTime: 0, reviewTestTime: 0, reviewCount: 0,
             revCrit: 0, revHigh: 0, revMed: 0,
             totalStories: grouped[area].length,
-            totalCycleTime: 0
+            totalCycleTime: 0,
+            bugsLow: 0, revLow: 0
         };
 
         grouped[area].forEach(us => {
@@ -852,6 +856,8 @@ function renderTeamView() {
             stats.revCrit += us.reviewStats.severity.critical;
             stats.revHigh += us.reviewStats.severity.high;
             stats.revMed += us.reviewStats.severity.medium;
+            stats.bugsLow += us.severityCounts.low;
+            stats.revLow += us.reviewStats.severity.low;
         });
 
         // حساب نسبة الـ Rework
@@ -865,7 +871,7 @@ function renderTeamView() {
         const teamEfficiency = (totalTeamEst / (totalTeamAct || 1)) * 100;
         const efficiencyColor = teamEfficiency >= 85 ? '#2e7d32' : '#d32f2f';
 
-        const getSevBadges = (c, h, m, t) => {
+        const getSevBadges = (c, h, m, l, t) => {
             if (!t) return '<div style="color:#999; margin-top:5px;">No bugs recorded</div>';
             const calc = (v) => ((v/t)*100).toFixed(0);
             return `
@@ -884,6 +890,11 @@ function renderTeamView() {
                         <div style="font-size:0.7em; font-weight:bold;">MED</div>
                         <div style="font-size:1.3em; font-weight:900;">${m}</div>
                         <div style="font-size:0.75em; opacity:0.8;">${calc(m)}%</div>
+                     </div>
+                        <div style="background:#e3f2fd; color:#1565c0; padding:8px; border-radius:8px; text-align:center; flex:1; border:1px solid #bbdefb;">
+                        <div style="font-size:0.7em; font-weight:bold;">LOW</div>
+                        <div style="font-size:1.3em; font-weight:900;">${l}</div>
+                        <div style="font-size:0.75em; opacity:0.8;">${calc(l)}%</div>
                     </div>
                 </div>`;
         };
@@ -1425,6 +1436,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
