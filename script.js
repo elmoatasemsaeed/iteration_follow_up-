@@ -854,74 +854,81 @@ function renderTeamView() {
             stats.revMed += us.reviewStats.severity.medium;
         });
 
-        // الحسابات الجديدة للـ Rework Ratio
-        const totalReworkEffort = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
-        const reworkRatio = (totalReworkEffort / (stats.devAct || 1)) * 100;
+        // حساب نسبة الـ Rework الكلية للتيم
+        const totalQualityTime = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
+        const reworkRatio = (totalQualityTime / (stats.devAct || 1)) * 100;
         const reworkColor = reworkRatio > 15 ? '#e74c3c' : '#2ecc71';
 
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
         const teamIndex = (totalTeamEst / (totalTeamAct || 1)) * 100;
 
+        // دالة عرض الـ Severity بالنسب المئوية
         const getSevString = (c, h, m, t) => {
-            if (!t) return 'N/A';
+            if (!t) return 'No Bugs Recorded';
             return `C: ${c} (${((c/t)*100).toFixed(0)}%) | H: ${h} (${((h/t)*100).toFixed(0)}%) | M: ${m} (${((m/t)*100).toFixed(0)}%)`;
         };
 
         html += `
         <div class="business-section" style="margin-bottom: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border-top: 6px solid #2ecc71;">
             <div style="padding: 20px;">
-                <h3 style="margin-top:0;">📍 Area: ${area}</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                <h3 style="margin-top:0; color: #2c3e50;">📍 Area: ${area}</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                     
                     <div style="background: #f9fdfa; border: 1px solid #d4edda; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #27ae60;">Productivity Metrics</h5>
+                        <h5 style="margin: 0 0 10px 0; color: #27ae60; border-bottom: 1px solid #d4edda; padding-bottom: 5px;">Productivity</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
                             <div style="display: flex; justify-content: space-between;"><span>Avg Cycle Time:</span><b>${(stats.totalCycleTime / stats.totalStories).toFixed(1)} Days</b></div>
                             <div style="display: flex; justify-content: space-between; border-top: 1px dashed #ccc; padding-top: 5px;">
-                                <span style="font-weight: bold;">Effort Variance:</span>
-                                <b style="color: ${teamIndex < 85 ? '#e74c3c' : '#2ecc71'};">${teamIndex.toFixed(2)}</b>
+                                <span style="font-weight: bold;">Team Efficiency:</span>
+                                <b style="color: ${teamIndex < 85 ? '#e74c3c' : '#2ecc71'};">${teamIndex.toFixed(2)}%</b>
                             </div>
                         </div>
                     </div>
 
                     <div style="background: #fff5f5; border: 1px solid #f8d7da; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #c0392b;">Quality & Rework Ratio</h5>
+                        <h5 style="margin: 0 0 10px 0; color: #c0392b; border-bottom: 1px solid #f8d7da; padding-bottom: 5px;">Quality & Rework</h5>
                         <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85em;">
-                            <div style="padding: 8px; border-radius: 6px; background: ${reworkColor}22; border: 1px solid ${reworkColor}; text-align: center;">
-                                <span style="font-weight: bold;">Total Rework Ratio:</span>
-                                <b style="color: ${reworkColor}; font-size: 1.2em; margin-left: 5px;">${reworkRatio.toFixed(1)}%</b>
+                            
+                            <div style="padding: 10px; border-radius: 8px; background: ${reworkColor}15; border: 1px solid ${reworkColor}; text-align: center;">
+                                <div style="font-size: 0.8em; color: #555;">Rework Ratio (Limit 15%)</div>
+                                <b style="color: ${reworkColor}; font-size: 1.4em;">${reworkRatio.toFixed(1)}%</b>
                             </div>
+
                             <div>
                                 <div style="display: flex; justify-content: space-between;"><b style="color: #c0392b;">Standard Bugs: ${stats.bugsCount}</b> <span>${stats.reworkTime.toFixed(1)}h</span></div>
-                                <div style="color: #666; font-size: 0.8em;">${getSevString(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsCount)}</div>
+                                <div style="color: #666; font-size: 0.85em; margin-top: 3px; font-family: monospace; background: #fff; padding: 2px 5px; border-radius: 3px;">
+                                    ${getSevString(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsCount)}
+                                </div>
                             </div>
+
                             <div style="border-top: 1px solid #f8d7da; padding-top: 8px;">
-                                <div style="display: flex; justify-content: space-between;"><b style="color: #8e44ad;">Review Bugs: ${stats.reviewCount}</b></div>
-                                <div style="display: flex; justify-content: space-between; margin-top:5px;">
-                                    <span>Dev Work: <b>${stats.reviewDevTime.toFixed(1)}h</b></span> 
-                                    <span>Test Work: <b>${stats.reviewTestTime.toFixed(1)}h</b></span>
+                                <div style="display: flex; justify-content: space-between;"><b style="color: #8e44ad;">Review Bugs: ${stats.reviewCount}</b> <span>${(stats.reviewDevTime + stats.reviewTestTime).toFixed(1)}h</span></div>
+                                <div style="color: #666; font-size: 0.85em; margin-top: 3px; font-family: monospace; background: #fff; padding: 2px 5px; border-radius: 3px;">
+                                    ${getSevString(stats.revCrit, stats.revHigh, stats.revMed, stats.reviewCount)}
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div style="background: #f0f7ff; border: 1px solid #d1ecf1; padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #2980b9;">Effort Analysis</h5>
+                        <h5 style="margin: 0 0 10px 0; color: #2980b9; border-bottom: 1px solid #d1ecf1; padding-bottom: 5px;">Effort Distribution</h5>
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
-                            <div style="display: flex; justify-content: space-between;"><span>Pure Dev Time:</span><b>${stats.devAct.toFixed(1)}h</b></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Pure Test Time:</span><b>${stats.testAct.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Dev Actual:</span><b>${stats.devAct.toFixed(1)}h</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Test Actual:</span><b>${stats.testAct.toFixed(1)}h</b></div>
                             <div style="display: flex; justify-content: space-between; color: #c0392b; font-weight: bold; border-top: 1px solid #d1ecf1; padding-top: 5px;">
-                                <span>Total Quality Effort:</span><b>${totalReworkEffort.toFixed(1)}h</b>
+                                <span>Total Quality Work:</span><b>${totalQualityTime.toFixed(1)}h</b>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>`;
     }
     container.innerHTML = html;
 }
+
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!processedStories || processedStories.length === 0) {
@@ -1042,57 +1049,68 @@ function renderPeopleView() {
 // ابحث عن دالة generateModernCards وقم بتحديث جزء الـ type === 'dev'
 function generateModernCards(dataObj, type) {
     const keys = Object.keys(dataObj);
-    if (keys.length === 0) return '<p ...>No data</p>';
+    if (keys.length === 0) return '<p style="color:#999; text-align:center; padding:20px;">No data available</p>';
 
     return keys.map(name => {
         const p = dataObj[name];
         const index = (p.est / (p.act || 1)) * 100;
         const efficiencyColor = index >= 85 ? '#27ae60' : '#e74c3c';
         
-        // حساب نسبة الريورك للشخص
-        // المعادلة: (وقت بجز الديف + وقت ريفيو الديف) / وقت الديف الفعلي
+        // حساب نسبة الـ Rework للفرد
         const personalReworkTime = (p.rwTime || 0) + (p.revTime || 0);
-        // نستخدم p.act - p.revTime للحصول على وقت التطوير الصافي إذا أردت دقة متناهية، 
-        // لكن حسب طلبك سنقسم على وقت الديف الفعلي (p.act)
         const personalReworkRatio = (personalReworkTime / (p.act || 1)) * 100;
         const pReworkColor = personalReworkRatio > 15 ? '#e74c3c' : '#27ae60';
 
+        // دالة لعرض الـ Severity بشكل مبسط في كارت الشخص
+        const renderSevMini = (c, h, m, t) => {
+            if (!t) return '';
+            return `<div style="display: flex; gap: 10px; font-size: 0.75em; color: #666; margin-top: 4px; font-family: monospace;">
+                        <span title="Critical">C:${c}</span> <span title="High">H:${h}</span> <span title="Medium">M:${m}</span>
+                    </div>`;
+        };
+
         return `
-        <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
-            <div style="font-weight: bold; ...">
-                <span>${p.name}</span>
-                <span style="font-size: 0.75em; color: #7f8c8d;">${p.stories} Stories</span>
+        <div style="background: white; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <div style="font-weight: bold; color: #2c3e50; border-bottom: 1px solid #f5f5f5; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.1em;">${p.name}</span>
+                <span style="background: #eee; padding: 2px 8px; border-radius: 12px; font-size: 0.7em;">${p.stories} Stories</span>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85em;">
                 <div>Est: <b>${p.est.toFixed(1)}h</b></div>
                 <div>Act: <b>${p.act.toFixed(1)}h</b></div>
-                <div style="grid-column: span 2; font-weight:bold;">Effort Variance: <span style="color: ${efficiencyColor}">${index.toFixed(2)}</span></div>
+                <div style="grid-column: span 2; padding: 4px 0; border-top: 1px solid #fafafa;">
+                    Efficiency: <b style="color: ${efficiencyColor}">${index.toFixed(1)}%</b>
+                </div>
 
                ${type === 'dev' ? `
-                    <div style="grid-column: span 2; margin-top: 5px; padding: 8px; background: ${pReworkColor}11; border: 1px solid ${pReworkColor}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-                        <b style="color: ${pReworkColor}">Rework Ratio:</b>
+                    <div style="grid-column: span 2; margin-top: 5px; padding: 8px; background: ${pReworkColor}10; border: 1px solid ${pReworkColor}; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; color: ${pReworkColor};">Rework Ratio:</span>
                         <b style="color: ${pReworkColor}; font-size: 1.1em;">${personalReworkRatio.toFixed(1)}%</b>
                     </div>
 
-                    <div style="grid-column: span 2; margin-top: 8px; padding: 6px; background: #fff5f5; border: 1px solid #f8d7da; border-radius: 4px;">
+                    <div style="grid-column: span 2; margin-top: 8px; padding: 8px; background: #fff5f5; border: 1px solid #f8d7da; border-radius: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items:center;">
-                            <b style="color:#c0392b;">🪲 Standard Bugs: ${p.bugs}</b>
+                            <b style="color:#c0392b;">🪲 Bugs: ${p.bugs}</b>
                             <span style="font-weight:bold;">${p.rwTime.toFixed(1)}h</span>
                         </div>
+                        ${renderSevMini(p.crit, p.high, p.med, p.bugs)}
                     </div>
-                    <div style="grid-column: span 2; margin-top: 5px; padding: 6px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 4px;">
+
+                    <div style="grid-column: span 2; margin-top: 5px; padding: 8px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items:center;">
-                            <b style="color:#6d28d9;">🔎 Review (Dev): ${p.revCount}</b>
+                            <b style="color:#6d28d9;">🔎 Review Work: ${p.revCount}</b>
                             <span style="font-weight:bold;">${p.revTime.toFixed(1)}h</span>
                         </div>
                     </div>
                 ` : ''}
-                
+
                 ${type === 'test' ? `
-                    <div style="grid-column: span 2; margin-top: 8px; padding: 6px; background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 4px;">
-                         <b style="color:#2980b9;">🔎 Review Detected: ${p.revCount}</b>
-                         <div style="font-size: 0.8em;">Effort: <b>${p.revTime.toFixed(1)}h</b></div>
+                    <div style="grid-column: span 2; margin-top: 8px; padding: 8px; background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items:center;">
+                            <b style="color:#2980b9;">🔎 Review Found: ${p.revCount}</b>
+                            <span style="font-weight:bold;">${p.revTime.toFixed(1)}h</span>
+                        </div>
                     </div>
                 ` : ''}
             </div>
@@ -1386,6 +1404,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
