@@ -194,7 +194,7 @@ async function fetchDataFromGitHub() {
             const content = decodeURIComponent(escape(atob(data.content)));
             rawData = JSON.parse(content);
             processData(); 
-            showView('business-view');
+            showView('iteration-view');
             statusDiv.innerText = "✅ Data loaded from GitHub";
         } else {
             statusDiv.innerText = "❌ No data found on GitHub. Admin must upload first.";
@@ -278,7 +278,7 @@ async function handleUpload() {
             rawData = results.data;
             processData(); // الدالة الموجودة مسبقاً
             await uploadToGitHub();
-            showView('business-view');
+            showView('iteration-view');
         }
     });
 }
@@ -1410,6 +1410,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
