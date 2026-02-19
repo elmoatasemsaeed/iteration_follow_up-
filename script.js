@@ -859,26 +859,26 @@ function renderTeamView() {
             stats.revLow += us.reviewStats.severity.low;
         });
 
+        // حساب إجمالي الوقت الفعلي شاملاً الـ Quality (Bugs + Reviews) لضمان دقة المعادلة
         const totalQualityTime = stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
-        const reworkRatio = (totalQualityTime / (stats.devAct || 1)) * 100;
-        const reworkColor = reworkRatio > 15 ? '#d32f2f' : '#2e7d32';
         const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
         const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct;
+        
+        // المعادلة المصححة: (المخطط / الفعلي الكلي) لقياس كفاءة الفريق
+        // إذا كان الناتج 100% يعني الفريق ينجز بالضبط كما خطط
         const teamEfficiency = (totalTeamEst / (totalTeamAct || 1)) * 100;
+        
+        const reworkRatio = (totalQualityTime / (stats.devAct || 1)) * 100;
+        const reworkColor = reworkRatio > 15 ? '#d32f2f' : '#2e7d32';
         const efficiencyColor = teamEfficiency >= 85 ? '#2e7d32' : '#d32f2f';
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
 
-        // التعديل هنا: تكبير النسبة وتصغير الرقم
         const getSevBadges = (c, h, m, l, t) => {
             if (!t) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
-            
             const pct = (v) => ((v / t) * 100).toFixed(0);
-
             const badgeStyle = (bg, color, border) => `
-                background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; 
-                text-align:center; flex:1; border:1px solid ${border}; 
-                display: flex; flex-direction: column; justify-content: center;`;
-
+                background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center;`;
+            
             return `
             <div style="display: flex; gap: 8px; margin-top: 10px;">
                 <div style="${badgeStyle('#ffeaed', '#c62828', '#ffcdd2')}">
@@ -912,10 +912,10 @@ function renderTeamView() {
             <div style="padding: 25px;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
                     <div style="background: ${efficiencyColor}0a; border: 2px solid ${efficiencyColor}; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Effort Variance</span>
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Team Efficiency</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: ${efficiencyColor}; margin: 10px 0;">${teamEfficiency.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${efficiencyColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
-                            ${teamEfficiency >= 85 ? '🎯 On Track' : '⚠️ Low Efficiency'}
+                            ${teamEfficiency >= 85 ? '🎯 On Track' : '⚠️ Review Effort'}
                         </div>
                     </div>
                     <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; text-align: center;">
@@ -955,19 +955,12 @@ function renderTeamView() {
                     </div>
                 </div>
 
-                <div style="margin-top: 25px; background: #f8fbff; border: 1px solid #e3f2fd; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 20px;">
-                    <div style="text-align:center;">
-                        <div style="font-size: 0.7em; color: #777; text-transform: uppercase;">Planned Effort</div>
-                        <div style="font-size: 1.1em; font-weight: bold;">${totalTeamEst.toFixed(1)}h</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="font-size: 0.7em; color: #777; text-transform: uppercase;">Actual Effort</div>
-                        <div style="font-size: 1.1em; font-weight: bold;">${totalTeamAct.toFixed(1)}h</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="font-size: 0.7em; color: #777; text-transform: uppercase;">Quality Effort</div>
-                        <div style="font-size: 1.1em; font-weight: bold; color: #c62828;">${totalQualityTime.toFixed(1)}h</div>
-                    </div>
+                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666;">
+                    <strong>Detailed Effort:</strong> 
+                    Dev: ${stats.devAct.toFixed(1)}h | 
+                    Test: ${stats.testAct.toFixed(1)}h | 
+                    DB: ${stats.dbAct.toFixed(1)}h | 
+                    Total Quality Cost: ${totalQualityTime.toFixed(1)}h
                 </div>
             </div>
         </div>`;
@@ -1434,6 +1427,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
