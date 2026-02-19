@@ -910,7 +910,7 @@ function renderTeamView() {
                         </div>
                     </div>
                     <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Total Quality Ratio</span>
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Rework Ratio</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${combinedReworkRatio.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${reworkColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
                             ${(stats.reworkTime + stats.reviewTime).toFixed(1)}h Loss
@@ -1421,6 +1421,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
