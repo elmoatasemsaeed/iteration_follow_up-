@@ -968,173 +968,162 @@ function renderPeopleView() {
 
     const areaMap = {};
 
-    // 1. تجميع البيانات وتصنيفها
+    // 1. تجميع البيانات وتصنيفها بناءً على الحسبة الموحدة
     processedStories.forEach(us => {
         const area = us.businessArea || 'General';
         if (!areaMap[area]) {
             areaMap[area] = { devs: {}, testers: {}, dbMods: {} };
         }
 
-        // إحصائيات المطورين (Development)
+        // --- إحصائيات المطورين (Development) ---
         if (us.devLead) {
             const d = us.devLead;
             if (!areaMap[area].devs[d]) {
                 areaMap[area].devs[d] = { 
-                    name: d, est: 0, act: 0, stories: 0, totalCycleTime: 0,
-                    bugs: 0, crit: 0, high: 0, med: 0, rwTime: 0, // البجز العادية
-                    revCount: 0, revCrit: 0, revHigh: 0, revMed: 0, revTime: 0 // الريفيو
+                    name: d, est: 0, act: 0, stories: 0, 
+                    totalCycleTime: 0, bugs: 0, crit: 0, high: 0, med: 0, 
+                    rwTime: 0, revCount: 0, revTime: 0 
                 };
             }
             const devData = areaMap[area].devs[d];
-            // البجز العادية
+            
+            // التقدير: العمل المخطط له فقط (التطوير)
+            devData.est += us.devEffort.orig; 
+            
+            // الفعلي: (تطوير أساسي + وقت إصلاح البجز + وقت عمل الريفيو)
+            devData.act += us.devEffort.actual + us.rework.actualTime + us.reviewStats.devActual;
+            
+            // تفاصيل الجودة
+            devData.rwTime += us.rework.actualTime;
+            devData.bugs += us.rework.count;
             devData.crit += us.rework.severity.critical;
             devData.high += us.rework.severity.high;
             devData.med += us.rework.severity.medium;
-            devData.bugs += us.rework.count;
-            devData.rwTime += us.rework.actualTime;
             
-            // إضافة وقت التطوير الأساسي + وقت الريفيو الخاص بالمطور
-            devData.est += us.devEffort.orig + us.reviewStats.estimation; 
-            devData.act += us.devEffort.actual + us.reviewStats.devActual;
-
-            // إحصائيات الريفيو المنفصلة
+            // تفاصيل الريفيو
             devData.revCount += us.reviewStats.count;
-            devData.revCrit += us.reviewStats.severity.critical;
-            devData.revHigh += us.reviewStats.severity.high;
-            devData.revMed += us.reviewStats.severity.medium;
             devData.revTime += us.reviewStats.devActual;
-
+            
             devData.stories++;
             devData.totalCycleTime += (us.cycleTime || 0);
         }
 
-        // إحصائيات المختبرين (Testing)
+        // --- إحصائيات المختبرين (Testing) ---
         if (us.testerLead) {
             const t = us.testerLead;
             if (!areaMap[area].testers[t]) {
-                areaMap[area].testers[t] = { 
-                    name: t, est: 0, act: 0, stories: 0, totalCycleTime: 0,
-                    revCount: 0, revTime: 0 // الريفيو للتستر
-                };
+                areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0, revCount: 0, revTime: 0 };
             }
             const testData = areaMap[area].testers[t];
             testData.est += us.testEffort.orig;
             testData.act += us.testEffort.actual + us.reviewStats.testActual;
-            
             testData.revCount += us.reviewStats.count;
             testData.revTime += us.reviewStats.testActual;
-            
             testData.stories++;
-            testData.totalCycleTime += (us.cycleTime || 0);
         }
 
-        // إحصائيات تعديل قواعد البيانات (DB Modification)
+        // --- إحصائيات قاعدة البيانات (DB) ---
         if (us.dbEffort && us.dbEffort.names !== 'N/A') {
-            const names = us.dbEffort.names.split(', ');
-            names.forEach(dbName => {
-                const name = dbName.trim();
-                if (!areaMap[area].dbMods[name]) {
-                    areaMap[area].dbMods[name] = { name: name, est: 0, act: 0, stories: 0 };
+            const dbNames = us.dbEffort.names.split(', ');
+            dbNames.forEach(name => {
+                const n = name.trim();
+                if (!areaMap[area].dbMods[n]) {
+                    areaMap[area].dbMods[n] = { name: n, est: 0, act: 0, stories: 0 };
                 }
-                areaMap[area].dbMods[name].est += (us.dbEffort.orig / names.length);
-                areaMap[area].dbMods[name].act += (us.dbEffort.actual / names.length);
-                areaMap[area].dbMods[name].stories++;
+                const dbData = areaMap[area].dbMods[n];
+                // تقسيم التقدير والفعلي بالتساوي إذا وجد أكثر من شخص (تبسيطاً)
+                dbData.est += (us.dbEffort.orig / dbNames.length);
+                dbData.act += (us.dbEffort.actual / dbNames.length);
+                dbData.stories++;
             });
         }
     });
 
-    // 2. بناء واجهة العرض
-    let html = '<h2 style="margin-bottom:25px; color: #2c3e50;">👥 Multi-Disciplinary Performance Analytics</h2>';
-
+    // 2. بناء واجهة العرض (HTML)
+    let html = '<h2>Team Members Performance Analysis</h2>';
     for (let area in areaMap) {
         html += `
         <div class="business-section" style="margin-bottom: 50px; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; border-top: 5px solid #2c3e50;">
             <div style="background: #2c3e50; color: white; padding: 15px 25px;">
                 <h3 style="margin:0; font-size: 1.5em; letter-spacing: 1px;">${area}</h3>
             </div>
-            
             <div style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                
                 <div style="background: #f9fdfa; border: 1px solid #d4edda; border-radius: 8px; padding: 15px;">
-                    <h4 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-top:0;">💻 Developers (Inc. Review Time)</h4>
+                    <h4 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-top:0;">💻 Developers (Core + Quality)</h4>
                     ${generateModernCards(areaMap[area].devs, 'dev')}
                 </div>
-
                 <div style="background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 8px; padding: 15px;">
                     <h4 style="color: #2980b9; border-bottom: 2px solid #2980b9; padding-bottom: 10px; margin-top:0;">🔍 Testers</h4>
                     ${generateModernCards(areaMap[area].testers, 'test')}
                 </div>
-
                 <div style="background: #fffbf0; border: 1px solid #ffeeba; border-radius: 8px; padding: 15px;">
                     <h4 style="color: #f39c12; border-bottom: 2px solid #f39c12; padding-bottom: 10px; margin-top:0;">🗄️ DB Specialists</h4>
                     ${generateModernCards(areaMap[area].dbMods, 'db')}
                 </div>
-
             </div>
         </div>`;
     }
     container.innerHTML = html;
 }
 
-// ابحث عن دالة generateModernCards وقم بتحديث جزء الـ type === 'dev'
 function generateModernCards(dataObj, type) {
     const keys = Object.keys(dataObj);
     if (keys.length === 0) return '<p style="text-align:center; padding:20px; color:#999;">No data available</p>';
 
     return keys.map(name => {
         const p = dataObj[name];
-        const index = (p.est / (p.act || 1)) * 100;
-        const efficiencyColor = index >= 85 ? '#2e7d32' : '#d32f2f';
-        
-        const personalReworkTime = (p.rwTime || 0) + (p.revTime || 0);
-        const personalReworkRatio = (personalReworkTime / (p.act || 1)) * 100;
-        const pReworkColor = personalReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
+        // حساب الكفاءة: (المخطط / الفعلي الكلي)
+        const efficiency = (p.est / (p.act || 1)) * 100;
+        const efficiencyColor = efficiency >= 85 ? '#2e7d32' : (efficiency >= 60 ? '#f39c12' : '#d32f2f');
 
         return `
-        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 12px; padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; overflow: hidden;">
-            ${type === 'dev' ? `
-                <div style="position: absolute; top: 0; right: 0; background: ${pReworkColor}; color: white; padding: 8px 15px; border-bottom-left-radius: 12px; text-align: center; min-width: 80px;">
-                    <div style="font-size: 0.6em; font-weight: bold;">REWORK</div>
-                    <div style="font-size: 1.2em; font-weight: 900;">${personalReworkRatio.toFixed(1)}%</div>
-                </div>
-            ` : ''}
-
-            <div style="margin-bottom: 15px;">
-                <div style="font-size: 1.2em; font-weight: bold; color: #2c3e50;">${p.name}</div>
-                <div style="font-size: 0.8em; color: #7f8c8d;">Stories: <b>${p.stories}</b></div>
+        <div class="person-card" style="background:white; border:1px solid #eee; border-radius:10px; padding:15px; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <strong style="font-size:1.1em; color:#333;">${p.name}</strong>
+                <span style="font-size:0.8em; background:#eee; padding:2px 8px; border-radius:10px;">Stories: ${p.stories}</span>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
-                <div style="background: #fcfcfc; padding: 8px; border-radius: 8px; border: 1px solid #f0f0f0;">
-                    <span style="display:block; font-size:0.7em; color:#888;">Planned/Actual</span>
-                    <span style="font-weight:bold; font-size:1.1em;">${p.est.toFixed(0)}h / ${p.act.toFixed(0)}h</span>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                <div style="text-align:center; padding:8px; background:#f8f9fa; border-radius:6px;">
+                    <div style="font-size:0.7em; color:#666; text-transform:uppercase;">Estimation</div>
+                    <div style="font-size:1.2em; font-weight:bold; color:#2c3e50;">${p.est.toFixed(1)}h</div>
                 </div>
-                <div style="background: #fcfcfc; padding: 8px; border-radius: 8px; border: 1px solid #f0f0f0;">
-                    <span style="display:block; font-size:0.7em; color:#888;">Efficiency Index</span>
-                    <span style="font-weight:bold; font-size:1.1em; color: ${efficiencyColor}">${index.toFixed(1)}%</span>
+                <div style="text-align:center; padding:8px; background:#f8f9fa; border-radius:6px;">
+                    <div style="font-size:0.7em; color:#666; text-transform:uppercase;">Actual (Total)</div>
+                    <div style="font-size:1.2em; font-weight:bold; color:#2c3e50;">${p.act.toFixed(1)}h</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:4px;">
+                    <span>Efficiency Index</span>
+                    <span style="color:${efficiencyColor}; font-weight:bold;">${efficiency.toFixed(1)}%</span>
+                </div>
+                <div style="width:100%; height:6px; background:#eee; border-radius:3px;">
+                    <div style="width:${Math.min(efficiency, 100)}%; height:100%; background:${efficiencyColor}; border-radius:3px;"></div>
                 </div>
             </div>
 
             ${type === 'dev' ? `
-                <div style="display: flex; gap: 8px;">
-                    <div style="flex: 1; background: #fff5f5; border-radius: 8px; padding: 10px; border-left: 4px solid #c62828;">
-                        <div style="font-size: 0.75em; color: #c62828; font-weight: bold;">🪲 BUGS: ${p.bugs}</div>
-                        <div style="font-size: 1.1em; font-weight: 900; color: #c62828;">${p.rwTime.toFixed(1)}h</div>
-                        <div style="font-size: 0.7em; font-family: monospace; color: #777; margin-top: 4px;">C:${p.crit} H:${p.high} M:${p.med}</div>
-                    </div>
-                    <div style="flex: 1; background: #f5f3ff; border-radius: 8px; padding: 10px; border-left: 4px solid #6d28d9;">
-                        <div style="font-size: 0.75em; color: #6d28d9; font-weight: bold;">🔎 REVIEW</div>
-                        <div style="font-size: 1.1em; font-weight: 900; color: #6d28d9;">${p.revTime.toFixed(1)}h</div>
-                        <div style="font-size: 0.7em; color: #777; margin-top: 4px;">${p.revCount} Tasks</div>
-                    </div>
+            <div style="display: flex; gap: 8px;">
+                <div style="flex: 1; background: #fff5f5; border-radius: 8px; padding: 10px; border-left: 4px solid #c62828;">
+                    <div style="font-size: 0.75em; color: #c62828; font-weight: bold;">🪲 BUGS: ${p.bugs}</div>
+                    <div style="font-size: 1.1em; font-weight: 900; color: #c62828;">${p.rwTime.toFixed(1)}h</div>
+                    <div style="font-size: 0.65em; font-family: monospace; color: #777; margin-top: 4px;">C:${p.crit} H:${p.high} M:${p.med}</div>
                 </div>
+                <div style="flex: 1; background: #f5f3ff; border-radius: 8px; padding: 10px; border-left: 4px solid #6d28d9;">
+                    <div style="font-size: 0.75em; color: #6d28d9; font-weight: bold;">🔎 REVIEW</div>
+                    <div style="font-size: 1.1em; font-weight: 900; color: #6d28d9;">${p.revTime.toFixed(1)}h</div>
+                    <div style="font-size: 0.7em; color: #777; margin-top: 4px;">${p.revCount} Tasks</div>
+                </div>
+            </div>
             ` : ''}
 
             ${type === 'test' ? `
-                <div style="background: #f0f7ff; border-radius: 8px; padding: 10px; border-left: 4px solid #1565c0;">
-                    <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">🔎 QUALITY REVIEWS FOUND</div>
-                    <div style="font-size: 1.2em; font-weight: 900; color: #1565c0;">${p.revTime.toFixed(1)}h <span style="font-weight:normal; font-size:0.6em;">(${p.revCount} Items)</span></div>
-                </div>
+            <div style="background: #f0f7ff; border-radius: 8px; padding: 10px; border-left: 4px solid #1565c0;">
+                <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">🔎 QUALITY REVIEWS FOUND</div>
+                <div style="font-size: 1.2em; font-weight: 900; color: #1565c0;">${p.revTime.toFixed(1)}h <span style="font-weight:normal; font-size:0.6em;">(${p.revCount} Items)</span></div>
+            </div>
             ` : ''}
         </div>`;
     }).join('');
@@ -1421,6 +1410,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
