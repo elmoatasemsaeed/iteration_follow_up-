@@ -820,30 +820,31 @@ function renderTeamView() {
     let html = `
     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
         <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #2ecc71; padding-left: 20px; font-size: 1.8em;">
-            🚀 Team Performance Analytics
+            🚀 Team Performance Analytics (Unified Scope)
         </h2>`;
 
     for (let area in grouped) {
         let stats = {
-            devEst: 0, devAct: 0, testEst: 0, testAct: 0, dbEst: 0, dbAct: 0,
-            reworkTime: 0, bugsCount: 0,
-            bugsCrit: 0, bugsHigh: 0, bugsMed: 0, bugsLow: 0,
-            reviewDevTime: 0, reviewTestTime: 0, reviewCount: 0,
-            revCrit: 0, revHigh: 0, revMed: 0, revLow: 0,
+            totalEst: 0, totalAct: 0,
+            reworkTime: 0, reviewTime: 0,
+            bugsCount: 0, bugsCrit: 0, bugsHigh: 0, bugsMed: 0, bugsLow: 0,
+            reviewCount: 0, revCrit: 0, revHigh: 0, revMed: 0, revLow: 0,
             totalStories: grouped[area].length,
             totalCycleTime: 0
         };
 
         grouped[area].forEach(us => {
-            stats.devEst += us.devEffort.orig;
-            stats.devAct += us.devEffort.actual;
-            stats.testEst += us.testEffort.orig;
-            stats.testAct += us.testEffort.actual;
-            stats.dbEst += us.dbEffort.orig;
-            stats.dbAct += us.dbEffort.actual;
+            // الحسبة الموحدة
+            const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
+            const sRvTime = us.reviewStats.devActual + us.reviewStats.testActual;
+            const sAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + sRvTime;
+
+            stats.totalEst += sEst;
+            stats.totalAct += sAct;
+            stats.reworkTime += us.rework.actualTime;
+            stats.reviewTime += sRvTime;
             stats.totalCycleTime += (us.cycleTime || 0);
 
-            stats.reworkTime += us.rework.actualTime;
             stats.bugsCount += us.rework.count;
             stats.bugsCrit += us.rework.severity.critical;
             stats.bugsHigh += us.rework.severity.high;
@@ -851,60 +852,45 @@ function renderTeamView() {
             stats.bugsLow += us.rework.severity.low;
 
             stats.reviewCount += us.reviewStats.count;
-            stats.reviewDevTime += us.reviewStats.devActual;
-            stats.reviewTestTime += us.reviewStats.testActual;
             stats.revCrit += us.reviewStats.severity.critical;
             stats.revHigh += us.reviewStats.severity.high;
             stats.revMed += us.reviewStats.severity.medium;
             stats.revLow += us.reviewStats.severity.low;
         });
 
-        // 1. حساب إجمالي المخطط والفعلي
-        const totalTeamEst = stats.devEst + stats.testEst + stats.dbEst;
-        // الفعلي يشمل العمل الأساسي + الوقت المستهلك في الأخطاء والمراجعات ليعكس الصورة الحقيقية
-        const totalTeamAct = stats.devAct + stats.testAct + stats.dbAct + stats.reworkTime + stats.reviewDevTime + stats.reviewTestTime;
-
-        // 2. معادلة Effort Variance الجديدة:
-        // (الفعلي - المخطط) / المخطط * 100
-        // النتيجة الموجبة تعني تجاوز في الوقت (تأخير)، النتيجة السالبة تعني إنجاز أسرع من المخطط
-        const effortVariance = totalTeamEst > 0 
-            ? ((totalTeamAct - totalTeamEst) / totalTeamEst) * 100 
-            : 0;
-        
-        const reworkRatio = (stats.reworkTime / (stats.devAct || 1)) * 100;
-        
-        // الألوان: Variance قريب من الصفر أو سالب (أخضر)، Variance عالي (أحمر)
-        const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
-        const reworkColor = reworkRatio > 15 ? '#d32f2f' : '#2e7d32';
+        const effortVariance = stats.totalEst > 0 ? ((stats.totalAct - stats.totalEst) / stats.totalEst) * 100 : 0;
+        const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
+
+        const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
+        const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
 
         const getSevBadges = (c, h, m, l, t) => {
             if (!t) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
             const pct = (v) => ((v / t) * 100).toFixed(0);
             const badgeStyle = (bg, color, border) => `
                 background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center;`;
-            
             return `
             <div style="display: flex; gap: 8px; margin-top: 10px;">
                 <div style="${badgeStyle('#ffeaed', '#c62828', '#ffcdd2')}">
                     <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">CRIT</div>
                     <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(c)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${c}</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${c}</div>
                 </div>
                 <div style="${badgeStyle('#fff3e0', '#ef6c00', '#ffe0b2')}">
                     <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">HIGH</div>
                     <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(h)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${h}</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${h}</div>
                 </div>
                 <div style="${badgeStyle('#e8f5e9', '#2e7d32', '#c8e6c9')}">
                     <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">MED</div>
                     <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(m)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${m}</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${m}</div>
                 </div>
                 <div style="${badgeStyle('#e3f2fd', '#1565c0', '#bbdefb')}">
                     <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">LOW</div>
                     <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(l)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">count: ${l}</div>
+                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${l}</div>
                 </div>
             </div>`;
         };
@@ -920,20 +906,20 @@ function renderTeamView() {
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Effort Variance</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: ${varianceColor}; margin: 10px 0;">${effortVariance.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${varianceColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
-                            ${effortVariance <= 0 ? '🚀 Faster' : effortVariance <= 15 ? '🎯 On Plan' : '⚠️ Delay'}
+                            ${effortVariance <= 15 ? '🎯 Within Plan' : '⚠️ Delay'}
                         </div>
                     </div>
                     <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Rework Ratio</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${reworkRatio.toFixed(1)}%</div>
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Total Quality Ratio</span>
+                        <div style="font-size: 2.8em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${combinedReworkRatio.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${reworkColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
-                            Limit: 15% ${reworkRatio > 15 ? '⚠️' : '✅'}
+                            ${(stats.reworkTime + stats.reviewTime).toFixed(1)}h Loss
                         </div>
                     </div>
                     <div style="background: #e3f2fd; border: 2px solid #1565c0; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #1565c0; font-weight: bold; text-transform: uppercase;">Avg Cycle Time</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: #1565c0; margin: 10px 0;">${avgCycleTime}</div>
-                        <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">Working Days</div>
+                        <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">Days / Story</div>
                     </div>
                     <div style="background: #fdfaf3; border: 2px solid #f39c12; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #f39c12; font-weight: bold; text-transform: uppercase;">Total Stories</span>
@@ -954,17 +940,17 @@ function renderTeamView() {
                     <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
                             <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
-                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${(stats.reviewDevTime + stats.reviewTestTime).toFixed(1)}h)</small></b>
+                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${stats.reviewTime.toFixed(1)}h)</small></b>
                         </div>
                         ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
                     </div>
                 </div>
 
-                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666;">
+                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666; border: 1px solid #eee;">
                     <strong>Detailed Effort:</strong> 
-                    Est: ${totalTeamEst.toFixed(1)}h | 
-                    Act: ${totalTeamAct.toFixed(1)}h | 
-                    Diff: ${(totalTeamAct - totalTeamEst).toFixed(1)}h
+                    Est Core: ${stats.totalEst.toFixed(1)}h | 
+                    Act Total: ${stats.totalAct.toFixed(1)}h | 
+                    Total Over/Under: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
                 </div>
             </div>
         </div>`;
@@ -1254,68 +1240,72 @@ function renderIterationView() {
         return;
     }
 
-    // 1. تجميع البيانات لكل التيمز (Global Aggregation)
+    // 1. تجميع البيانات الشامل (Global Aggregation)
     let globalStats = {
         totalStories: processedStories.length,
-        devEst: 0, devAct: 0,
-        testEst: 0, testAct: 0,
-        reworkHrs: 0, reviewHrs: 0,
-        totalCycleTime: 0, ctCount: 0,
-        sev: { crit: 0, high: 0, med: 0, low: 0, totalBugs: 0 }
+        totalEst: 0, 
+        totalAct: 0,
+        reworkHrs: 0, 
+        reviewHrs: 0,
+        totalCycleTime: 0, 
+        ctCount: 0,
+        sev: { crit: 0, high: 0, med: 0, low: 0, totalItems: 0 }
     };
 
     processedStories.forEach(us => {
-        globalStats.devEst += us.devEffort.orig;
-        globalStats.devAct += us.devEffort.actual;
-        globalStats.testEst += us.testEffort.orig;
-        globalStats.testAct += us.testEffort.actual;
+        // حساب المخطط الشامل (Dev + Test + DB)
+        const storyEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
         
-        // Cycle Time
+        // حساب الفعلي الشامل (Actual + Rework + Reviews)
+        const storyReviewTime = (us.reviewStats.devActual + us.reviewStats.testActual);
+        const storyAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + 
+                         us.rework.actualTime + storyReviewTime;
+
+        globalStats.totalEst += storyEst;
+        globalStats.totalAct += storyAct;
+        globalStats.reworkHrs += us.rework.actualTime;
+        globalStats.reviewHrs += storyReviewTime;
+
         if (us.cycleTime > 0) {
             globalStats.totalCycleTime += us.cycleTime;
             globalStats.ctCount++;
         }
 
-        // Rework (Bugs + Reviews)
-        globalStats.reworkHrs += us.rework.actualTime;
-        globalStats.reviewHrs += (us.reviewStats.devActual + us.reviewStats.testActual);
-
-        // Severity Tracking (Combined)
-        const allBugs = [us.rework.severity, us.reviewStats.severity];
-        allBugs.forEach(s => {
-            globalStats.sev.crit += s.critical;
-            globalStats.sev.high += s.high;
-            globalStats.sev.med += s.medium;
-            globalStats.sev.low += s.low;
-        });
+        // تجميع Severity للبجات والمراجعات
+        const bugs = us.rework.severity;
+        const revs = us.reviewStats.severity;
+        globalStats.sev.crit += (bugs.critical + revs.critical);
+        globalStats.sev.high += (bugs.high + revs.high);
+        globalStats.sev.med += (bugs.medium + revs.medium);
+        globalStats.sev.low += (bugs.low + revs.low);
     });
 
-    globalStats.sev.totalBugs = globalStats.sev.crit + globalStats.sev.high + globalStats.sev.med + globalStats.sev.low;
+    globalStats.sev.totalItems = globalStats.sev.crit + globalStats.sev.high + globalStats.sev.med + globalStats.sev.low;
 
-    // 2. حساب المؤشرات الرئيسية (Key Metrics)
-    const effortVariance = (((globalStats.devAct + globalStats.testAct) - (globalStats.devEst + globalStats.testEst)) / (globalStats.devEst + globalStats.testEst || 1)) * 100;
-    const combinedReworkRatio = ((globalStats.reworkHrs + globalStats.reviewHrs) / (globalStats.devAct || 1)) * 100;
+    // 2. الحسابات الرئيسية
+    const effortVariance = ((globalStats.totalAct - globalStats.totalEst) / (globalStats.totalEst || 1)) * 100;
+    const combinedReworkRatio = ((globalStats.reworkHrs + globalStats.reviewHrs) / (globalStats.totalAct || 1)) * 100;
     const avgCycleTime = globalStats.ctCount > 0 ? (globalStats.totalCycleTime / globalStats.ctCount).toFixed(1) : 0;
 
-    const getSevPct = (val) => globalStats.sev.totalBugs > 0 ? ((val / globalStats.sev.totalBugs) * 100).toFixed(1) : 0;
+    const getSevPct = (val) => globalStats.sev.totalItems > 0 ? ((val / globalStats.sev.totalItems) * 100).toFixed(1) : 0;
 
     // 3. بناء الواجهة
     let html = `
     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 10px;">
-        <h2 style="color: #2c3e50; border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">Team-Wide Iteration Insights</h2>
+        <h2 style="color: #2c3e50; border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 25px;">Team-Wide Iteration Insights (Comprehensive)</h2>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
             
-            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid ${effortVariance <= 10 ? '#27ae60' : '#e74c3c'};">
-                <div style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;">EFFORT VARIANCE</div>
-                <div style="font-size: 2.2em; font-weight: bold; color: ${effortVariance <= 10 ? '#27ae60' : '#e74c3c'};">${effortVariance.toFixed(1)}%</div>
-                <div style="font-size: 0.8em; color: #95a5a6; margin-top: 5px;">Actual vs Estimated (Dev+Test)</div>
+            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid ${effortVariance <= 15 ? '#27ae60' : '#e74c3c'};">
+                <div style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;">EFFORT VARIANCE (FULL)</div>
+                <div style="font-size: 2.2em; font-weight: bold; color: ${effortVariance <= 15 ? '#27ae60' : '#e74c3c'};">${effortVariance.toFixed(1)}%</div>
+                <div style="font-size: 0.8em; color: #95a5a6; margin-top: 5px;">Includes Core Work + DB + Quality</div>
             </div>
 
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid #f39c12;">
-                <div style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;">REWORK RATIO (BUGS + REVIEWS)</div>
+                <div style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-bottom: 10px;">REWORK RATIO (TOTAL)</div>
                 <div style="font-size: 2.2em; font-weight: bold; color: #e67e22;">${combinedReworkRatio.toFixed(1)}%</div>
-                <div style="font-size: 0.8em; color: #95a5a6; margin-top: 5px;">${(globalStats.reworkHrs + globalStats.reviewHrs).toFixed(1)} Total Quality Hours</div>
+                <div style="font-size: 0.8em; color: #95a5a6; margin-top: 5px;">${(globalStats.reworkHrs + globalStats.reviewHrs).toFixed(1)} Quality Hours</div>
             </div>
 
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid #3498db;">
@@ -1326,14 +1316,13 @@ function renderIterationView() {
         </div>
 
         <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px;">
-            <h4 style="margin: 0 0 20px 0; color: #34495e; font-size: 1.1em;">Defect Severity Distribution (Global)</h4>
+            <h4 style="margin: 0 0 20px 0; color: #34495e; font-size: 1.1em;">Defect Severity Distribution (Bugs + Reviews)</h4>
             <div style="display: flex; height: 40px; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
                 <div title="Critical" style="width: ${getSevPct(globalStats.sev.crit)}%; background: #c0392b; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em;">${getSevPct(globalStats.sev.crit)}%</div>
                 <div title="High" style="width: ${getSevPct(globalStats.sev.high)}%; background: #e67e22; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em;">${getSevPct(globalStats.sev.high)}%</div>
                 <div title="Medium" style="width: ${getSevPct(globalStats.sev.med)}%; background: #f1c40f; display: flex; align-items: center; justify-content: center; color: #2c3e50; font-size: 0.8em;">${getSevPct(globalStats.sev.med)}%</div>
                 <div title="Low" style="width: ${getSevPct(globalStats.sev.low)}%; background: #2ecc71; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em;">${getSevPct(globalStats.sev.low)}%</div>
             </div>
-            
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
                 <div><b style="color:#c0392b;">Critical:</b> ${globalStats.sev.crit}</div>
                 <div><b style="color:#e67e22;">High:</b> ${globalStats.sev.high}</div>
@@ -1348,9 +1337,10 @@ function renderIterationView() {
                     <tr style="text-align: left; border-bottom: 2px solid #edf2f7;">
                         <th style="padding: 15px;">Business Area</th>
                         <th style="padding: 15px;">Stories</th>
+                        <th style="padding: 15px;">Est (Core)</th>
+                        <th style="padding: 15px;">Act (Total)</th>
                         <th style="padding: 15px;">Effort Var.</th>
-                        <th style="padding: 15px;">Cycle Time</th>
-                        <th style="padding: 15px;">Rework (Bug+Rev)</th>
+                        <th style="padding: 15px;">Rework Ratio</th>
                     </tr>
                 </thead>
                 <tbody>`;
@@ -1358,27 +1348,27 @@ function renderIterationView() {
     const grouped = groupBy(processedStories, 'businessArea');
     for (let area in grouped) {
         const areaStories = grouped[area];
-        let a = { devEst:0, devAct:0, testEst:0, testAct:0, rw:0, rv:0, ct:0, ctCount:0 };
+        let a = { est: 0, act: 0, rw: 0, rv: 0 };
         
         areaStories.forEach(s => {
-            a.devEst += s.devEffort.orig; a.devAct += s.devEffort.actual;
-            a.testEst += s.testEffort.orig; a.testAct += s.testEffort.actual;
-            a.rw += s.rework.actualTime;
-            a.rv += (s.reviewStats.devActual + s.reviewStats.testActual);
-            if(s.cycleTime > 0) { a.ct += s.cycleTime; a.ctCount++; }
+            const sEst = s.devEffort.orig + s.testEffort.orig + (s.dbEffort?.orig || 0);
+            const sRv = (s.reviewStats.devActual + s.reviewStats.testActual);
+            const sAct = s.devEffort.actual + s.testEffort.actual + (s.dbEffort?.actual || 0) + s.rework.actualTime + sRv;
+            
+            a.est += sEst; a.act += sAct; a.rw += s.rework.actualTime; a.rv += sRv;
         });
 
-        const aVar = (((a.devAct+a.testAct)-(a.devEst+a.testEst))/(a.devEst+a.testEst||1))*100;
-        const aCT = a.ctCount > 0 ? (a.ct/a.ctCount).toFixed(1) : 0;
-        const aRwRatio = ((a.rw + a.rv)/(a.devAct||1))*100;
+        const aVar = ((a.act - a.est) / (a.est || 1)) * 100;
+        const aRwRatio = ((a.rw + a.rv) / (a.act || 1)) * 100;
 
         html += `
             <tr style="border-bottom: 1px solid #edf2f7;">
                 <td style="padding: 15px; font-weight: 600;">${area}</td>
                 <td style="padding: 15px;">${areaStories.length}</td>
-                <td style="padding: 15px; color: ${aVar > 15 ? '#e74c3c' : '#27ae60'};">${aVar.toFixed(1)}%</td>
-                <td style="padding: 15px;">${aCT} d</td>
-                <td style="padding: 15px; font-weight: bold; color: ${aRwRatio > 15 ? '#e67e22' : '#27ae60'};">${aRwRatio.toFixed(1)}%</td>
+                <td style="padding: 15px;">${a.est.toFixed(1)}h</td>
+                <td style="padding: 15px;">${a.act.toFixed(1)}h</td>
+                <td style="padding: 15px; color: ${aVar > 15 ? '#e74c3c' : '#27ae60'}; font-weight: bold;">${aVar.toFixed(1)}%</td>
+                <td style="padding: 15px; color: ${aRwRatio > 15 ? '#e67e22' : '#27ae60'}; font-weight: bold;">${aRwRatio.toFixed(1)}%</td>
             </tr>`;
     }
 
