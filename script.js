@@ -827,7 +827,7 @@ function renderTeamView() {
             completed: 0,
             totalDevTime: 0,
             totalTestTime: 0,
-            // فصل إحصائيات الـ Review
+            // العدادات الجديدة للتقسيم
             revDev: { count: 0, crit: 0, high: 0, med: 0, low: 0, time: 0 },
             revTest: { count: 0, crit: 0, high: 0, med: 0, low: 0, time: 0 }
         };
@@ -841,7 +841,7 @@ function renderTeamView() {
                 const activity = r['Activity'] || "";
                 const sev = r['Severity'] || "";
                 
-                // تحديد الوجهة والوقت بناءً على النشاط
+                // تحديد إذا كان ديف أم تيستينج بناءً على الـ Activity
                 if (activity === 'Development') {
                     stats.revDev.count++;
                     stats.revDev.time += parseFloat(r['TimeSheet_DevActualTime']) || 0;
@@ -877,7 +877,7 @@ function renderTeamView() {
                 <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #edf2f7; display: flex; flex-direction: column; justify-content: center;">
                     <div style="margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="color: #64748b; font-weight: 500;">Progress</span>
+                            <span style="color: #64748b; font-weight: 500;">Overall Progress</span>
                             <span style="color: #0f172a; font-weight: 700;">${progress}%</span>
                         </div>
                         <div style="width: 100%; height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden;">
@@ -886,65 +886,62 @@ function renderTeamView() {
                     </div>
                     <div style="display: flex; gap: 20px;">
                         <div>
-                            <div style="color: #64748b; font-size: 0.85em;">Total Dev Time</div>
+                            <div style="color: #64748b; font-size: 0.85em;">Dev Actual</div>
                             <div style="font-size: 1.4em; font-weight: 700; color: #0f172a;">${stats.totalDevTime.toFixed(1)}h</div>
                         </div>
                         <div>
-                            <div style="color: #64748b; font-size: 0.85em;">Total Test Time</div>
+                            <div style="color: #64748b; font-size: 0.85em;">Test Actual</div>
                             <div style="font-size: 1.4em; font-weight: 700; color: #0f172a;">${stats.totalTestTime.toFixed(1)}h</div>
                         </div>
                     </div>
                 </div>
 
-                <div style="display: flex; flex-direction: column; gap: 15px;">
-                    
-                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
-                            <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects (Dev)</h5>
-                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.revDev.count} <small style="font-size:0.6em; color:#666;">(${stats.revDev.time.toFixed(1)}h)</small></b>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #edf2f7;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                            <span style="font-weight: 700; color: #6b21a8;">Review Defects (Dev)</span>
+                            <span style="font-weight: 700;">${stats.revDev.count} <small style="color:#666">(${stats.revDev.time.toFixed(1)}h)</small></span>
                         </div>
                         ${getSevBadges(stats.revDev.crit, stats.revDev.high, stats.revDev.med, stats.revDev.low, stats.revDev.count)}
                     </div>
-
-                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #bae6fd; padding-bottom: 8px; margin-bottom: 12px;">
-                            <h5 style="margin:0; color: #0369a1; font-size: 1.1em;">Review Defects (Testing)</h5>
-                            <b style="font-size: 1.2em; color: #0369a1;">${stats.revTest.count} <small style="font-size:0.6em; color:#666;">(${stats.revTest.time.toFixed(1)}h)</small></b>
+                    <div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #edf2f7;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                            <span style="font-weight: 700; color: #0369a1;">Review Defects (Test)</span>
+                            <span style="font-weight: 700;">${stats.revTest.count} <small style="color:#666">(${stats.revTest.time.toFixed(1)}h)</small></span>
                         </div>
                         ${getSevBadges(stats.revTest.crit, stats.revTest.high, stats.revTest.med, stats.revTest.low, stats.revTest.count)}
                     </div>
-
                 </div>
             </div>
 
-            <div style="margin-top: 25px; overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+            <div style="margin-top: 25px; background: white; border-radius: 12px; border: 1px solid #edf2f7; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9em;">
                     <thead>
-                        <tr style="background: #f1f5f9; text-align: left;">
-                            <th style="padding: 12px; border-bottom: 1px solid #e2e8f0;">Story</th>
-                            <th style="padding: 12px; border-bottom: 1px solid #e2e8f0;">Status</th>
-                            <th style="padding: 12px; border-bottom: 1px solid #e2e8f0;">Dev Actual</th>
-                            <th style="padding: 12px; border-bottom: 1px solid #e2e8f0;">Test Actual</th>
-                            <th style="padding: 12px; border-bottom: 1px solid #e2e8f0;">Reviews</th>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #edf2f7;">
+                            <th style="padding: 12px 15px; color: #64748b; font-weight: 600;">Story</th>
+                            <th style="padding: 12px 15px; color: #64748b; font-weight: 600;">Status</th>
+                            <th style="padding: 12px 15px; color: #64748b; font-weight: 600;">Dev</th>
+                            <th style="padding: 12px 15px; color: #64748b; font-weight: 600;">Test</th>
+                            <th style="padding: 12px 15px; color: #64748b; font-weight: 600;">Reviews</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${grouped[area].map(us => `
-                            <tr>
-                                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 12px 15px;">
                                     <div style="font-weight: 600; color: #1e293b;">${us.id}</div>
-                                    <div style="font-size: 0.85em; color: #64748b;">${us.title}</div>
+                                    <div style="font-size: 0.8em; color: #94a3b8;">${us.title}</div>
                                 </td>
-                                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">
-                                    <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: ${us.status === 'Done' || us.status === 'Closed' ? '#dcfce7' : '#fef9c3'}; color: ${us.status === 'Done' || us.status === 'Closed' ? '#166534' : '#854d0e'};">
+                                <td style="padding: 12px 15px;">
+                                    <span style="padding: 3px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 500; 
+                                        background: ${us.status === 'Done' || us.status === 'Closed' ? '#dcfce7' : '#fef9c3'}; 
+                                        color: ${us.status === 'Done' || us.status === 'Closed' ? '#166534' : '#854d0e'};">
                                         ${us.status}
                                     </span>
                                 </td>
-                                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">${us.devActual}h</td>
-                                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">${us.testActual}h</td>
-                                <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">
-                                    <span style="font-weight: 600;">${(us.reviews || []).length}</span>
-                                </td>
+                                <td style="padding: 12px 15px; font-weight: 500;">${us.devActual}h</td>
+                                <td style="padding: 12px 15px; font-weight: 500;">${us.testActual}h</td>
+                                <td style="padding: 12px 15px; font-weight: 600; color: #64748b;">${(us.reviews || []).length}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -953,7 +950,7 @@ function renderTeamView() {
         </div>`;
     }
 
-    container.innerHTML = html || '<div style="text-align:center; padding: 50px; color: #64748b;">No data available for Team View</div>';
+    container.innerHTML = html;
 }
 
 function renderPeopleView() {
@@ -1407,6 +1404,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
