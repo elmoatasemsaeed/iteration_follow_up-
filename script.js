@@ -828,14 +828,15 @@ function renderTeamView() {
             totalEst: 0, totalAct: 0,
             reworkTime: 0, 
             
-            // إحصائيات المراجعة
+            // إحصائيات التطوير منفصلة
             devRevTime: 0, devRevCount: 0,
+            devSev: { critical: 0, high: 0, medium: 0, low: 0 },
+            
+            // إحصائيات الاختبار منفصلة
             testRevTime: 0, testRevCount: 0,
+            testSev: { critical: 0, high: 0, medium: 0, low: 0 },
             
-            // توزيع الخطورة (Severity) للمراجعات
-            revCrit: 0, revHigh: 0, revMed: 0, revLow: 0,
-            
-            // إحصائيات البجز العادية
+            // البجز العادية
             bugsCount: 0, bugsCrit: 0, bugsHigh: 0, bugsMed: 0, bugsLow: 0,
             
             totalStories: grouped[area].length,
@@ -852,24 +853,28 @@ function renderTeamView() {
             stats.reworkTime += us.rework.actualTime;
             stats.totalCycleTime += (us.cycleTime || 0);
 
-            // تجميع البجز العادية
+            // البجز العادية
             stats.bugsCount += us.rework.count;
             stats.bugsCrit += us.rework.severity.critical;
             stats.bugsHigh += us.rework.severity.high;
             stats.bugsMed += us.rework.severity.medium;
             stats.bugsLow += us.rework.severity.low;
 
-            // تجميع المراجعات حسب القسم
+            // فصل بيانات مراجعة التطوير
             stats.devRevTime += us.reviewStats.devActual;
             stats.devRevCount += us.reviewStats.devCount;
+            stats.devSev.critical += us.reviewStats.devSev?.critical || 0;
+            stats.devSev.high += us.reviewStats.devSev?.high || 0;
+            stats.devSev.medium += us.reviewStats.devSev?.medium || 0;
+            stats.devSev.low += us.reviewStats.devSev?.low || 0;
+
+            // فصل بيانات مراجعة الاختبار
             stats.testRevTime += us.reviewStats.testActual;
             stats.testRevCount += us.reviewStats.testCount;
-
-            // تجميع خطورة المراجعات (تم استرجاعها)
-            stats.revCrit += us.reviewStats.severity.critical;
-            stats.revHigh += us.reviewStats.severity.high;
-            stats.revMed += us.reviewStats.severity.medium;
-            stats.revLow += us.reviewStats.severity.low;
+            stats.testSev.critical += us.reviewStats.testSev?.critical || 0;
+            stats.testSev.high += us.reviewStats.testSev?.high || 0;
+            stats.testSev.medium += us.reviewStats.testSev?.medium || 0;
+            stats.testSev.low += us.reviewStats.testSev?.low || 0;
         });
 
         const effortVariance = stats.totalEst > 0 ? ((stats.totalAct - stats.totalEst) / stats.totalEst) * 100 : 0;
@@ -880,16 +885,16 @@ function renderTeamView() {
         const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
         const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
 
-        const getSevBadges = (c, h, m, l, t) => {
-            if (!t) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
-            const pct = (v) => ((v / t) * 100).toFixed(0);
+        const getSevBadges = (sevObj, total) => {
+            if (!total || total === 0) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
+            const pct = (v) => ((v / total) * 100).toFixed(0);
             const badgeStyle = (bg, color, border) => ` background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center;`;
             return `
             <div style="display: flex; gap: 8px; margin-top: 10px;">
-                <div style="${badgeStyle('#ffeaed', '#c62828', '#ffcdd2')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">CRIT</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(c)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${c}</div></div>
-                <div style="${badgeStyle('#fff3e0', '#ef6c00', '#ffe0b2')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">HIGH</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(h)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${h}</div></div>
-                <div style="${badgeStyle('#e8f5e9', '#2e7d32', '#c8e6c9')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">MED</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(m)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${m}</div></div>
-                <div style="${badgeStyle('#e3f2fd', '#1565c0', '#bbdefb')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">LOW</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(l)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${l}</div></div>
+                <div style="${badgeStyle('#ffeaed', '#c62828', '#ffcdd2')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">CRIT</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(sevObj.critical)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${sevObj.critical}</div></div>
+                <div style="${badgeStyle('#fff3e0', '#ef6c00', '#ffe0b2')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">HIGH</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(sevObj.high)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${sevObj.high}</div></div>
+                <div style="${badgeStyle('#e8f5e9', '#2e7d32', '#c8e6c9')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">MED</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(sevObj.medium)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${sevObj.medium}</div></div>
+                <div style="${badgeStyle('#e3f2fd', '#1565c0', '#bbdefb')}"><div style="font-size:0.6em; font-weight:bold; opacity:0.8;">LOW</div><div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(sevObj.low)}%</div><div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${sevObj.low}</div></div>
             </div>`;
         };
 
@@ -903,16 +908,12 @@ function renderTeamView() {
                     <div style="background: ${varianceColor}0a; border: 2px solid ${varianceColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Effort Variance</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: ${varianceColor}; margin: 10px 0;">${effortVariance.toFixed(1)}%</div>
-                        <div style="font-size: 0.75em; color: white; background: ${varianceColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
-                            ${effortVariance <= 15 ? '🎯 Within Plan' : '⚠️ Delay'}
-                        </div>
+                        <div style="font-size: 0.75em; color: white; background: ${varianceColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">${effortVariance <= 15 ? '🎯 Within Plan' : '⚠️ Delay'}</div>
                     </div>
                     <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Rework Ratio</span>
                         <div style="font-size: 2.8em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${combinedReworkRatio.toFixed(1)}%</div>
-                        <div style="font-size: 0.75em; color: white; background: ${reworkColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
-                            ${(stats.reworkTime + totalReviewTime).toFixed(1)}h Loss
-                        </div>
+                        <div style="font-size: 0.75em; color: white; background: ${reworkColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">${(stats.reworkTime + totalReviewTime).toFixed(1)}h Loss</div>
                     </div>
                     <div style="background: #e3f2fd; border: 2px solid #1565c0; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #1565c0; font-weight: bold; text-transform: uppercase;">Avg Cycle Time</span>
@@ -932,7 +933,7 @@ function renderTeamView() {
                             <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs</h5>
                             <b style="font-size: 1.2em; color: #c62828;">${stats.bugsCount} <small style="font-size:0.6em; color:#666;">(${stats.reworkTime.toFixed(1)}h)</small></b>
                         </div>
-                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
+                        ${getSevBadges({critical: stats.bugsCrit, high: stats.bugsHigh, medium: stats.bugsMed, low: stats.bugsLow}, stats.bugsCount)}
                     </div>
 
                     <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
@@ -940,7 +941,7 @@ function renderTeamView() {
                             <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects (Development)</h5>
                             <b style="font-size: 1.2em; color: #6a1b9a;">${stats.devRevCount} <small style="font-size:0.6em; color:#666;">(${stats.devRevTime.toFixed(1)}h)</small></b>
                         </div>
-                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, (stats.devRevCount + stats.testRevCount))}
+                        ${getSevBadges(stats.devSev, stats.devRevCount)}
                     </div>
 
                     <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
@@ -948,7 +949,7 @@ function renderTeamView() {
                             <h5 style="margin:0; color: #0369a1; font-size: 1.1em;">Review Defects (Testing)</h5>
                             <b style="font-size: 1.2em; color: #0369a1;">${stats.testRevCount} <small style="font-size:0.6em; color:#666;">(${stats.testRevTime.toFixed(1)}h)</small></b>
                         </div>
-                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, (stats.devRevCount + stats.testRevCount))}
+                        ${getSevBadges(stats.testSev, stats.testRevCount)}
                     </div>
                 </div>
 
@@ -1413,6 +1414,7 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
+
 
 
 
