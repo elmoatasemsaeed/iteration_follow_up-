@@ -863,9 +863,11 @@ function renderTeamView() {
             // حساب بيانات IPQ وتجميع أرقام الـ IDs للبجات غير المغلقة
             if (us.bugs && us.bugs.length > 0) {
                 stats.totalBugsForIPQ += us.bugs.length;
-                const nonClosed = us.bugs.filter(b => b['State'] !== 'Closed');
-                stats.nonClosedBugs += nonClosed.length;
-                nonClosed.forEach(b => {
+               stats.nonClosedBugs += us.bugs.filter(b => 
+        b['State'] !== 'Closed' && 
+        b['State'] !== 'Cancelled' && 
+        b['State'] !== 'Removed'
+    ).length;
                     if (b['ID']) stats.nonClosedBugIDs.push(b['ID']);
                 });
             }
