@@ -863,11 +863,9 @@ function renderTeamView() {
             // حساب بيانات IPQ وتجميع أرقام الـ IDs للبجات غير المغلقة
             if (us.bugs && us.bugs.length > 0) {
                 stats.totalBugsForIPQ += us.bugs.length;
-               stats.nonClosedBugs += us.bugs.filter(b => 
-        b['State'] !== 'Closed' && 
-        b['State'] !== 'Cancelled' && 
-        b['State'] !== 'Removed'
-    ).length;
+                const nonClosed = us.bugs.filter(b => b['State'] !== 'Closed' && b['State'] !== 'Cancelled');
+                stats.nonClosedBugs += nonClosed.length;
+                nonClosed.forEach(b => {
                     if (b['ID']) stats.nonClosedBugIDs.push(b['ID']);
                 });
             }
@@ -1424,7 +1422,6 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
-
 
 
 
