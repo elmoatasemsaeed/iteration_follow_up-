@@ -831,7 +831,7 @@ function renderTeamView() {
             reviewCount: 0, revCrit: 0, revHigh: 0, revMed: 0, revLow: 0,
             totalStories: grouped[area].length,
             totalCycleTime: 0,
-            // New IPQ Metrics
+            // IPQ Metrics
             openBugsCount: 0,
             totalBugsForIPQ: 0
         };
@@ -859,7 +859,7 @@ function renderTeamView() {
             stats.revMed += us.reviewStats.severity.medium;
             stats.revLow += us.reviewStats.severity.low;
 
-            // IPQ Calculation Logic
+            // IPQ Calculation
             if (us.bugs && Array.isArray(us.bugs)) {
                 us.bugs.forEach(b => {
                     stats.totalBugsForIPQ++;
@@ -879,11 +879,14 @@ function renderTeamView() {
         const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
         const ipqColor = ipqValue > 0 ? '#d32f2f' : '#2e7d32';
 
+        const bugRatio = (stats.bugsCount / (stats.totalStories || 1)).toFixed(1);
+        const revRatio = (stats.reviewCount / (stats.totalStories || 1)).toFixed(1);
+
         const getSevBadges = (c, h, m, l) => `
-            <span class="badge crit" title="Critical" style="background:#ffcdd2; color:#b71c1c; padding:2px 8px; border-radius:10px; font-size:0.8em; margin-right:4px;">${c}</span>
-            <span class="badge high" title="High" style="background:#ffe0b2; color:#e65100; padding:2px 8px; border-radius:10px; font-size:0.8em; margin-right:4px;">${h}</span>
-            <span class="badge med" title="Medium" style="background:#e1f5fe; color:#01579b; padding:2px 8px; border-radius:10px; font-size:0.8em; margin-right:4px;">${m}</span>
-            <span class="badge low" title="Low" style="background:#f5f5f5; color:#616161; padding:2px 8px; border-radius:10px; font-size:0.8em; margin-right:4px;">${l}</span>
+            <span class="badge crit" title="Critical">${c}</span>
+            <span class="badge high" title="High">${h}</span>
+            <span class="badge med" title="Medium">${m}</span>
+            <span class="badge low" title="Low">${l}</span>
         `;
 
         html += `
@@ -894,7 +897,7 @@ function renderTeamView() {
             </div>
             
             <div style="padding: 25px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 30px;">
                     <div style="background: ${varianceColor}0a; border: 2px solid ${varianceColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Effort Variance</span>
                         <div style="font-size: 2.2em; font-weight: 900; color: ${varianceColor}; margin: 10px 0;">${effortVariance.toFixed(1)}%</div>
@@ -906,11 +909,9 @@ function renderTeamView() {
                     </div>
 
                     <div style="background: ${ipqColor}0a; border: 2px solid ${ipqColor}; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">IPQ (Improve Quality)</span>
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">IPQ (Open Bugs)</span>
                         <div style="font-size: 2.2em; font-weight: 900; color: ${ipqColor}; margin: 10px 0;">${ipqValue.toFixed(1)}%</div>
-                        <div style="font-size: 0.75em; color: white; background: ${ipqColor}; padding: 2px 10px; border-radius: 10px; display: inline-block;">
-                            Open: ${stats.openBugsCount} / Total: ${stats.totalBugsForIPQ}
-                        </div>
+                        <div style="font-size: 0.75em; color: #777;">${stats.openBugsCount} Open / ${stats.totalBugsForIPQ} Total</div>
                     </div>
 
                     <div style="background: #f8f9fa; border: 2px solid #bdc3c7; border-radius: 12px; padding: 20px; text-align: center;">
@@ -919,37 +920,48 @@ function renderTeamView() {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
-                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f8d7da; padding-bottom: 8px; margin-bottom: 12px;">
-                            <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs</h5>
-                            <b style="font-size: 1.2em; color: #c62828;">${stats.bugsCount} <small style="font-size:0.6em; color:#666;">(${stats.reworkTime.toFixed(1)}h)</small></b>
-                        </div>
-                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
-                    </div>
-
-                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
-                            <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
-                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${stats.reviewTime.toFixed(1)}h)</small></b>
-                        </div>
-                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
-                    </div>
-                </div>
-
-                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666; border: 1px solid #eee;">
-                    <strong>Detailed Effort:</strong> 
-                    Est Core: ${stats.totalEst.toFixed(1)}h | 
-                    Act Total: ${stats.totalAct.toFixed(1)}h | 
-                    Total Over/Under: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
+                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #eee;">
+                    <table style="width:100%; border-collapse: collapse; font-size: 0.95em;">
+                        <thead>
+                            <tr style="background: #f8f9fa; text-align: left; border-bottom: 2px solid #eee;">
+                                <th style="padding:15px;">Resource Category</th>
+                                <th style="padding:15px;">Total Effort (H)</th>
+                                <th style="padding:15px;">Rework & Review Time</th>
+                                <th style="padding:15px;">Quality Distribution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding:15px; font-weight:bold; color: #34495e;">Execution Data</td>
+                                <td style="padding:15px;">
+                                    <div style="font-size:1.1em; font-weight:bold; color:#2c3e50;">Est: ${stats.totalEst.toFixed(1)}h</div>
+                                    <div style="font-size:0.9em; color:#7f8c8d;">Act: ${stats.totalAct.toFixed(1)}h</div>
+                                </td>
+                                <td style="padding:15px;">
+                                    <div style="margin-bottom:5px;">Rework: <b>${stats.reworkTime.toFixed(1)}h</b></div>
+                                    <div>Review: <b>${stats.reviewTime.toFixed(1)}h</b></div>
+                                </td>
+                                <td style="padding:15px;">
+                                    <div style="display: flex; gap: 30px;">
+                                        <div>
+                                            <div style="font-size: 1.3em; font-weight: 900; color: #e67e22;">${bugRatio} <small style="font-size:0.5em;">Bugs/US</small></div>
+                                            <div style="margin-top:5px;">${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow)}</div>
+                                        </div>
+                                        <div style="border-left: 1px solid #eee; padding-left: 30px;">
+                                            <div style="font-size: 1.3em; font-weight: 900; color: #3498db;">${revRatio} <small style="font-size:0.5em;">Rev/US</small></div>
+                                            <div style="margin-top:5px;">${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow)}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>`;
     }
-    html += `</div>`;
-    container.innerHTML = html;
+    container.innerHTML = html + `</div>`;
 }
-
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
