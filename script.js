@@ -364,13 +364,13 @@ function calculateMetrics() {
         // 1. حساب مهام الـ Tasks (Development, Testing, DB)
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
-            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0; // التأكد من تعريف actDev هنا
+            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
             const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
 
             if (activity === 'DB Modification') {
                 dbOrig += orig;
-                dbActual += actDev; // الآن actDev معرف ولن يظهر الخطأ
+                dbActual += actDev;
                 if (t['Assigned To']) dbNames.add(t['Assigned To']); 
             } else if (activity === 'Development') {
                 devOrig += orig;
@@ -381,7 +381,6 @@ function calculateMetrics() {
             }
         });
 
-        // تخزين بيانات الـ DB والـ Effort الأساسي
         us.dbEffort = { 
             orig: dbOrig, 
             actual: dbActual, 
@@ -391,8 +390,9 @@ function calculateMetrics() {
         us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
-        // 2. حساب الـ Rework (Bugs العادية)
+        // 2. حساب الـ Rework والـ IPQ الابتدائي
         let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
+        let nonClosedBugs = 0; // عداد البجات غير المغلقة
         us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
 
         us.bugs.forEach(b => {
@@ -400,6 +400,9 @@ function calculateMetrics() {
             let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
             bugActualTotal += bDevAct;
             if (bDevAct === 0) bugsNoTimesheet++;
+
+            // التحقق إذا كانت البج غير مغلقة (IPQ Requirement)
+            if (b['State'] !== 'Closed') nonClosedBugs++;
 
             const sev = b['Severity'] || "";
             if (sev.includes("1 - Critical")) us.severityCounts.critical++;
@@ -412,50 +415,51 @@ function calculateMetrics() {
             timeEstimation: bugOrig,
             actualTime: bugActualTotal,
             count: us.bugs.length,
+            nonClosedCount: nonClosedBugs, // تخزين العدد لاستخدامه في الندر
             severity: us.severityCounts,
             missingTimesheet: bugsNoTimesheet,
             deviation: bugOrig / (bugActualTotal || 1),
             percentage: (bugActualTotal / (devActual || 1)) * 100
         };
 
-        // 3. حساب الـ Review (الطلب الجديد)
-us.reviewStats = {
-    estimation: 0,
-    devActual: 0, 
-    testActual: 0,
-    totalActual: 0, // سيتم تحديثه في النهاية
-    devCount: 0,
-    testCount: 0,
-    count: us.reviews ? us.reviews.length : 0,
-    severity: { critical: 0, high: 0, medium: 0, low: 0}
-};
+        // 3. حساب الـ Review
+        us.reviewStats = {
+            estimation: 0,
+            devActual: 0, 
+            testActual: 0,
+            totalActual: 0,
+            devCount: 0,
+            testCount: 0,
+            count: us.reviews ? us.reviews.length : 0,
+            severity: { critical: 0, high: 0, medium: 0, low: 0}
+        };
 
-if (us.reviews) {
-    us.reviews.forEach(r => {
-        const rEst = parseFloat(r['Original Estimation']) || 0;
-        const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
-        const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
-        const activity = r['Activity'];
-        const sev = r['Severity'] || "";
+        if (us.reviews) {
+            us.reviews.forEach(r => {
+                const rEst = parseFloat(r['Original Estimation']) || 0;
+                const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
+                const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
+                const activity = r['Activity'];
+                const sev = r['Severity'] || "";
 
-        us.reviewStats.estimation += rEst;
+                us.reviewStats.estimation += rEst;
 
-        if (activity === 'Development') {
-            us.reviewStats.devActual += rDevAct;
-            us.reviewStats.devCount++;
-        } else if (activity === 'Testing') {
-            us.reviewStats.testActual += rTestAct;
-            us.reviewStats.testCount++;
+                if (activity === 'Development') {
+                    us.reviewStats.devActual += rDevAct;
+                    us.reviewStats.devCount++;
+                } else if (activity === 'Testing') {
+                    us.reviewStats.testActual += rTestAct;
+                    us.reviewStats.testCount++;
+                }
+
+                if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
+                else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
+                else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
+                else if (sev.includes("4 - Low")) us.reviewStats.severity.low++;
+            });
+            us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
         }
 
-        if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
-        else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
-        else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
-        else if (sev.includes("4 - Low")) us.reviewStats.severity.low++;
-    });
-
-    us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
-}
         // 4. حساب التوقيت والـ Cycle Time
         let minDate = Infinity;
         us.tasks.forEach(t => {
@@ -470,7 +474,6 @@ if (us.reviews) {
         calculateTimeline(us);
     });
 }
-
 function calculateTimeline(us) {
     let tasks = us.tasks;
     if (!tasks || tasks.length === 0) return;
@@ -827,6 +830,7 @@ function renderTeamView() {
         let stats = {
             totalEst: 0, totalAct: 0,
             reworkTime: 0, reviewTime: 0,
+            totalBugs: 0, nonClosedBugs: 0, // متغيرات الـ IPQ
             bugsCount: 0, bugsCrit: 0, bugsHigh: 0, bugsMed: 0, bugsLow: 0,
             reviewCount: 0, revCrit: 0, revHigh: 0, revMed: 0, revLow: 0,
             totalStories: grouped[area].length,
@@ -834,7 +838,6 @@ function renderTeamView() {
         };
 
         grouped[area].forEach(us => {
-            // الحسبة الموحدة
             const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
             const sRvTime = us.reviewStats.devActual + us.reviewStats.testActual;
             const sAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + sRvTime;
@@ -844,6 +847,10 @@ function renderTeamView() {
             stats.reworkTime += us.rework.actualTime;
             stats.reviewTime += sRvTime;
             stats.totalCycleTime += (us.cycleTime || 0);
+            
+            // تجميع بيانات الـ IPQ
+            stats.totalBugs += us.rework.count;
+            stats.nonClosedBugs += us.rework.nonClosedCount;
 
             stats.bugsCount += us.rework.count;
             stats.bugsCrit += us.rework.severity.critical;
@@ -860,97 +867,82 @@ function renderTeamView() {
 
         const effortVariance = stats.totalEst > 0 ? ((stats.totalAct - stats.totalEst) / stats.totalEst) * 100 : 0;
         const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
+        const ipq = stats.totalBugs > 0 ? (stats.nonClosedBugs / stats.totalBugs) * 100 : 0; // معادلة الـ IPQ
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
 
         const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
         const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
+        const ipqColor = ipq === 0 ? '#2e7d32' : '#d32f2f'; // 0% هو اللون الأخضر
 
-        const getSevBadges = (c, h, m, l, t) => {
-            if (!t) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
-            const pct = (v) => ((v / t) * 100).toFixed(0);
-            const badgeStyle = (bg, color, border) => `
-                background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center;`;
-            return `
-            <div style="display: flex; gap: 8px; margin-top: 10px;">
-                <div style="${badgeStyle('#ffeaed', '#c62828', '#ffcdd2')}">
-                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">CRIT</div>
-                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(c)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${c}</div>
-                </div>
-                <div style="${badgeStyle('#fff3e0', '#ef6c00', '#ffe0b2')}">
-                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">HIGH</div>
-                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(h)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${h}</div>
-                </div>
-                <div style="${badgeStyle('#e8f5e9', '#2e7d32', '#c8e6c9')}">
-                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">MED</div>
-                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(m)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${m}</div>
-                </div>
-                <div style="${badgeStyle('#e3f2fd', '#1565c0', '#bbdefb')}">
-                    <div style="font-size:0.6em; font-weight:bold; opacity:0.8;">LOW</div>
-                    <div style="font-size:1.4em; font-weight:900; line-height:1;">${pct(l)}%</div>
-                    <div style="font-size:0.75em; margin-top:2px; font-weight:bold;">${l}</div>
-                </div>
-            </div>`;
-        };
+        const getSevBadges = (c, h, m, l) => `
+            <span style="color:#c0392b; font-weight:bold;">C:${c}</span> | 
+            <span style="color:#e67e22; font-weight:bold;">H:${h}</span> | 
+            <span style="color:#f1c40f; font-weight:bold;">M:${m}</span> | 
+            <span style="color:#27ae60; font-weight:bold;">L:${l}</span>`;
 
         html += `
-        <div class="business-section" style="margin-bottom: 50px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
+        <div style="margin-bottom: 40px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
             <div style="background: #2c3e50; color: white; padding: 18px 25px; display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin:0; font-size: 1.5em;">📍 Area: ${area}</h3>
+                <span style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.9em;">${stats.totalStories} Stories</span>
             </div>
+            
             <div style="padding: 25px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
                     <div style="background: ${varianceColor}0a; border: 2px solid ${varianceColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Effort Variance</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: ${varianceColor}; margin: 10px 0;">${effortVariance.toFixed(1)}%</div>
+                        <div style="font-size: 2.5em; font-weight: 900; color: ${varianceColor}; margin: 10px 0;">${effortVariance.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${varianceColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
                             ${effortVariance <= 15 ? '🎯 Within Plan' : '⚠️ Delay'}
                         </div>
                     </div>
+
                     <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Rework Ratio</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${combinedReworkRatio.toFixed(1)}%</div>
+                        <div style="font-size: 2.5em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${combinedReworkRatio.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${reworkColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
                             ${(stats.reworkTime + stats.reviewTime).toFixed(1)}h Loss
                         </div>
                     </div>
+
+                    <div style="background: ${ipqColor}0a; border: 2px solid ${ipqColor}; border-radius: 12px; padding: 20px; text-align: center;">
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Product Quality (IPQ)</span>
+                        <div style="font-size: 2.5em; font-weight: 900; color: ${ipqColor}; margin: 10px 0;">${ipq.toFixed(1)}%</div>
+                        <div style="font-size: 0.75em; color: white; background: ${ipqColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
+                            ${stats.nonClosedBugs} / ${stats.totalBugs} Open Bugs
+                        </div>
+                    </div>
+
                     <div style="background: #e3f2fd; border: 2px solid #1565c0; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #1565c0; font-weight: bold; text-transform: uppercase;">Avg Cycle Time</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: #1565c0; margin: 10px 0;">${avgCycleTime}</div>
-                        <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">Days / Story</div>
-                    </div>
-                    <div style="background: #fdfaf3; border: 2px solid #f39c12; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #f39c12; font-weight: bold; text-transform: uppercase;">Total Stories</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: #f39c12; margin: 10px 0;">${stats.totalStories}</div>
-                        <div style="font-size: 0.8em; color: #f39c12; font-weight: bold;">Completed</div>
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Avg Cycle Time</span>
+                        <div style="font-size: 2.5em; font-weight: 900; color: #1565c0; margin: 10px 0;">${avgCycleTime}d</div>
+                        <div style="font-size: 0.75em; color: #1565c0; font-weight: bold;">Per User Story</div>
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
-                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f8d7da; padding-bottom: 8px; margin-bottom: 12px;">
-                            <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs</h5>
-                            <b style="font-size: 1.2em; color: #c62828;">${stats.bugsCount} <small style="font-size:0.6em; color:#666;">(${stats.reworkTime.toFixed(1)}h)</small></b>
-                        </div>
-                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
-                    </div>
-
-                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
-                            <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
-                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${stats.reviewTime.toFixed(1)}h)</small></b>
-                        </div>
-                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
-                    </div>
+                <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; border: 1px solid #eee;">
+                    <h4 style="margin-top:0; color: #34495e; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📊 Quality Breakdown</h4>
+                    <table style="width:100%; border-collapse: collapse; margin-top:10px;">
+                        <tr style="text-align:left; border-bottom: 1px solid #ddd;">
+                            <th style="padding: 10px;">Type</th>
+                            <th style="padding: 10px;">Total Items</th>
+                            <th style="padding: 10px;">Severity Breakdown</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; font-weight: bold; color: #c0392b;">Bugs (Rework)</td>
+                            <td style="padding: 10px;">${stats.bugsCount}</td>
+                            <td style="padding: 10px;">${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; font-weight: bold; color: #8e44ad;">Reviews</td>
+                            <td style="padding: 10px;">${stats.reviewCount}</td>
+                            <td style="padding: 10px;">${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow)}</td>
+                        </tr>
+                    </table>
                 </div>
 
-                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666; border: 1px solid #eee;">
-                    <strong>Detailed Effort:</strong> 
-                    Est Core: ${stats.totalEst.toFixed(1)}h | 
-                    Act Total: ${stats.totalAct.toFixed(1)}h | 
-                    Total Over/Under: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
+                <div style="margin-top: 25px; background: #2c3e50; padding: 15px; border-radius: 10px; font-size: 0.9em; color: white; text-align:center;">
+                    <strong>Detailed Effort Summary:</strong> Est: ${stats.totalEst.toFixed(1)}h | Act Total: ${stats.totalAct.toFixed(1)}h | Variance: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
                 </div>
             </div>
         </div>`;
