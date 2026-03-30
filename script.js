@@ -919,34 +919,37 @@ function renderTeamView() {
                     </div>
                 </div>
 
-                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #eee;">
-                    <table style="width:100%; border-collapse: collapse; font-size: 0.95em;">
-                        <thead>
-                            <tr style="background: #f8f9fa; text-align: left; border-bottom: 2px solid #eee;">
-                                <th style="padding:15px;">Category</th>
-                                <th style="padding:15px;">Total Effort (H)</th>
-                                <th style="padding:15px;">Rework & Review</th>
-                                <th style="padding:15px;">Quality Distribution</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style="padding:15px; font-weight:bold;">Execution Data</td>
-                                <td style="padding:15px;">Est: ${stats.totalEst.toFixed(1)} / Act: ${stats.totalAct.toFixed(1)}</td>
-                                <td style="padding:15px;">Rework: ${stats.reworkTime.toFixed(1)}h | Review: ${stats.reviewTime.toFixed(1)}h</td>
-                                <td style="padding:15px;">
-                                    <div style="margin-bottom:8px;">Bugs (${stats.bugsCount}): ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow)}</div>
-                                    <div>Reviews (${stats.reviewCount}): ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow)}</div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
+                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f8d7da; padding-bottom: 8px; margin-bottom: 12px;">
+                            <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs</h5>
+                            <b style="font-size: 1.2em; color: #c62828;">${stats.bugsCount} <small style="font-size:0.6em; color:#666;">(${stats.reworkTime.toFixed(1)}h)</small></b>
+                        </div>
+                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
+                    </div>
+
+                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
+                            <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
+                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${stats.reviewTime.toFixed(1)}h)</small></b>
+                        </div>
+                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666; border: 1px solid #eee;">
+                    <strong>Detailed Effort:</strong> 
+                    Est Core: ${stats.totalEst.toFixed(1)}h | 
+                    Act Total: ${stats.totalAct.toFixed(1)}h | 
+                    Total Over/Under: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
                 </div>
             </div>
         </div>`;
     }
-    container.innerHTML = html + `</div>`;
+    html += `</div>`;
+    container.innerHTML = html;
 }
+
 
 function renderPeopleView() {
     const container = document.getElementById('people-view');
