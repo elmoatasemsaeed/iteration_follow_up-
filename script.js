@@ -830,11 +830,14 @@ function renderTeamView() {
             bugsCount: 0, bugsCrit: 0, bugsHigh: 0, bugsMed: 0, bugsLow: 0,
             reviewCount: 0, revCrit: 0, revHigh: 0, revMed: 0, revLow: 0,
             totalStories: grouped[area].length,
-            totalCycleTime: 0
+            totalCycleTime: 0,
+            // متغيرات مؤشر IPQ الجديد
+            totalBugsForIPQ: 0,
+            nonClosedBugs: 0
         };
 
         grouped[area].forEach(us => {
-            // الحسبة الموحدة
+            // الحسبة الموحدة للمؤشرات الحالية
             const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
             const sRvTime = us.reviewStats.devActual + us.reviewStats.testActual;
             const sAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + sRvTime;
@@ -856,20 +859,31 @@ function renderTeamView() {
             stats.revHigh += us.reviewStats.severity.high;
             stats.revMed += us.reviewStats.severity.medium;
             stats.revLow += us.reviewStats.severity.low;
+
+            // حساب بيانات IPQ: نمر على كل البجات التابعة لـ User Story
+            if (us.bugs && us.bugs.length > 0) {
+                stats.totalBugsForIPQ += us.bugs.length;
+                stats.nonClosedBugs += us.bugs.filter(b => b['State'] !== 'Closed').length;
+            }
         });
 
+        // حساب القيم النهائية للمؤشرات
         const effortVariance = stats.totalEst > 0 ? ((stats.totalAct - stats.totalEst) / stats.totalEst) * 100 : 0;
         const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
+        
+        // حساب مؤشر IPQ الجديد
+        const ipqValue = stats.totalBugsForIPQ > 0 ? ((stats.nonClosedBugs / stats.totalBugsForIPQ) * 100).toFixed(1) : 0;
 
+        // الألوان بناءً على الثريشولد
         const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
         const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
+        const ipqColor = ipqValue > 0 ? '#d32f2f' : '#2e7d32'; // الثريشولد 0%
 
         const getSevBadges = (c, h, m, l, t) => {
             if (!t) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
             const pct = (v) => ((v / t) * 100).toFixed(0);
-            const badgeStyle = (bg, color, border) => `
-                background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center;`;
+            const badgeStyle = (bg, color, border) => ` background:${bg}; color:${color}; padding:10px 5px; border-radius:10px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center;`;
             return `
             <div style="display: flex; gap: 8px; margin-top: 10px;">
                 <div style="${badgeStyle('#ffeaed', '#c62828', '#ffcdd2')}">
@@ -901,30 +915,32 @@ function renderTeamView() {
                 <h3 style="margin:0; font-size: 1.5em;">📍 Area: ${area}</h3>
             </div>
             <div style="padding: 25px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
                     <div style="background: ${varianceColor}0a; border: 2px solid ${varianceColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Effort Variance</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: ${varianceColor}; margin: 10px 0;">${effortVariance.toFixed(1)}%</div>
+                        <div style="font-size: 2.5em; font-weight: 900; color: ${varianceColor}; margin: 10px 0;">${effortVariance.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${varianceColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
                             ${effortVariance <= 15 ? '🎯 Within Plan' : '⚠️ Delay'}
                         </div>
                     </div>
                     <div style="background: ${reworkColor}0a; border: 2px solid ${reworkColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Rework Ratio</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${combinedReworkRatio.toFixed(1)}%</div>
+                        <div style="font-size: 2.5em; font-weight: 900; color: ${reworkColor}; margin: 10px 0;">${combinedReworkRatio.toFixed(1)}%</div>
                         <div style="font-size: 0.75em; color: white; background: ${reworkColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
                             ${(stats.reworkTime + stats.reviewTime).toFixed(1)}h Loss
                         </div>
                     </div>
+                    <div style="background: ${ipqColor}0a; border: 2px solid ${ipqColor}; border-radius: 12px; padding: 20px; text-align: center;">
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">IPQ (Product Quality)</span>
+                        <div style="font-size: 2.5em; font-weight: 900; color: ${ipqColor}; margin: 10px 0;">${ipqValue}%</div>
+                        <div style="font-size: 0.75em; color: white; background: ${ipqColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
+                            Target: 0% Non-Closed
+                        </div>
+                    </div>
                     <div style="background: #e3f2fd; border: 2px solid #1565c0; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #1565c0; font-weight: bold; text-transform: uppercase;">Avg Cycle Time</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: #1565c0; margin: 10px 0;">${avgCycleTime}</div>
+                        <div style="font-size: 2.5em; font-weight: 900; color: #1565c0; margin: 10px 0;">${avgCycleTime}</div>
                         <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">Days / Story</div>
-                    </div>
-                    <div style="background: #fdfaf3; border: 2px solid #f39c12; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #f39c12; font-weight: bold; text-transform: uppercase;">Total Stories</span>
-                        <div style="font-size: 2.8em; font-weight: 900; color: #f39c12; margin: 10px 0;">${stats.totalStories}</div>
-                        <div style="font-size: 0.8em; color: #f39c12; font-weight: bold;">Completed</div>
                     </div>
                 </div>
 
@@ -936,7 +952,6 @@ function renderTeamView() {
                         </div>
                         ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
                     </div>
-
                     <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
                             <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
@@ -945,17 +960,9 @@ function renderTeamView() {
                         ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
                     </div>
                 </div>
-
-                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666; border: 1px solid #eee;">
-                    <strong>Detailed Effort:</strong> 
-                    Est Core: ${stats.totalEst.toFixed(1)}h | 
-                    Act Total: ${stats.totalAct.toFixed(1)}h | 
-                    Total Over/Under: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
-                </div>
             </div>
         </div>`;
     }
-    html += `</div>`;
     container.innerHTML = html;
 }
 
