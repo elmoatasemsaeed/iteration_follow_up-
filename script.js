@@ -831,13 +831,13 @@ function renderTeamView() {
             reviewCount: 0, revCrit: 0, revHigh: 0, revMed: 0, revLow: 0,
             totalStories: grouped[area].length,
             totalCycleTime: 0,
-            // متغيرات مؤشر IPQ الجديد
+            // متغيرات مؤشر IPQ
             totalBugsForIPQ: 0,
-            nonClosedBugs: 0
+            nonClosedBugs: 0,
+            nonClosedBugIDs: [] // مصفوفة لتخزين أرقام البجز غير المغلقة
         };
 
         grouped[area].forEach(us => {
-            // الحسبة الموحدة للمؤشرات الحالية
             const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
             const sRvTime = us.reviewStats.devActual + us.reviewStats.testActual;
             const sAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + sRvTime;
@@ -860,25 +860,28 @@ function renderTeamView() {
             stats.revMed += us.reviewStats.severity.medium;
             stats.revLow += us.reviewStats.severity.low;
 
-            // حساب بيانات IPQ: نمر على كل البجات التابعة لـ User Story
+            // حساب بيانات IPQ وتجميع أرقام الـ IDs للبجات غير المغلقة
             if (us.bugs && us.bugs.length > 0) {
                 stats.totalBugsForIPQ += us.bugs.length;
-                stats.nonClosedBugs += us.bugs.filter(b => b['State'] !== 'Closed').length;
+                const nonClosed = us.bugs.filter(b => b['State'] !== 'Closed');
+                stats.nonClosedBugs += nonClosed.length;
+                nonClosed.forEach(b => {
+                    if (b['ID']) stats.nonClosedBugIDs.push(b['ID']);
+                });
             }
         });
 
-        // حساب القيم النهائية للمؤشرات
         const effortVariance = stats.totalEst > 0 ? ((stats.totalAct - stats.totalEst) / stats.totalEst) * 100 : 0;
         const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
         
-        // حساب مؤشر IPQ الجديد
-        const ipqValue = stats.totalBugsForIPQ > 0 ? ((stats.nonClosedBugs / stats.totalBugsForIPQ) * 100).toFixed(1) : 0;
+        // حساب مؤشر IPQ
+        const ipqValueNum = stats.totalBugsForIPQ > 0 ? ((stats.nonClosedBugs / stats.totalBugsForIPQ) * 100) : 0;
+        const ipqValue = ipqValueNum.toFixed(1);
 
-        // الألوان بناءً على الثريشولد
         const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
         const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
-        const ipqColor = ipqValue > 0 ? '#d32f2f' : '#2e7d32'; // الثريشولد 0%
+        const ipqColor = ipqValueNum > 0 ? '#d32f2f' : '#2e7d32';
 
         const getSevBadges = (c, h, m, l, t) => {
             if (!t) return '<div style="color:#999; margin-top:5px; font-size:0.8em;">No items recorded</div>';
@@ -932,7 +935,10 @@ function renderTeamView() {
                     </div>
                     <div style="background: ${ipqColor}0a; border: 2px solid ${ipqColor}; border-radius: 12px; padding: 20px; text-align: center;">
                         <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">IPQ (Product Quality)</span>
-                        <div style="font-size: 2.5em; font-weight: 900; color: ${ipqColor}; margin: 10px 0;">${ipqValue}%</div>
+                        <div style="font-size: 2.5em; font-weight: 900; color: ${ipqColor}; margin: 10px 0; line-height: 1.1;">
+                            ${ipqValue}%
+                            ${ipqValueNum > 0 ? `<div style="font-size: 0.35em; font-weight: normal; color: #666; margin-top: 5px; word-break: break-all;">IDs: ${stats.nonClosedBugIDs.join(', ')}</div>` : ''}
+                        </div>
                         <div style="font-size: 0.75em; color: white; background: ${ipqColor}; padding: 3px 12px; border-radius: 15px; display: inline-block;">
                             Target: 0% Non-Closed
                         </div>
@@ -943,7 +949,6 @@ function renderTeamView() {
                         <div style="font-size: 0.8em; color: #1565c0; font-weight: bold;">Days / Story</div>
                     </div>
                 </div>
-
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
                     <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f8d7da; padding-bottom: 8px; margin-bottom: 12px;">
@@ -953,9 +958,9 @@ function renderTeamView() {
                         ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
                     </div>
                     <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
-                            <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
-                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${stats.reviewTime.toFixed(1)}h)</small></b>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e3e5; padding-bottom: 8px; margin-bottom: 12px;">
+                            <h5 style="margin:0; color: #383d41; font-size: 1.1em;">Reviews Items</h5>
+                            <b style="font-size: 1.2em; color: #383d41;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${stats.reviewTime.toFixed(1)}h)</small></b>
                         </div>
                         ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
                     </div>
@@ -963,9 +968,9 @@ function renderTeamView() {
             </div>
         </div>`;
     }
+    html += `</div>`;
     container.innerHTML = html;
 }
-
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!processedStories || processedStories.length === 0) {
