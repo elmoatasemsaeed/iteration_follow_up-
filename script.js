@@ -926,32 +926,32 @@ function renderTeamView() {
                         </div>
                     </div>
 
-                    <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; border: 1px solid #eee;">
-                        <h4 style="margin-top:0; color: #34495e; border-bottom: 2px solid #ddd; padding-bottom: 10px;">📊 Quality Breakdown</h4>
-                        <table style="width:100%; border-collapse: collapse; margin-top:10px;">
-                            <tr style="text-align:left; border-bottom: 1px solid #ddd;">
-                                <th style="padding: 10px;">Type</th>
-                                <th style="padding: 10px;">Total Items</th>
-                                <th style="padding: 10px;">Severity Breakdown</th>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; font-weight: bold; color: #c0392b;">Bugs (Rework)</td>
-                                <td style="padding: 10px;">${stats.bugsCount}</td>
-                                <td style="padding: 10px;">${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow)}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; font-weight: bold; color: #8e44ad;">Reviews</td>
-                                <td style="padding: 10px;">${stats.reviewCount}</td>
-                                <td style="padding: 10px;">${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow)}</td>
-                            </tr>
-                        </table>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
+                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f8d7da; padding-bottom: 8px; margin-bottom: 12px;">
+                            <h5 style="margin:0; color: #c62828; font-size: 1.1em;">Standard Bugs</h5>
+                            <b style="font-size: 1.2em; color: #c62828;">${stats.bugsCount} <small style="font-size:0.6em; color:#666;">(${stats.reworkTime.toFixed(1)}h)</small></b>
+                        </div>
+                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
                     </div>
 
-                    <div style="margin-top: 25px; background: #2c3e50; padding: 15px; border-radius: 10px; font-size: 0.9em; color: white; text-align:center;">
-                        <strong>Detailed Effort Summary:</strong> Est: ${stats.totalEst.toFixed(1)}h | Act Total: ${stats.totalAct.toFixed(1)}h | Variance: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
+                    <div style="background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd6fe; padding-bottom: 8px; margin-bottom: 12px;">
+                            <h5 style="margin:0; color: #6a1b9a; font-size: 1.1em;">Review Defects</h5>
+                            <b style="font-size: 1.2em; color: #6a1b9a;">${stats.reviewCount} <small style="font-size:0.6em; color:#666;">(${stats.reviewTime.toFixed(1)}h)</small></b>
+                        </div>
+                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
                     </div>
                 </div>
-            </div>`;
+
+                <div style="margin-top: 25px; background: #f8f9fa; padding: 15px; border-radius: 10px; font-size: 0.9em; color: #666; border: 1px solid #eee;">
+                    <strong>Detailed Effort:</strong> 
+                    Est Core: ${stats.totalEst.toFixed(1)}h | 
+                    Act Total: ${stats.totalAct.toFixed(1)}h | 
+                    Total Over/Under: ${(stats.totalAct - stats.totalEst).toFixed(1)}h
+                </div>
+            </div>
+        </div>`;
     }
     html += `</div>`;
     container.innerHTML = html;
