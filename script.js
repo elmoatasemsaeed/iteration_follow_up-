@@ -391,31 +391,49 @@ function calculateMetrics() {
         us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
-        // 2. حساب الـ Rework (Bugs العادية)
-        let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
-        us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+// داخل دالة calculateMetrics، استبدل الجزء الخاص بحساب الـ Rework بهذا الكود:
+let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
+us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
 
-        us.bugs.forEach(b => {
-            bugOrig += parseFloat(b['Original Estimation']) || 0;
-            let bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
-            bugActualTotal += bDevAct;
-            if (bDevAct === 0) bugsNoTimesheet++;
+// إضافة كائنات لتخزين تفاصيل الـ Generic والـ Specific بشكل منفصل
+us.rework = {
+    generic: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
+    specific: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
+    timeEstimation: 0,
+    actualTime: 0,
+    count: 0
+};
 
-            const sev = b['Severity'] || "";
-            if (sev.includes("1 - Critical")) us.severityCounts.critical++;
-            else if (sev.includes("2 - High")) us.severityCounts.high++;
-            else if (sev.includes("3 - Medium")) us.severityCounts.medium++;
-            else if (sev.includes("4 - Low")) us.severityCounts.low++;
-        });
+us.bugs.forEach(b => {
+    const isGeneric = (b['GenericBug'] || "").trim().toLowerCase() === 'yes';
+    const bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
+    const bEst = parseFloat(b['Original Estimation']) || 0;
+    const sev = b['Severity'] || "";
 
-        us.rework = {
-            timeEstimation: bugOrig,
-            actualTime: bugActualTotal,
-            count: us.bugs.length,
-            severity: us.severityCounts,
-            missingTimesheet: bugsNoTimesheet,
-            deviation: bugOrig / (bugActualTotal || 1),
-            percentage: (bugActualTotal / (devActual || 1)) * 100
+    // التحديث الإجمالي (للمحافظة على الحسابات القديمة إن وجدت)
+    bugOrig += bEst;
+    bugActualTotal += bDevAct;
+    if (bDevAct === 0) bugsNoTimesheet++;
+
+    // تصنيف البج
+    const target = isGeneric ? us.rework.generic : us.rework.specific;
+    target.count++;
+    target.actualTime += bDevAct;
+
+    // حساب الـ Severity للتصنيف المختار
+    if (sev.includes("1 - Critical")) { target.severity.critical++; us.severityCounts.critical++; }
+    else if (sev.includes("2 - High")) { target.severity.high++; us.severityCounts.high++; }
+    else if (sev.includes("3 - Medium")) { target.severity.medium++; us.severityCounts.medium++; }
+    else if (sev.includes("4 - Low")) { target.severity.low++; us.severityCounts.low++; }
+});
+
+// تحديث البيانات النهائية للـ Rework
+us.rework.timeEstimation = bugOrig;
+us.rework.actualTime = bugActualTotal;
+us.rework.count = us.bugs.length;
+us.rework.missingTimesheet = bugsNoTimesheet;
+us.rework.deviation = bugOrig / (bugActualTotal || 1);
+us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100
         };
 
         // 3. حساب الـ Review (الطلب الجديد)
@@ -695,35 +713,38 @@ function renderBusinessView() {
     </thead>
     <tbody>
         <tr>
-            <td>Dev (Excl. DB)</td>
-            <td>${us.devEffort.orig.toFixed(1)}</td>
-            <td>${us.devEffort.actual.toFixed(1)}</td>
-            <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fcfcfc; border: 1px solid #eee;">
-                <div style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
-                    <b style="color:#c0392b;">Bugs: ${us.rework.count}</b>
-                    <div style="font-size: 0.7em; color: #666; margin-top:3px;">
-                        ${renderSev(us.rework.severity, us.rework.count)}
-                    </div>
-                </div>
-                <div>
-                    <b style="color:#8e44ad;">Reviews: ${us.reviewStats.count}</b>
-                    <div style="font-size: 0.7em; color: #666; margin-top:3px;">
-                        ${renderSev(us.reviewStats.severity, us.reviewStats.count)}
-                    </div>
-                    <div style="font-size: 0.75em; color: #444; font-weight:bold;">
-                        (D:${us.reviewStats.devCount} | T:${us.reviewStats.testCount})
-                    </div>
-                </div>
-            </td>
-            <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5;">
-                <b style="color:#c0392b;">${us.rework.actualTime.toFixed(1)}h</b>
-            </td>
-            <td rowspan="3" style="text-align:center; vertical-align:middle; background:#f5f3ff;">
-                <div style="color:#6d28d9; font-size:0.85em;">Dev: <b>${us.reviewStats.devActual.toFixed(1)}h</b></div>
-                <div style="color:#2980b9; font-size:0.85em; margin-top:5px;">Test: <b>${us.reviewStats.testActual.toFixed(1)}h</b></div>
-            </td>
-           <td class="${us.devEffort.dev < 0.85 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
-        </tr>
+    <td>Dev (Excl. DB)</td>
+    <td>${us.devEffort.orig.toFixed(1)}</td>
+    <td>${us.devEffort.actual.toFixed(1)}</td>
+    
+    <td rowspan="3" style="text-align:left; vertical-align:middle; background:#fcfcfc; border: 1px solid #eee; padding: 10px;">
+        <div style="margin-bottom: 8px;">
+            <b style="color:#c0392b; font-size:0.9em;">🐞 Specific Bugs: ${us.rework.specific.count}</b>
+            <div style="font-size: 0.7em; color: #666;">${renderSev(us.rework.specific.severity, us.rework.specific.count)}</div>
+        </div>
+        <div style="margin-bottom: 8px; padding-top: 5px; border-top: 1px solid #eee;">
+            <b style="color:#e67e22; font-size:0.9em;">⚙️ Generic Bugs: ${us.rework.generic.count}</b>
+            <div style="font-size: 0.7em; color: #666;">${renderSev(us.rework.generic.severity, us.rework.generic.count)}</div>
+        </div>
+        <div style="padding-top: 5px; border-top: 1px solid #eee;">
+            <b style="color:#8e44ad; font-size:0.9em;">🔎 Reviews: ${us.reviewStats.count}</b>
+            <div style="font-size: 0.7em; color: #666;">${renderSev(us.reviewStats.severity, us.reviewStats.count)}</div>
+        </div>
+    </td>
+
+    <td rowspan="3" style="text-align:center; vertical-align:middle; background:#fff5f5;">
+        <div title="Specific Bug Hours" style="color:#c0392b; font-size:0.85em;">Spec: <b>${us.rework.specific.actualTime.toFixed(1)}h</b></div>
+        <div title="Generic Bug Hours" style="color:#e67e22; font-size:0.85em; margin-top:5px; border-top: 1px dashed #ffcdd2;">Gen: <b>${us.rework.generic.actualTime.toFixed(1)}h</b></div>
+        <div style="margin-top:5px; font-weight:bold; border-top: 1px solid #ffcdd2;">Total: ${(us.rework.actualTime).toFixed(1)}h</div>
+    </td>
+
+    <td rowspan="3" style="text-align:center; vertical-align:middle; background:#f5f3ff;">
+        <div style="color:#6d28d9; font-size:0.85em;">Dev: <b>${us.reviewStats.devActual.toFixed(1)}h</b></div>
+        <div style="color:#2980b9; font-size:0.85em; margin-top:5px;">Test: <b>${us.reviewStats.testActual.toFixed(1)}h</b></div>
+    </td>
+    
+    <td class="${us.devEffort.dev < 0.85 ? 'alert-red' : ''}"><b>${us.devEffort.dev.toFixed(2)}</b></td>
+</tr>
         <tr style="background: #f4ecf7;">
             <td>DB Modification</td>
             <td>${us.dbEffort.orig.toFixed(1)}</td>
