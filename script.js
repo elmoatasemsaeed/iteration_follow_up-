@@ -433,7 +433,7 @@ us.rework.actualTime = bugActualTotal;
 us.rework.count = us.bugs.length;
 us.rework.missingTimesheet = bugsNoTimesheet;
 us.rework.deviation = bugOrig / (bugActualTotal || 1);
-us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100
+us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100;
         };
 
         // 3. حساب الـ Review (الطلب الجديد)
