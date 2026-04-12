@@ -396,9 +396,11 @@ let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
 us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
 
 // إضافة كائنات لتخزين تفاصيل الـ Generic والـ Specific بشكل منفصل
+// 1. تعريف الهيكل الجديد مع إضافة كائن severity رئيسي للتوافق مع الشاشات الأخرى
 us.rework = {
     generic: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
     specific: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
+    severity: { critical: 0, high: 0, medium: 0, low: 0 }, // هذا السطر يحل مشكلة الـ TypeError
     timeEstimation: 0,
     actualTime: 0,
     count: 0
@@ -410,23 +412,36 @@ us.bugs.forEach(b => {
     const bEst = parseFloat(b['Original Estimation']) || 0;
     const sev = b['Severity'] || "";
 
-    // التحديث الإجمالي (للمحافظة على الحسابات القديمة إن وجدت)
     bugOrig += bEst;
     bugActualTotal += bDevAct;
     if (bDevAct === 0) bugsNoTimesheet++;
 
-    // تصنيف البج
     const target = isGeneric ? us.rework.generic : us.rework.specific;
     target.count++;
     target.actualTime += bDevAct;
 
-    // حساب الـ Severity للتصنيف المختار
-    if (sev.includes("1 - Critical")) { target.severity.critical++; us.severityCounts.critical++; }
-    else if (sev.includes("2 - High")) { target.severity.high++; us.severityCounts.high++; }
-    else if (sev.includes("3 - Medium")) { target.severity.medium++; us.severityCounts.medium++; }
-    else if (sev.includes("4 - Low")) { target.severity.low++; us.severityCounts.low++; }
+    // 2. تحديث السيفيرتي في الكائن الخاص (للعرض المفصل) وفي الكائن الرئيسي (لحل الخطأ)
+    if (sev.includes("1 - Critical")) { 
+        target.severity.critical++; 
+        us.rework.severity.critical++; // إضافة هنا
+        us.severityCounts.critical++; 
+    }
+    else if (sev.includes("2 - High")) { 
+        target.severity.high++; 
+        us.rework.severity.high++; // إضافة هنا
+        us.severityCounts.high++; 
+    }
+    else if (sev.includes("3 - Medium")) { 
+        target.severity.medium++; 
+        us.rework.severity.medium++; // إضافة هنا
+        us.severityCounts.medium++; 
+    }
+    else if (sev.includes("4 - Low")) { 
+        target.severity.low++; 
+        us.rework.severity.low++; // إضافة هنا
+        us.severityCounts.low++; 
+    }
 });
-
 // تحديث البيانات النهائية للـ Rework
 us.rework.timeEstimation = bugOrig;
 us.rework.actualTime = bugActualTotal;
