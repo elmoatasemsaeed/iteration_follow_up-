@@ -970,7 +970,7 @@ function renderTeamView() {
                         </div>
                     </div>
                     <div style="background: ${ipqColor}0a; border: 2px solid ${ipqColor}; border-radius: 12px; padding: 20px; text-align: center;">
-                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Open Testing Bugs "%"</span>
+                        <span style="font-size: 0.85em; color: #555; font-weight: bold; text-transform: uppercase;">Open Testing Bugs</span>
                         <div style="font-size: 2.5em; font-weight: 900; color: ${ipqColor}; margin: 10px 0; line-height: 1.1;">
                             ${ipqValue}%
                             ${ipqValueNum > 0 ? `<div style="font-size: 0.35em; font-weight: normal; color: #666; margin-top: 5px; word-break: break-all;">IDs: ${stats.nonClosedBugIDs.join(', ')}</div>` : ''}
