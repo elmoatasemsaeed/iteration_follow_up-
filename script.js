@@ -1110,7 +1110,7 @@ function renderPeopleView() {
                     <tr style="border-bottom: 1px solid #382c2c;">
                         <td style="padding: 10px; font-weight: bold; color: #34495e;">${p.name}</td>
                         <td style="padding: 10px; text-align: center;">${p.stories.size}</td>
-                        <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #f0f7ff;">${p.reportStories.size}</td>
+                        <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #252d36;">${p.reportStories.size}</td>
                         <td style="padding: 10px; text-align: center;">${p.devHours.toFixed(1)}h</td>
                         <td style="padding: 10px; text-align: center;">${p.testHours.toFixed(1)}h</td>
                         <td style="padding: 10px; text-align: center;">${p.dbHours.toFixed(1)}h</td>
