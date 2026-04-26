@@ -1090,7 +1090,7 @@ function renderPeopleView() {
                     <div class="table-container" style="overflow-x:auto; margin-top: 10px;">
                         <table style="width:100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <thead>
-                                <tr style="background: ${color}; color: white;">
+                                <tr style="background: ${color}; color: Black;">
                                     <th style="padding: 12px; text-align: left;">Name</th>
                                     <th style="padding: 12px; text-align: center;">Stories</th>
                                     <th style="padding: 12px; text-align: center;">Reports</th>
@@ -1107,10 +1107,10 @@ function renderPeopleView() {
             peopleList.forEach(p => {
                 const totalWork = p.devHours + p.testHours + p.dbHours;
                 tableHtml += `
-                    <tr style="border-bottom: 1px solid #382c2c;">
+                    <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 10px; font-weight: bold; color: #34495e;">${p.name}</td>
                         <td style="padding: 10px; text-align: center;">${p.stories.size}</td>
-                        <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #252d36;">${p.reportStories.size}</td>
+                        <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #f0f7ff;">${p.reportStories.size}</td>
                         <td style="padding: 10px; text-align: center;">${p.devHours.toFixed(1)}h</td>
                         <td style="padding: 10px; text-align: center;">${p.testHours.toFixed(1)}h</td>
                         <td style="padding: 10px; text-align: center;">${p.dbHours.toFixed(1)}h</td>
@@ -1485,5 +1485,4 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
-
 
