@@ -1021,9 +1021,6 @@ function renderPeopleView() {
         }
         const peopleMap = businessAreas[area];
         const isReport = us.title && us.title.toLowerCase().includes("patient reports");
-        
-        // استخراج النقاط المخططة للقصة (Planned Points)
-        const storyPoints = parseFloat(us.storyPoints) || 0;
 
         us.tasks.forEach(t => {
             const person = t['Assigned To'];
@@ -1035,7 +1032,6 @@ function renderPeopleView() {
                     devHours: 0,
                     testHours: 0,
                     dbHours: 0,
-                    plannedPoints: 0, // لإضافة النقاط المخططة
                     stories: new Set(),
                     reportStories: new Set(),
                     genericBugs: { count: 0, hours: 0 },
@@ -1051,11 +1047,6 @@ function renderPeopleView() {
             if (activity === 'Testing') peopleMap[person].testHours += actTest;
             else if (activity === 'DB Modification') peopleMap[person].dbHours += actDev;
             else if (activity === 'Development') peopleMap[person].devHours += actDev;
-
-            // إضافة النقاط المخططة (نقوم بتوزيعها أو إضافتها حسب منطق العمل لديك، هنا سنضيف نقاط القصة لكل مساهم فيها)
-            if (!peopleMap[person].stories.has(us.id)) {
-                peopleMap[person].plannedPoints += storyPoints;
-            }
 
             peopleMap[person].stories.add(us.id);
             if (isReport) {
@@ -1074,72 +1065,64 @@ function renderPeopleView() {
     });
 
     let html = `
-        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-            <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #3498db; padding-left: 20px;">👥 Team Performance by Business Area</h2>`;
+        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', sans-serif;">
+            <h2 style="margin-bottom:30px; color: #123b63; border-left: 6px solid #3498db; padding-left: 20px;">👥 Team Performance by Business Area</h2>`;
 
     for (let area in businessAreas) {
         html += `
-            <div class="area-section" style="margin-bottom: 50px; border: 1px solid #dee2e6; border-radius: 10px; padding: 25px; background: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <h3 style="background: #2980b9; padding: 15px 25px; border-radius: 8px; color: white; margin-top: 0; font-weight: 500;">🏢 Business Area: ${area}</h3>`;
+            <div class="area-section" style="margin-bottom: 50px; border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #fcfcfc;">
+                <h3 style="background: #2980b9; padding: 12px 20px; border-radius: 5px; color: white; margin-top: 0;">🏢 Business Area: ${area}</h3>`;
 
         const allPeople = Object.values(businessAreas[area]);
+
+        // تقسيم الموظفين لمجموعات (شخص قد يظهر في أكثر من مجموعة إذا عمل في أنشطة مختلفة)
         const devs = allPeople.filter(p => p.devHours > 0);
         const testers = allPeople.filter(p => p.testHours > 0);
         const dbs = allPeople.filter(p => p.dbHours > 0);
 
-        const renderRoleTable = (title, peopleList, accentColor) => {
+        // دالة مساعدة لإنشاء الجداول لكل دور
+        const renderRoleTable = (title, peopleList, color) => {
             if (peopleList.length === 0) return '';
             
             let tableHtml = `
-                <div style="margin-top: 30px;">
-                    <h4 style="color: ${accentColor}; border-bottom: 3px solid ${accentColor}; display: inline-block; padding-bottom: 5px; margin-bottom: 15px;">${title}</h4>
-                    <div class="table-container" style="overflow-x:auto; border-radius: 8px; border: 1px solid #eee;">
-                        <table style="width:100%; border-collapse: collapse; min-width: 900px;">
+                <div style="margin-top: 25px;">
+                    <h4 style="color: ${color}; border-bottom: 2px solid ${color}; display: inline-block; padding-bottom: 5px;">${title}</h4>
+                    <div class="table-container" style="overflow-x:auto; margin-top: 10px;">
+                        <table style="width:100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <thead>
-                                <tr style="background: #212529; color: #ffffff;">
-                                    <th style="padding: 15px; text-align: left; border-bottom: 2px solid ${accentColor};">Name</th>
-                                    <th style="padding: 15px; text-align: center;">Stories</th>
-                                    <th style="padding: 15px; text-align: center;">Planned Pts</th>
-                                    <th style="padding: 15px; text-align: center;">Actual Hrs</th>
-                                    <th style="padding: 15px; text-align: center; background: #34495e;">Effort Variance</th>
-                                    <th style="padding: 15px; text-align: center;">Spec. Bugs</th>
-                                    <th style="padding: 15px; text-align: center;">Gen. Bugs</th>
+                                <tr style="background: ${color}; color: white;">
+                                    <th style="padding: 12px; text-align: left;">Name</th>
+                                    <th style="padding: 12px; text-align: center;">Stories</th>
+                                    <th style="padding: 12px; text-align: center;">Reports</th>
+                                    <th style="padding: 12px; text-align: center;">Dev Hours</th>
+                                    <th style="padding: 12px; text-align: center;">Test Hours</th>
+                                    <th style="padding: 12px; text-align: center;">DB Hours</th>
+                                    <th style="padding: 12px; text-align: center;">Spec. Bugs</th>
+                                    <th style="padding: 12px; text-align: center;">Gen. Bugs</th>
+                                    <th style="padding: 12px; text-align: center;">Total</th>
                                 </tr>
                             </thead>
                             <tbody>`;
 
             peopleList.forEach(p => {
-                const totalActual = p.devHours + p.testHours + p.dbHours;
-                const planned = p.plannedPoints;
-                
-                // حساب الـ Variance: ((Actual - Planned) / Planned) * 100
-                let variance = 0;
-                if (planned > 0) {
-                    variance = ((totalActual - planned) / planned) * 100;
-                }
-                
-                const varianceColor = variance > 0 ? '#e74c3c' : '#27ae60';
-                const varianceText = planned > 0 ? (variance > 0 ? '+' : '') + variance.toFixed(1) + '%' : 'N/A';
-
+                const totalWork = p.devHours + p.testHours + p.dbHours;
                 tableHtml += `
-                    <tr style="border-bottom: 1px solid #f1f1f1; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
-                        <td style="padding: 12px; font-weight: bold; color: #2c3e50;">${p.name}</td>
-                        <td style="padding: 12px; text-align: center;">
-                            <span style="background: #eee; padding: 2px 8px; border-radius: 12px; font-size: 0.9em;">${p.stories.size}</span>
-                        </td>
-                        <td style="padding: 12px; text-align: center; color: #7f8c8d;">${planned.toFixed(1)}</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 500;">${totalActual.toFixed(1)}h</td>
-                        <td style="padding: 12px; text-align: center; font-weight: bold; color: ${varianceColor}; background: #fdfdfd;">
-                            ${varianceText}
-                        </td>
-                        <td style="padding: 12px; text-align: center;">
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px; font-weight: bold; color: #34495e;">${p.name}</td>
+                        <td style="padding: 10px; text-align: center;">${p.stories.size}</td>
+                        <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #f0f7ff;">${p.reportStories.size}</td>
+                        <td style="padding: 10px; text-align: center;">${p.devHours.toFixed(1)}h</td>
+                        <td style="padding: 10px; text-align: center;">${p.testHours.toFixed(1)}h</td>
+                        <td style="padding: 10px; text-align: center;">${p.dbHours.toFixed(1)}h</td>
+                        <td style="padding: 10px; text-align: center; background: #fff5f5;">
                             <span style="color: #c0392b; font-weight:bold;">${p.specificBugs.count}</span>
-                            <div style="font-size: 11px; color: #95a5a6;">${p.specificBugs.hours.toFixed(1)}h</div>
+                            <br><small style="color: #666;">${p.specificBugs.hours.toFixed(1)}h</small>
                         </td>
-                        <td style="padding: 12px; text-align: center;">
+                        <td style="padding: 10px; text-align: center; background: #fffaf5;">
                             <span style="color: #d35400; font-weight:bold;">${p.genericBugs.count}</span>
-                            <div style="font-size: 11px; color: #95a5a6;">${p.genericBugs.hours.toFixed(1)}h</div>
+                            <br><small style="color: #666;">${p.genericBugs.hours.toFixed(1)}h</small>
                         </td>
+                        <td style="padding: 10px; text-align: center; font-weight: bold;">${totalWork.toFixed(1)}h</td>
                     </tr>`;
             });
 
@@ -1147,11 +1130,12 @@ function renderPeopleView() {
             return tableHtml;
         };
 
+        // عرض الجداول الثلاثة داخل الـ Business Area
         html += renderRoleTable('💻 Development Team', devs, '#2c3e50');
         html += renderRoleTable('🧪 Testing Team', testers, '#27ae60');
         html += renderRoleTable('🗄️ Database Team', dbs, '#8e44ad');
 
-        html += `</div>`;
+        html += `</div>`; // نهاية الـ area-section
     }
 
     html += `</div>`;
@@ -1501,6 +1485,5 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
-
 
 
