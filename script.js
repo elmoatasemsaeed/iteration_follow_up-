@@ -1010,107 +1010,113 @@ function renderTeamView() {
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!processedStories || processedStories.length === 0) {
-        container.innerHTML = "<div class='card'><h2>People Performance</h2><p>No data available. Please upload a file first.</p></div>";
+        container.innerHTML = "<h2>People Performance</h2><p>No data available.</p>";
         return;
     }
 
-    const areaMap = {};
+    const peopleMap = {};
 
-    // 1. تجميع البيانات وتصنيفها بناءً على الحسبة الموحدة
     processedStories.forEach(us => {
-        const area = us.businessArea || 'General';
-        if (!areaMap[area]) {
-            areaMap[area] = { devs: {}, testers: {}, dbMods: {} };
-        }
-
-        // --- إحصائيات المطورين (Development) ---
-        if (us.devLead) {
-            const d = us.devLead;
-            if (!areaMap[area].devs[d]) {
-                areaMap[area].devs[d] = { 
-                    name: d, est: 0, act: 0, stories: 0, 
-                    totalCycleTime: 0, bugs: 0, crit: 0, high: 0, med: 0, 
-                    rwTime: 0, revCount: 0, revTime: 0 
+        // تجميع المهام حسب الشخص (تطوير، اختبار، تعديل قاعدة بيانات)
+        us.tasks.forEach(t => {
+            const person = t['Assigned To'];
+            if (!person) return;
+            if (!peopleMap[person]) {
+                peopleMap[person] = { 
+                    devHours: 0, testHours: 0, dbHours: 0, 
+                    stories: new Set(), 
+                    // إضافة تتبع تفاصيل البجز
+                    genericBugs: { count: 0, hours: 0 },
+                    specificBugs: { count: 0, hours: 0 },
+                    reviews: { count: 0, hours: 0 }
                 };
             }
-            const devData = areaMap[area].devs[d];
-            
-            // التقدير: العمل المخطط له فقط (التطوير)
-            devData.est += us.devEffort.orig; 
-            
-            // الفعلي: (تطوير أساسي + وقت إصلاح البجز + وقت عمل الريفيو)
-            devData.act += us.devEffort.actual + us.rework.actualTime + us.reviewStats.devActual;
-            
-            // تفاصيل الجودة
-            devData.rwTime += us.rework.actualTime;
-            devData.bugs += us.rework.count;
-            devData.crit += us.rework.severity.critical;
-            devData.high += us.rework.severity.high;
-            devData.med += us.rework.severity.medium;
-            
-            // تفاصيل الريفيو
-            devData.revCount += us.reviewStats.count;
-            devData.revTime += us.reviewStats.devActual;
-            
-            devData.stories++;
-            devData.totalCycleTime += (us.cycleTime || 0);
-        }
+            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
+            const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
+            const activity = t['Activity'];
 
-        // --- إحصائيات المختبرين (Testing) ---
-        if (us.testerLead) {
-            const t = us.testerLead;
-            if (!areaMap[area].testers[t]) {
-                areaMap[area].testers[t] = { name: t, est: 0, act: 0, stories: 0, revCount: 0, revTime: 0 };
-            }
-            const testData = areaMap[area].testers[t];
-            testData.est += us.testEffort.orig;
-            testData.act += us.testEffort.actual + us.reviewStats.testActual;
-            testData.revCount += us.reviewStats.count;
-            testData.revTime += us.reviewStats.testActual;
-            testData.stories++;
-        }
+            if (activity === 'Testing') peopleMap[person].testHours += actTest;
+            else if (activity === 'DB Modification') peopleMap[person].dbHours += actDev;
+            else if (activity === 'Development') peopleMap[person].devHours += actDev;
+            
+            peopleMap[person].stories.add(us.id);
+        });
 
-        // --- إحصائيات قاعدة البيانات (DB) ---
-        if (us.dbEffort && us.dbEffort.names !== 'N/A') {
-            const dbNames = us.dbEffort.names.split(', ');
-            dbNames.forEach(name => {
-                const n = name.trim();
-                if (!areaMap[area].dbMods[n]) {
-                    areaMap[area].dbMods[n] = { name: n, est: 0, act: 0, stories: 0 };
+        // توزيع ساعات البجز على الـ Dev Lead الخاص بالـ User Story
+        const devLead = us.devLead;
+        if (devLead && peopleMap[devLead]) {
+            // إضافة تفاصيل البجز الجينيرك
+            peopleMap[devLead].genericBugs.count += us.rework.generic.count;
+            peopleMap[devLead].genericBugs.hours += us.rework.generic.actualTime;
+            
+            // إضافة تفاصيل البجز الاسبيسيفك
+            peopleMap[devLead].specificBugs.count += us.rework.specific.count;
+            peopleMap[devLead].specificBugs.hours += us.rework.specific.actualTime;
+        }
+        
+        // توزيع ساعات الريفيو (إذا وجدت مهام ريفيو مرتبطة بأشخاص)
+        if (us.reviews) {
+            us.reviews.forEach(r => {
+                const reviewer = r['Assigned To'];
+                if (reviewer && peopleMap[reviewer]) {
+                    const rTime = (parseFloat(r['TimeSheet_DevActualTime']) || 0) + (parseFloat(r['TimeSheet_TestingActualTime']) || 0);
+                    peopleMap[reviewer].reviews.count++;
+                    peopleMap[reviewer].reviews.hours += rTime;
                 }
-                const dbData = areaMap[area].dbMods[n];
-                // تقسيم التقدير والفعلي بالتساوي إذا وجد أكثر من شخص (تبسيطاً)
-                dbData.est += (us.dbEffort.orig / dbNames.length);
-                dbData.act += (us.dbEffort.actual / dbNames.length);
-                dbData.stories++;
             });
         }
     });
 
-    // 2. بناء واجهة العرض (HTML)
-    let html = '<h2>Team Members Performance Analysis</h2>';
-    for (let area in areaMap) {
+    let html = `
+        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif;">
+            <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #3498db; padding-left: 20px;">👤 People Productivity & Quality Breakdown</h2>
+            <div class="table-container" style="overflow-x:auto;">
+                <table style="width:100%; border-collapse: collapse; background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-radius: 8px;">
+                    <thead>
+                        <tr style="background: #34495e; color: white;">
+                            <th style="padding: 15px;">Person Name</th>
+                            <th style="padding: 15px;">Stories</th>
+                            <th style="padding: 15px;">Dev / DB (H)</th>
+                            <th style="padding: 15px;">Testing (H)</th>
+                            <th style="padding: 15px; background: #c0392b;">Specific Bugs</th>
+                            <th style="padding: 15px; background: #e67e22;">Generic Bugs</th>
+                            <th style="padding: 15px; background: #8e44ad;">Reviews (H)</th>
+                            <th style="padding: 15px; background: #2c3e50;">Total (H)</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+    for (let person in peopleMap) {
+        const p = peopleMap[person];
+        const totalWork = p.devHours + p.dbHours + p.testHours + p.genericBugs.hours + p.specificBugs.hours + p.reviews.hours;
+        
         html += `
-        <div class="business-section" style="margin-bottom: 50px; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; border-top: 5px solid #2c3e50;">
-            <div style="background: #2c3e50; color: white; padding: 15px 25px;">
-                <h3 style="margin:0; font-size: 1.5em; letter-spacing: 1px;">${area}</h3>
-            </div>
-            <div style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <div style="background: #f9fdfa; border: 1px solid #d4edda; border-radius: 8px; padding: 15px;">
-                    <h4 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-top:0;">💻 Developers (Core + Quality)</h4>
-                    ${generateModernCards(areaMap[area].devs, 'dev')}
-                </div>
-                <div style="background: #f0f7ff; border: 1px solid #d1ecf1; border-radius: 8px; padding: 15px;">
-                    <h4 style="color: #2980b9; border-bottom: 2px solid #2980b9; padding-bottom: 10px; margin-top:0;">🔍 Testers</h4>
-                    ${generateModernCards(areaMap[area].testers, 'test')}
-                </div>
-                <div style="background: #fffbf0; border: 1px solid #ffeeba; border-radius: 8px; padding: 15px;">
-                    <h4 style="color: #f39c12; border-bottom: 2px solid #f39c12; padding-bottom: 10px; margin-top:0;">🗄️ DB Specialists</h4>
-                    ${generateModernCards(areaMap[area].dbMods, 'db')}
-                </div>
-            </div>
-        </div>`;
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px; font-weight: bold; color: #2c3e50;">${person}</td>
+                <td style="padding: 12px; text-align: center;"><span style="background: #ecf0f1; padding: 2px 8px; border-radius: 10px; font-size: 0.9em;">${p.stories.size}</span></td>
+                <td style="padding: 12px; text-align: center;">${(p.devHours + p.dbHours).toFixed(1)}</td>
+                <td style="padding: 12px; text-align: center;">${p.testHours.toFixed(1)}</td>
+                
+                <td style="padding: 12px; text-align: center; background: #fff5f5;">
+                    <div style="font-weight: bold; color: #c0392b;">${p.specificBugs.count} Bugs</div>
+                    <div style="font-size: 0.8em; color: #666;">${p.specificBugs.hours.toFixed(1)} hrs</div>
+                </td>
+
+                <td style="padding: 12px; text-align: center; background: #fffaf5;">
+                    <div style="font-weight: bold; color: #d35400;">${p.genericBugs.count} Bugs</div>
+                    <div style="font-size: 0.8em; color: #666;">${p.genericBugs.hours.toFixed(1)} hrs</div>
+                </td>
+
+                <td style="padding: 12px; text-align: center; background: #f5f3ff;">
+                    <div style="font-weight: bold; color: #6d28d9;">${p.reviews.count} Rev</div>
+                    <div style="font-size: 0.8em; color: #666;">${p.reviews.hours.toFixed(1)} hrs</div>
+                </td>
+
+                <td style="padding: 12px; text-align: center; font-weight: bold; background: #f8f9fa;">${totalWork.toFixed(1)}</td>
+            </tr>`;
     }
+
+    html += `</tbody></table></div></div>`;
     container.innerHTML = html;
 }
 
