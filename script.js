@@ -1009,33 +1009,37 @@ function renderTeamView() {
 }
 function renderPeopleView() {
     const container = document.getElementById('people-view');
+    if (!container) return;
+
     const businessAreas = {};
 
+    // 1. تجميع البيانات وتصنيف الموظفين
     processedStories.forEach(us => {
-        const area = us.businessArea || "Unassigned Area";
+        const area = us.businessArea || 'General';
         if (!businessAreas[area]) {
             businessAreas[area] = {};
         }
         const peopleMap = businessAreas[area];
-
-        // التحقق مما إذا كانت اليوزر استوري تعتبر تقرير (تجاهل حالة الأحرف)
         const isReport = us.title && us.title.toLowerCase().includes("patient reports");
 
         us.tasks.forEach(t => {
             const person = t['Assigned To'];
             if (!person) return;
+
             if (!peopleMap[person]) {
                 peopleMap[person] = {
+                    name: person,
                     devHours: 0,
                     testHours: 0,
                     dbHours: 0,
                     stories: new Set(),
-                    reportStories: new Set(), // تتبع استوريز التقارير هنا
+                    reportStories: new Set(),
                     genericBugs: { count: 0, hours: 0 },
                     specificBugs: { count: 0, hours: 0 },
                     reviews: { count: 0, hours: 0 }
                 };
             }
+
             const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
             const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
@@ -1044,15 +1048,13 @@ function renderPeopleView() {
             else if (activity === 'DB Modification') peopleMap[person].dbHours += actDev;
             else if (activity === 'Development') peopleMap[person].devHours += actDev;
 
-            // إضافة الـ ID الخاص بالاستوري لمجموعة استوريز الشخص
             peopleMap[person].stories.add(us.id);
-            
-            // إذا كانت تقرير، نضيفها لمجموعة التقارير الخاصة به
             if (isReport) {
                 peopleMap[person].reportStories.add(us.id);
             }
         });
 
+        // ربط البجات بالـ Dev Lead
         const devLead = us.devLead;
         if (devLead && peopleMap[devLead]) {
             peopleMap[devLead].genericBugs.count += us.rework.generic.count;
@@ -1064,52 +1066,78 @@ function renderPeopleView() {
 
     let html = `
         <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', sans-serif;">
-        <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #3498db; padding-left: 20px;">👥 Team Performance by Business Area</h2>`;
+            <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #3498db; padding-left: 20px;">👥 Team Performance by Business Area</h2>`;
 
     for (let area in businessAreas) {
         html += `
-            <div class="area-section" style="margin-bottom: 40px;">
-            <h3 style="background: #f8f9fa; padding: 10px 15px; border-radius: 5px; color: #2980b9; border-bottom: 2px solid #3498db;">🏢 ${area}</h3>
-            <div class="table-container" style="overflow-x:auto;">
-            <table style="width:100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-            <thead style="background: #3498db; color: white;">
-                <tr>
-                    <th style="padding: 12px; text-align: left;">Person</th>
-                    <th style="padding: 12px; text-align: center;">Total US</th>
-                    <th style="padding: 12px; text-align: center; background: #2980b9;">Reports US</th> <th style="padding: 12px; text-align: center;">Dev Hrs</th>
-                    <th style="padding: 12px; text-align: center;">Test Hrs</th>
-                    <th style="padding: 12px; text-align: center;">DB Hrs</th>
-                    <th style="padding: 12px; text-align: center;">Specific Bugs</th>
-                    <th style="padding: 12px; text-align: center;">Generic Bugs</th>
-                    <th style="padding: 12px; text-align: center;">Total Work</th>
-                </tr>
-            </thead>
-            <tbody>`;
+            <div class="area-section" style="margin-bottom: 50px; border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #fcfcfc;">
+                <h3 style="background: #2980b9; padding: 12px 20px; border-radius: 5px; color: white; margin-top: 0;">🏢 Business Area: ${area}</h3>`;
 
-        const peopleMap = businessAreas[area];
-        for (let person in peopleMap) {
-            const p = peopleMap[person];
-            const totalWork = p.devHours + p.testHours + p.dbHours + p.genericBugs.hours + p.specificBugs.hours;
-            html += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px; font-weight: bold; color: #34495e;">${person}</td>
-                    <td style="padding: 10px; text-align: center;">${p.stories.size}</td>
-                    <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #f0f7ff;">${p.reportStories.size}</td> <td style="padding: 10px; text-align: center;">${p.devHours.toFixed(1)}h</td>
-                    <td style="padding: 10px; text-align: center;">${p.testHours.toFixed(1)}h</td>
-                    <td style="padding: 10px; text-align: center;">${p.dbHours.toFixed(1)}h</td>
-                    <td style="padding: 10px; text-align: center; background: #fff5f5;">
-                        <span style="color: #c0392b; font-weight:bold;">${p.specificBugs.count}</span>
-                        <br><small style="color: #666;">${p.specificBugs.hours.toFixed(1)}h</small>
-                    </td>
-                    <td style="padding: 10px; text-align: center; background: #fffaf5;">
-                        <span style="color: #d35400; font-weight:bold;">${p.genericBugs.count}</span>
-                        <br><small style="color: #666;">${p.genericBugs.hours.toFixed(1)}h</small>
-                    </td>
-                    <td style="padding: 10px; text-align: center; font-weight: bold;">${totalWork.toFixed(1)}</td>
-                </tr>`;
-        }
-        html += `</tbody></table></div></div>`;
+        const allPeople = Object.values(businessAreas[area]);
+
+        // تقسيم الموظفين لمجموعات (شخص قد يظهر في أكثر من مجموعة إذا عمل في أنشطة مختلفة)
+        const devs = allPeople.filter(p => p.devHours > 0);
+        const testers = allPeople.filter(p => p.testHours > 0);
+        const dbs = allPeople.filter(p => p.dbHours > 0);
+
+        // دالة مساعدة لإنشاء الجداول لكل دور
+        const renderRoleTable = (title, peopleList, color) => {
+            if (peopleList.length === 0) return '';
+            
+            let tableHtml = `
+                <div style="margin-top: 25px;">
+                    <h4 style="color: ${color}; border-bottom: 2px solid ${color}; display: inline-block; padding-bottom: 5px;">${title}</h4>
+                    <div class="table-container" style="overflow-x:auto; margin-top: 10px;">
+                        <table style="width:100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <thead>
+                                <tr style="background: ${color}; color: white;">
+                                    <th style="padding: 12px; text-align: left;">Name</th>
+                                    <th style="padding: 12px; text-align: center;">Stories</th>
+                                    <th style="padding: 12px; text-align: center;">Reports</th>
+                                    <th style="padding: 12px; text-align: center;">Dev Hours</th>
+                                    <th style="padding: 12px; text-align: center;">Test Hours</th>
+                                    <th style="padding: 12px; text-align: center;">DB Hours</th>
+                                    <th style="padding: 12px; text-align: center;">Spec. Bugs</th>
+                                    <th style="padding: 12px; text-align: center;">Gen. Bugs</th>
+                                    <th style="padding: 12px; text-align: center;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+            peopleList.forEach(p => {
+                const totalWork = p.devHours + p.testHours + p.dbHours;
+                tableHtml += `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px; font-weight: bold; color: #34495e;">${p.name}</td>
+                        <td style="padding: 10px; text-align: center;">${p.stories.size}</td>
+                        <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #f0f7ff;">${p.reportStories.size}</td>
+                        <td style="padding: 10px; text-align: center;">${p.devHours.toFixed(1)}h</td>
+                        <td style="padding: 10px; text-align: center;">${p.testHours.toFixed(1)}h</td>
+                        <td style="padding: 10px; text-align: center;">${p.dbHours.toFixed(1)}h</td>
+                        <td style="padding: 10px; text-align: center; background: #fff5f5;">
+                            <span style="color: #c0392b; font-weight:bold;">${p.specificBugs.count}</span>
+                            <br><small style="color: #666;">${p.specificBugs.hours.toFixed(1)}h</small>
+                        </td>
+                        <td style="padding: 10px; text-align: center; background: #fffaf5;">
+                            <span style="color: #d35400; font-weight:bold;">${p.genericBugs.count}</span>
+                            <br><small style="color: #666;">${p.genericBugs.hours.toFixed(1)}h</small>
+                        </td>
+                        <td style="padding: 10px; text-align: center; font-weight: bold;">${totalWork.toFixed(1)}h</td>
+                    </tr>`;
+            });
+
+            tableHtml += `</tbody></table></div></div>`;
+            return tableHtml;
+        };
+
+        // عرض الجداول الثلاثة داخل الـ Business Area
+        html += renderRoleTable('💻 Development Team', devs, '#2c3e50');
+        html += renderRoleTable('🧪 Testing Team', testers, '#27ae60');
+        html += renderRoleTable('🗄️ Database Team', dbs, '#8e44ad');
+
+        html += `</div>`; // نهاية الـ area-section
     }
+
     html += `</div>`;
     container.innerHTML = html;
 }
