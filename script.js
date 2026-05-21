@@ -394,7 +394,7 @@ function calculateMetrics() {
         let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
         us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
 
-        // تعريف الهيكل المحدث لدعم حساب بجات UAT للـ Adherence
+        // تعريف الهيكل وتصفير عدادات الحقل الجديد UAT و Iteration Bugs
         us.rework = {
             generic: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
             specific: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
@@ -402,7 +402,8 @@ function calculateMetrics() {
             timeEstimation: 0,
             actualTime: 0,
             count: 0,
-            uatBugsCount: 0 // الكاونتر الجديد لبجات الـ UAT
+            uatBugsCount: 0,        // عداد بجز الـ UAT للـ User Story
+            iterationBugsCount: 0   // عداد بجز الـ Iteration للـ User Story
         };
 
         us.bugs.forEach(b => {
@@ -412,6 +413,13 @@ function calculateMetrics() {
             const sev = b['Severity'] || "";
             const bugType = (b['Bug Type'] || "").trim().toUpperCase(); // قراءة العمود الجديد
 
+            // تصنيف وتحديد البجز بناءً على الـ Bug Type
+            if (bugType === 'UAT') {
+                us.rework.uatBugsCount++;
+            } else {
+                us.rework.iterationBugsCount++;
+            }
+
             bugOrig += bEst;
             bugActualTotal += bDevAct;
             if (bDevAct === 0) bugsNoTimesheet++;
@@ -419,11 +427,6 @@ function calculateMetrics() {
             const target = isGeneric ? us.rework.generic : us.rework.specific;
             target.count++;
             target.actualTime += bDevAct;
-
-            // حساب بجات الـ UAT فقط
-            if (bugType === 'UAT') {
-                us.rework.uatBugsCount++;
-            }
 
             if (sev.includes("1 - Critical")) { 
                 target.severity.critical++; 
@@ -447,6 +450,7 @@ function calculateMetrics() {
             }
         });
 
+        // تحديث البيانات النهائية للـ Rework
         us.rework.timeEstimation = bugOrig;
         us.rework.actualTime = bugActualTotal;
         us.rework.count = us.bugs.length;
@@ -454,7 +458,8 @@ function calculateMetrics() {
         us.rework.deviation = bugOrig / (bugActualTotal || 1);
         us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100;
         
-        // 3. حساب الـ Review
+
+        // 3. حساب الـ Review 
         us.reviewStats = {
             estimation: 0,
             devActual: 0, 
@@ -854,10 +859,8 @@ function renderTeamView() {
         container.innerHTML = "<div class='card'><h2>Team Performance</h2><p>No data available.</p></div>";
         return;
     }
-
     const grouped = groupBy(processedStories, 'businessArea');
 
-    // --- حساب توزيع الموظفين عبر الـ Business Areas كنسب كسرية ---
     let devParticipation = {};
     let testerParticipation = {};
     let dbParticipation = {};
@@ -869,7 +872,6 @@ function renderTeamView() {
         areaDevs[area] = new Set();
         areaTesters[area] = new Set();
         areaDbs[area] = new Set();
-
         grouped[area].forEach(us => {
             if (us.devLead) areaDevs[area].add(us.devLead);
             if (us.testerLead) areaTesters[area].add(us.testerLead);
@@ -881,413 +883,253 @@ function renderTeamView() {
                 });
             }
         });
-
-        areaDevs[area].forEach(d => devParticipation[d] = (devParticipation[d] || 0) + 1);
-        areaTesters[area].forEach(t => testerParticipation[t] = (testerParticipation[t] || 0) + 1);
-        areaDbs[area].forEach(db => dbParticipation[db] = (dbParticipation[db] || 0) + 1);
-    }
-
-    let businessAreas = {};
-    let globalStats = { 
-        totalEst: 0, totalAct: 0, totalStories: 0, totalCycleTime: 0, ctCount: 0,
-        bugsCount: 0, uatBugsCount: 0, reviewCount: 0,
-        bugsCrit: 0, bugsHigh: 0, bugsMed: 0, bugsLow: 0,
-        revCrit: 0, revHigh: 0, revMed: 0, revLow: 0
-    };
-
-    processedStories.forEach(us => {
-        const area = us.businessArea;
-        if (!businessAreas[area]) {
-            businessAreas[area] = {};
-        }
-
-        const storyEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
-        const storyReviewTime = (us.reviewStats.devActual + us.reviewStats.testActual);
-        const storyAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + storyReviewTime;
-
-        globalStats.totalEst += storyEst;
-        globalStats.totalAct += storyAct;
-        globalStats.totalStories++;
-        if (us.cycleTime > 0) {
-            globalStats.totalCycleTime += us.cycleTime;
-            globalStats.ctCount++;
-        }
-
-        // تجميع البجات الكلية وبجات الـ UAT الخاصة بالـ Adherence
-        globalStats.bugsCount += us.rework.count;
-        globalStats.uatBugsCount += us.rework.uatBugsCount;
-        globalStats.reviewCount += us.reviewStats.count;
-
-        globalStats.bugsCrit += us.rework.severity.critical;
-        globalStats.bugsHigh += us.rework.severity.high;
-        globalStats.bugsMed += us.rework.severity.medium;
-        globalStats.bugsLow += us.rework.severity.low;
-
-        globalStats.revCrit += us.reviewStats.severity.critical;
-        globalStats.revHigh += us.reviewStats.severity.high;
-        globalStats.revMed += us.reviewStats.severity.medium;
-        globalStats.revLow += us.reviewStats.severity.low;
-
-        // تجميع بيانات الأفراد لكل مهمة في الـ User Story
-        const isReport = us.status === 'Tested';
-        us.tasks.forEach(t => {
-            const person = t['Assigned To'];
-            if (!person) return;
-
-            let devFraction = devParticipation[person] ? (1 / devParticipation[person]) : 1;
-            let testFraction = testerParticipation[person] ? (1 / testerParticipation[person]) : 1;
-            let dbFraction = dbParticipation[person] ? (1 / dbParticipation[person]) : 1;
-
-            if (!businessAreas[area][person]) {
-                businessAreas[area][person] = {
-                    name: person,
-                    stories: new Set(),
-                    reportStories: new Set(),
-                    devHours: 0, testHours: 0, dbHours: 0,
-                    genericBugs: { count: 0, hours: 0 },
-                    specificBugs: { count: 0, hours: 0 },
-                    reviews: { count: 0, hours: 0 }
-                };
-            }
-
-            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
-            const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
-            const activity = t['Activity'];
-
-            if (activity === 'Testing') businessAreas[area][person].testHours += actTest;
-            else if (activity === 'DB Modification') businessAreas[area][person].dbHours += actDev;
-            else if (activity === 'Development') businessAreas[area][person].devHours += actDev;
-
-            businessAreas[area][person].stories.add(us.id);
-            if (isReport) {
-                businessAreas[area][person].reportStories.add(us.id);
-            }
+        areaDevs[area].forEach(d => {
+            devParticipation[d] = (devParticipation[d] || 0) + 1;
         });
-
-        // ربط البجات بـ الـ Dev Lead
-        const devLead = us.devLead;
-        if (devLead && businessAreas[area][devLead]) {
-            businessAreas[area][devLead].genericBugs.count += us.rework.generic.count;
-            businessAreas[area][devLead].genericBugs.hours += us.rework.generic.actualTime;
-            businessAreas[area][devLead].specificBugs.count += us.rework.specific.count;
-            businessAreas[area][devLead].specificBugs.hours += us.rework.specific.actualTime;
-        }
-    });
-
-    // حساب المعادلات العالمية (Global KPIs)
-    const effortVariance = ((globalStats.totalAct - globalStats.totalEst) / (globalStats.totalEst || 1)) * 100;
-    const avgCycleTime = globalStats.ctCount > 0 ? (globalStats.totalCycleTime / globalStats.ctCount).toFixed(1) : 'N/A';
-    
-    // حساب الـ Adherence الجديد بدلاً من الـ IPQ
-    const adherenceRatio = globalStats.bugsCount > 0 ? (globalStats.uatBugsCount / globalStats.bugsCount) * 100 : 100;
-
-    const totalQualityEvents = globalStats.bugsCount + globalStats.reviewCount;
-    const bugRatio = totalQualityEvents > 0 ? (globalStats.bugsCount / totalQualityEvents) * 100 : 0;
-    const reviewRatio = totalQualityEvents > 0 ? (globalStats.reviewCount / totalQualityEvents) * 100 : 0;
-
-    // تحديد ألوان وحالات المؤشر بناءً على الثريشولد (85%)
-    const adherenceColor = adherenceRatio >= 85 ? '#27ae60' : '#c0392b';
+        areaTesters[area].forEach(t => {
+            testerParticipation[t] = (testerParticipation[t] || 0) + 1;
+        });
+        areaDbs[area].forEach(db => {
+            dbParticipation[db] = (dbParticipation[db] || 0) + 1;
+        });
+    }
 
     let html = `
-        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', sans-serif; padding: 10px;">
-            <h2 style="color:#2c3e50; font-size:2em; margin-bottom:5px;">📊 High-Level Team Productivity & Analytics</h2>
-            <p style="color:#7f8c8d; margin-bottom:30px;">Cross-team performance summary, effort variance analytics, and preventive control metrics.</p>
+    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px;">
+        <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #2ecc71; padding-left: 20px; font-size: 1.8em;"> 
+            🚀 Team Performance Analytics (Unified QC & Review Scope) 
+        </h2>`;
 
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:20px; margin-bottom:40px;">
-                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid #3498db;">
-                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Velocity</span>
-                    <b style="font-size:1.6em; color:#2c3e50; display:block; margin-top:5px;">${globalStats.totalStories} <span style="font-size:0.5em; color:#95a5a6;">User Stories</span></b>
-                    <span style="font-size:0.8em; color:#7f8c8d;">Delivered in Current Iteration</span>
-                </div>
-                
-                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid ${effortVariance > 15 ? '#e74c3c' : '#27ae60'};">
-                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Effort Variance</span>
-                    <b style="font-size:1.6em; color:${effortVariance > 15 ? '#e74c3c' : '#27ae60'}; display:block; margin-top:5px;">${effortVariance.toFixed(1)}%</b>
-                    <span style="font-size:0.8em; color:#7f8c8d;">Est: ${globalStats.totalEst.toFixed(1)}h | Act: ${globalStats.totalAct.toFixed(1)}h</span>
-                </div>
+    for (let area in grouped) {
+        let stats = {
+            totalEst: 0,
+            totalAct: 0,
+            reworkTime: 0,
+            reviewTime: 0,
+            bugsCount: 0,
+            bugsCrit: 0,
+            bugsHigh: 0,
+            bugsMed: 0,
+            bugsLow: 0,
+            reviewCount: 0,
+            revCrit: 0,
+            revHigh: 0,
+            revMed: 0,
+            revLow: 0,
+            totalStories: grouped[area].length,
+            closedStoriesCount: 0,
+            totalCycleTime: 0,
+            totalUatBugs: 0,
+            totalIterationBugs: 0
+        };
 
-                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid ${adherenceColor};">
-                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Adherence Rate (UAT / Total)</span>
-                    <b style="font-size:1.6em; color:${adherenceColor}; display:block; margin-top:5px;">${adherenceRatio.toFixed(1)}%</b>
-                    <span style="font-size:0.8em; color:#7f8c8d;">UAT: ${globalStats.uatBugsCount} | Total Bugs: ${globalStats.bugsCount} (Target: &ge;85%)</span>
-                </div>
-
-                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid #8e44ad;">
-                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Avg Cycle Time</span>
-                    <b style="font-size:1.6em; color:#8e44ad; display:block; margin-top:5px;">${avgCycleTime} <span style="font-size:0.5em; color:#95a5a6;">Days</span></b>
-                    <span style="font-size:0.8em; color:#7f8c8d;">Per User Story</span>
-                </div>
-            </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-bottom:20px;">
-                <div style="border:1px solid #f1f5f9; padding:20px; border-radius:10px; background:#fff;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <b style="color:#c0392b; font-size:1.1em;">🐞 Standard Bugs Metrics</b>
-                        <span style="background:#fdf2f2; color:#c0392b; padding:3px 10px; border-radius:12px; font-size:0.8em; font-weight:bold;"> Total: ${globalStats.bugsCount} Records </span>
-                    </div>
-                    ${getSevBadges(globalStats.bugsCrit, globalStats.bugsHigh, globalStats.bugsMed, globalStats.bugsLow, globalStats.bugsCount)}
-                </div>
-                <div style="border:1px solid #f1f5f9; padding:20px; border-radius:10px; background:#fff;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <b style="color:#8e44ad; font-size:1.1em;">🔎 Senior Peer Review Defects</b>
-                        <span style="background:#f5f3ff; color:#8e44ad; padding:3px 10px; border-radius:12px; font-size:0.8em; font-weight:bold;"> Total: ${globalStats.reviewCount} Events </span>
-                    </div>
-                    ${getSevBadges(globalStats.revCrit, globalStats.revHigh, globalStats.revMed, globalStats.revLow, globalStats.reviewCount)}
-                </div>
-            </div>
-    `;
-
-    // نظام توصيات ذكي ومطابق تماماً للمحتوى الحالي بدون حذف
-    let analysisNotes = "";
-    let analysisStatusColor = "#7f8c8d";
-    
-    if (totalQualityEvents === 0) {
-        analysisNotes = "<b>No Quality Events logged:</b> Insufficient telemetry data to analyze filtering ratios. Ensure bugs and review sessions are correctly reported.";
-    } else if (globalStats.bugsCount > 0 && adherenceRatio < 85) {
-        analysisNotes = `<b>Critical Leakage to UAT Detected:</b> The UAT Adherence Rate is at <b>${adherenceRatio.toFixed(1)}%</b>, dropping significantly below the allowed threshold of <b>85%</b>. This implies a heavy leakage of severe or edge-case defects directly to customer acceptance testing, skipping internal QA coverage. <br><b style='color:#c0392b;'>Recommendation:</b> Enforce a strict pull request checklist and make senior developer reviews mandatory before QA delivery.`;
-        analysisStatusColor = "#c0392b";
-    } else {
-        if (globalStats.reviewCount >= globalStats.bugsCount) {
-            if (globalStats.bugsCrit + globalStats.bugsHigh === 0) {
-                analysisNotes = `<b>Excellent Preventive Quality Control:</b> Peer reviews (<b>${reviewRatio.toFixed(0)}%</b> of total Quality Events) are effectively filtering out severe flaws. Consequently, <b>0 Critical/High bugs</b> reached the testing phase. This proves that standard checklists are mature and well-executed. <br><b style='color:#27ae60;'>Recommendation:</b> Sustain current screening cadence.`;
-                analysisStatusColor = "#27ae60";
-            } else {
-                analysisNotes = `<b>High Review Effort but Ineffective Filters:</b> Although the team logged <b>${globalStats.reviewCount} Reviews</b>, <b>${globalStats.bugsCrit + globalStats.bugsHigh} Critical/High Bugs</b> still leaked into testing. This reveals a major discrepancy: the reviews are being done numbers-wise, but they fail to catch complex architectural problems. <br><b style='color:#e67e22;'>Recommendation:</b> Review the senior peer review criteria; focus checklists on business logic coverage and security leaks rather than cosmetic code style.`;
-                analysisStatusColor = "#e67e22";
-            }
-        } else {
-            if (globalStats.reviewCount > 0) {
-                analysisNotes = `<b>Reactive Quality Workflow:</b> Standard Bugs outnumber Review Bugs (Bugs: <b>${bugRatio.toFixed(0)}%</b> vs Reviews: <b>${reviewRatio.toFixed(0)}%</b>). Peer reviews are being carried out but their frequency or depth is insufficient to mitigate high defect generation rates. This shifts the quality assurance burden heavily onto QA engineers. <br><b style='color:#e67e22;'>Recommendation:</b> Shift Left. Dedicate more effort to cross-team engineering design alignments prior to full code development.`;
-                analysisStatusColor = "#e67e22";
-            }
-        }
-    }
-
-    html += `
-        <div style="background:#fcfcfd; border-top: 4px solid ${analysisStatusColor}; border-right:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; border-radius:0 0 12px 12px; padding:20px; margin-bottom:40px;">
-            <h4 style="margin-top:0; color:#34495e; font-size:1.05em; text-transform:uppercase; letter-spacing:0.5px;">📋 Causal Analysis & Strategic Quality Insight</h4>
-            <p style="font-size:0.95em; line-height:1.6; color:#4a5568; margin-bottom:0;">${analysisNotes}</p>
-        </div>
-    `;
-
-    // طباعة الجداول الثلاثة التفصيلية لكل Business Area مع الحفاظ عليها بالكامل وبدون أي مسح
-    html += `<h2 style="margin-bottom:30px; color: #123b63; border-left: 6px solid #3498db; padding-left: 20px;">👥 Team Performance by Business Area</h2>`;
-    
-    const renderRoleTable = (title, peopleList, themeColor) => {
-        if (peopleList.length === 0) return '';
-        let tableHtml = `
-            <div style="margin-top: 25px; margin-bottom: 25px;">
-                <h4 style="color: ${themeColor}; margin-bottom: 10px; font-size:1.15em;">${title}</h4>
-                <div style="overflow-x: auto; background: white; border-radius: 6px; border: 1px solid #eee;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
-                        <thead>
-                            <tr style="background: ${themeColor}; color: white; text-align: left;">
-                                <th style="padding: 12px 10px;">Resource Name</th>
-                                <th style="padding: 12px 10px; text-align: center;">Active US Count</th>
-                                <th style="padding: 12px 10px; text-align: center;">Dev Work (H)</th>
-                                <th style="padding: 12px 10px; text-align: center;">Test Work (H)</th>
-                                <th style="padding: 12px 10px; text-align: center;">DB Mod (H)</th>
-                                <th style="padding: 12px 10px; text-align: center;">Specific Bugs (Dev Lead)</th>
-                                <th style="padding: 12px 10px; text-align: center;">Generic Bugs (Dev Lead)</th>
-                                <th style="padding: 12px 10px; text-align: center;">Total Spent</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-        
-        peopleList.forEach(p => {
-            const totalWork = p.devHours + p.testHours + p.dbHours;
-            tableHtml += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px; font-weight: bold; color:#2c3e50;">${p.name}</td>
-                    <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #f0f7ff;">${p.reportStories.size}</td>
-                    <td style="padding: 10px; text-align: center;">${p.devHours.toFixed(1)}h</td>
-                    <td style="padding: 10px; text-align: center;">${p.testHours.toFixed(1)}h</td>
-                    <td style="padding: 10px; text-align: center;">${p.dbHours.toFixed(1)}h</td>
-                    <td style="padding: 10px; text-align: center; background: #fff5f5;">
-                        <span style="color: #c0392b; font-weight:bold;">${p.specificBugs.count}</span>
-                        <br><small style="color: #666;">${p.specificBugs.hours.toFixed(1)}h</small>
-                    </td>
-                    <td style="padding: 10px; text-align: center; background: #fffaf5;">
-                        <span style="color: #d35400; font-weight:bold;">${p.genericBugs.count}</span>
-                        <br><small style="color: #666;">${p.genericBugs.hours.toFixed(1)}h</small>
-                    </td>
-                    <td style="padding: 10px; text-align: center; font-weight: bold;">${totalWork.toFixed(1)}h</td>
-                </tr>`;
+        let devCountCount = 0;
+        areaDevs[area].forEach(d => {
+            if(devParticipation[d]) devCountCount += (1 / devParticipation[d]);
         });
-        tableHtml += `</tbody></table></div></div>`;
-        return tableHtml;
-    };
+        let testerCountCount = 0;
+        areaTesters[area].forEach(t => {
+            if(testerParticipation[t]) testerCountCount += (1 / testerParticipation[t]);
+        });
+        let dbCountCount = 0;
+        areaDbs[area].forEach(db => {
+            if(dbParticipation[db]) dbCountCount += (1 / dbParticipation[db]);
+        });
 
-    for (let area in businessAreas) {
-        html += `
-            <div class="area-section" style="margin-bottom: 50px; border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #fcfcfc;">
-                <h3 style="background: #2980b9; padding: 12px 20px; border-radius: 5px; color: white; margin-top: 0;">🏢 Business Area: ${area}</h3>`;
-        
-        const allPeople = Object.values(businessAreas[area]);
-        const devs = allPeople.filter(p => p.devHours > 0);
-        const testers = allPeople.filter(p => p.testHours > 0);
-        const dbs = allPeople.filter(p => p.dbHours > 0);
+        grouped[area].forEach(us => {
+            const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
+            const sRvTime = us.reviewStats.devActual + us.reviewStats.testActual;
+            const sAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + sRvTime;
+            
+            stats.totalEst += sEst;
+            stats.totalAct += sAct;
+            stats.reworkTime += us.rework.actualTime;
+            stats.reviewTime += sRvTime;
+            stats.totalCycleTime += (us.cycleTime || 0);
+            stats.bugsCount += us.rework.count;
+            stats.bugsCrit += us.rework.severity.critical;
+            stats.bugsHigh += us.rework.severity.high;
+            stats.bugsMed += us.rework.severity.medium;
+            stats.bugsLow += us.rework.severity.low;
+            stats.reviewCount += us.reviewStats.count;
+            stats.revCrit += us.reviewStats.severity.critical;
+            stats.revHigh += us.reviewStats.severity.high;
+            stats.revMed += us.reviewStats.severity.medium;
+            stats.revLow += us.reviewStats.severity.low;
 
-        html += renderRoleTable('💻 Development Team', devs, '#2c3e50');
-        html += renderRoleTable('🧪 Testing Team', testers, '#27ae60');
-        html += renderRoleTable('🗄️ Database Team', dbs, '#8e44ad');
-        html += `</div>`;
-    }
+            stats.totalUatBugs += (us.rework.uatBugsCount || 0);
+            stats.totalIterationBugs += (us.rework.iterationBugsCount || 0);
 
-    html += `</div>`;
-    container.innerHTML = html;
-}
+            if (us.status === 'Closed' || us.status === 'Tested' || us.status === 'Resolved') {
+                stats.closedStoriesCount++;
+            }
+        });
 
-// دالة مساعدة لطباعة السيفيرتي كما هي في الكود الأصلي لعدم إحداث خلل
-function getSevBadges(crit, high, med, low, total) {
-    if (!total) return '<p style="color:#999;font-size:0.85em;margin:5px 0 0 0;">No items reported</p>';
-    return `
-        <div style="display:flex; gap:10px; margin-top:10px; font-size:0.8em; font-weight:bold; color:white;">
-            <span style="background:#e74c3c; padding:3px 8px; border-radius:4px;" title="Critical">C: ${crit}</span>
-            <span style="background:#e67e22; padding:3px 8px; border-radius:4px;" title="High">H: ${high}</span>
-            <span style="background:#f1c40f; padding:3px 8px; border-radius:4px;" title="Medium">M: ${med}</span>
-            <span style="background:#3498db; padding:3px 8px; border-radius:4px;" title="Low">L: ${low}</span>
-        </div>
-    `;
-}
-        // --- محرك تحليل جودة البرمجيات المطور (تحليل مكتوب فقط) ---
+        const effortVariance = stats.totalEst > 0 ? ((stats.totalAct - stats.totalEst) / stats.totalEst) * 100 : 0;
+        const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
+        const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
+
+        // حساب مؤشر الـ Adherence الجديد بدلاً من IPQ
+        const adherenceValueNum = stats.totalIterationBugs > 0 ? ((stats.totalUatBugs / stats.totalIterationBugs) * 100) : 0;
+        const adherenceValue = adherenceValueNum.toFixed(1);
+        const adherenceColor = adherenceValueNum <= 85 ? '#2e7d32' : '#d32f2f';
+
+        const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
+        const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
+
+        const getSevBadges = (c, h, m, l, t) => {
+            if (!t) return '<div style="color:#7f8c8d; margin-top:5px; font-size:0.85em; font-style:italic;">No records found</div>';
+            const pct = (v) => ((v / t) * 100).toFixed(0);
+            const badgeStyle = (bg, color, border) => `background:${bg}; color:${color}; padding:8px 4px; border-radius:6px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center; min-width:65px;`;
+            return `
+             <div style="display: flex; gap: 6px; margin-top: 10px;">
+                <div style="${badgeStyle('#ffeaed', '#c0392b', '#ffcdd2')}"><span style="font-size:10px; font-weight:600;">Critical</span><b style="font-size:14px; margin-top:2px;">${c}</b><span style="font-size:9px; opacity:0.8;">${pct(c)}%</span></div>
+                <div style="${badgeStyle('#fff3e0', '#e67e22', '#ffe0b2')}"><span style="font-size:10px; font-weight:600;">High</span><b style="font-size:14px; margin-top:2px;">${h}</b><span style="font-size:9px; opacity:0.8;">${pct(h)}%</span></div>
+                <div style="${badgeStyle('#e8f4fd', '#2980b9', '#bbdefb')}"><span style="font-size:10px; font-weight:600;">Medium</span><b style="font-size:14px; margin-top:2px;">${m}</b><span style="font-size:9px; opacity:0.8;">${pct(m)}%</span></div>
+                <div style="${badgeStyle('#f5f5f5', '#7f8c8d', '#e0e0e0')}"><span style="font-size:10px; font-weight:600;">Low</span><b style="font-size:14px; margin-top:2px;">${l}</b><span style="font-size:9px; opacity:0.8;">${pct(l)}%</span></div>
+             </div>`;
+        };
+
         function generateAdvancedQualityAnalysis(s) {
             let insights = [];
             const totalIssues = s.bugsCount + s.reviewCount;
             const reviewCatchRate = totalIssues > 0 ? (s.reviewCount / totalIssues) * 100 : 0;
             const highSevBugs = s.bugsCrit + s.bugsHigh;
-            const highSevReviews = s.revCrit + s.revHigh;
             const avgTimePerBug = s.bugsCount > 0 ? (s.reworkTime / s.bugsCount) : 0;
-            const avgTimePerReview = s.reviewCount > 0 ? (s.reviewTime / s.reviewCount) : 0;
 
-            // 1. محور الفعالية الكلية واستراتيجية الشفت-ليفت (Overall Effectiveness)
             if (reviewCatchRate > 40) {
                 insights.push(`<li><b>Shift-Left Strategy Efficiency:</b> Peer Reviews intercepted <span style="color:#27ae60; font-weight:bold;">${reviewCatchRate.toFixed(1)}%</span> of total issues before reaching the formal QC execution cycle. This indicates a proactive engineering culture with strong desk-checks.</li>`);
             } else if (reviewCatchRate > 15) {
-                insights.push(`<li><b>Moderate Containment Layer:</b> Reviews captured <span style="color:#f39c12; font-weight:bold;">${reviewCatchRate.toFixed(1)}%</span> of system issues. The filtration mechanism functions moderately but pushes a considerable burden down to the formal QC pipelines.</li>`);
+                insights.push(`<li><b>Shift-Left Progression:</b> Peer Reviews managed to catch <span style="color:#3498db; font-weight:bold;">${reviewCatchRate.toFixed(1)}%</span> of product defects. There is room to further strengthen code reviews to optimize the quality pipeline.</li>`);
             } else {
-                insights.push(`<li><b>High QC Phase Leakage Danger:</b> Only <span style="color:#c0392b; font-weight:bold;">${reviewCatchRate.toFixed(1)}%</span> of defects were isolated during reviews, shifting the quality shield heavily to the QC stage (${s.bugsCount} standard bugs found).</li>`);
+                insights.push(`<li><b>Shift-Left Risk Warning:</b> Peer Reviews intercepted only <span style="color:#e74c3c; font-weight:bold;">${reviewCatchRate.toFixed(1)}%</span> of total anomalies. The majority of issues were pushed directly into formal testing, increasing downstream pressure on QC. Immediately reinforce code-review policies.</li>`);
             }
 
-            // 2. محور تحليل توزيع خطورة المشاكل (Severity & Risk Profiling)
-            if (highSevBugs > highSevReviews && highSevBugs > 0) {
-                insights.push(`<li><b>Critical Risk Profile:</b> Formal QC captured <span style="color:#c0392b; font-weight:bold;">${highSevBugs} Critical/High Defects</span>, whereas Peer Reviews only caught <span style="color:#27ae60; font-weight:bold;">${highSevReviews}</span>. This indicates that architectural anomalies and core edge-cases are slipping past standard engineering code-reviews.</li>`);
-            } else if (highSevReviews >= highSevBugs && highSevReviews > 0) {
-                insights.push(`<li><b>Architectural Shielding Integrity:</b> Engineering reviews successfully blocked <span style="color:#27ae60; font-weight:bold;">${highSevReviews} High-Impact Vulnerabilities</span> from leaking into QC streams, shielding deployment stability and reducing expensive regression testing.</li>`);
+            if (s.bugsCount > 0) {
+                if (highSevBugs / s.bugsCount > 0.3) {
+                    insights.push(`<li><b>Defect Severity Alert:</b> Highly severe defects (Critical/High) constitute <span style="color:#e74c3c; font-weight:bold;">${((highSevBugs/s.bugsCount)*100).toFixed(1)}%</span> of the formal test cycle bugs. Focus on architectural stability and technical requirements alignment during development.</li>`);
+                } else {
+                    insights.push(`<li><b>Defect Profile Stability:</b> High-severity leaks during execution are low (<span style="color:#27ae60; font-weight:bold;">${((highSevBugs/s.bugsCount)*100).toFixed(1)}%</span>), meaning most detected bugs are minor/functional tweaks.</li>`);
+                }
             }
 
-            // 3. محور التكلفة والوقت المبذول لكل مرحلة (Cost-of-Quality and Effort Efficiency)
-            if (avgTimePerBug > avgTimePerReview && s.reviewCount > 0) {
-                insights.push(`<li><b>Effort ROI Variance:</b> Resolving a standard QC bug demanded an average of <span style="color:#c0392b; font-weight:bold;">${avgTimePerBug.toFixed(1)}h</span> compared to only <span style="color:#27ae60; font-weight:bold;">${avgTimePerReview.toFixed(1)}h</span> for a Review discovery. This statistical gap confirms that earlier defect isolation yields massive effort savings.</li>`);
-            } else if (avgTimePerReview > avgTimePerBug && s.bugsCount > 0) {
-                insights.push(`<li><b>Review Friction Analysis:</b> Review item treatments consumed roughly <span style="color:#d35400; font-weight:bold;">${avgTimePerReview.toFixed(1)}h</span> per item, which exceeds standard QC bug resolution times (${avgTimePerBug.toFixed(1)}h). This suggests overhead issues or complexity spikes in the review workflow.</li>`);
+            if (avgTimePerBug > 4 && s.bugsCount > 0) {
+                insights.push(`<li><b>Rework Friction:</b> Mean Time to Resolve (MTTR) a formal bug is high (<span style="color:#e67e22; font-weight:bold;">${avgTimePerBug.toFixed(1)}h/bug</span>). This signals deep structural dependencies or tracking overhead in logging timesheets.</li>`);
             }
 
-            // 4. فكرة مضافة: تحليل الأثر على سرعة الإنتاجية (Delivery Velocity Drag Analysis)
-            const deliveryDrag = ((s.reworkTime + s.reviewTime) / (s.totalAct || 1)) * 100;
-            if (deliveryDrag > 20) {
-                insights.push(`<li><b>Velocity & Process Drag:</b> Rework and verification processes consumed <span style="color:#c0392b; font-weight:bold;">${deliveryDrag.toFixed(1)}%</span> of the overall actual effort expended in this area. This high friction ratio serves as a primary driver behind extended cycle times.</li>`);
-            } else {
-                insights.push(`<li><b>Streamlined Process Velocity:</b> Process friction remains low at <span style="color:#27ae60; font-weight:bold;">${deliveryDrag.toFixed(1)}%</span>, demonstrating an optimized throughput pipeline where engineering effort is mostly directed towards feature creation rather than stabilization.</li>`);
-            }
-
-            // 5. فكرة مضافة: تراكز وتكتل الأخطاء (Defect Clustering Assessment)
-            if (s.bugsCount > 0 && (s.bugsCrit + s.bugsHigh) / s.bugsCount > 0.4) {
-                insights.push(`<li><b>Defect Clustering Alert:</b> Over 40% of the defects identified by QC fall strictly under High or Critical classifications. This concentration signals potential stability weaknesses or highly complex technical debt inside this business area's codebase.</li>`);
-            }
-
-            return insights.join("");
+            if (insights.length === 0) return "<li>No critical dynamic trends observed for this iteration.</li>";
+            return insights.join('');
         }
 
-        const advancedAnalysisReport = generateAdvancedQualityAnalysis(stats);
-
         html += `
-        <div class="business-card" style="background:#fff; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.06); padding:25px; margin-bottom:35px; border-top: 5px solid #3498db;">
-            <h3 style="margin-top:0; color:#2c3e50; font-size:1.4em; border-bottom:2px solid #f1f2f6; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                <span>📂 Business Area: <span style="color:#2980b9;">${area}</span></span>
-                <span style="font-size:0.65em; background:#ecf0f1; padding:5px 12px; border-radius:20px; color:#7f8c8d;">Stories Count: ${stats.totalStories}</span>
-            </h3>
-
-            <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:25px; background:#f8f9fa; padding:15px; border-radius:8px;">
-                <div style="flex:1; min-width:140px; text-align:center;">
-                    <div style="font-size:0.8em; color:#7f8c8d; font-weight:600; text-transform:uppercase;">Dev Allocation (FTE)</div>
-                    <div style="font-size:1.4em; font-weight:bold; color:#2c3e50; margin-top:4px;">${devCountCount.toFixed(2)}</div>
-                </div>
-                <div style="flex:1; min-width:140px; text-align:center; border-left:1px solid #e0e0e0; border-right:1px solid #e0e0e0;">
-                    <div style="font-size:0.8em; color:#7f8c8d; font-weight:600; text-transform:uppercase;">QC Allocation (FTE)</div>
-                    <div style="font-size:1.4em; font-weight:bold; color:#2c3e50; margin-top:4px;">${testerCountCount.toFixed(2)}</div>
-                </div>
-                <div style="flex:1; min-width:140px; text-align:center;">
-                    <div style="font-size:0.8em; color:#7f8c8d; font-weight:600; text-transform:uppercase;">DB Specialists (FTE)</div>
-                    <div style="font-size:1.4em; font-weight:bold; color:#2c3e50; margin-top:4px;">${dbCountCount.toFixed(2)}</div>
-                </div>
+        <div class="card" style="background:#ffffff; border-radius:12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding:25px; margin-bottom:35px; border-top: 4px solid #2ccc71;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f1f2f6; padding-bottom:15px; margin-bottom:20px;">
+                <h3 style="margin:0; color:#2c3e50; font-size:1.4em; font-weight:700;">📂 Business Area: ${area}</h3>
+                <span style="background:#f1f2f6; color:#2c3e50; padding:6px 14px; border-radius:20px; font-size:0.85em; font-weight:600;">
+                    📊 Stories: <b>${stats.closedStoriesCount} / ${stats.totalStories} Closed</b>
+                </span>
             </div>
 
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:20px; margin-bottom:25px;">
-                <div style="border:1px solid #e1e8ed; padding:15px; border-radius:8px; border-left:4px solid ${varianceColor};">
-                    <div style="font-size:0.85em; color:#7f8c8d; font-weight:600;">Effort Variance</div>
-                    <div style="font-size:1.8em; font-weight:bold; color:${varianceColor}; margin:5px 0;">${effortVariance.toFixed(1)}%</div>
-                    <div style="font-size:0.75em; color:#95a5a6;">Est: ${stats.totalEst.toFixed(1)}h | Act: ${stats.totalAct.toFixed(1)}h</div>
-                </div>
-
-                <div style="border:1px solid #e1e8ed; padding:15px; border-radius:8px; border-left:4px solid ${reworkColor};">
-                    <div style="font-size:0.85em; color:#7f8c8d; font-weight:600;">Rework Ratio</div>
-                    <div style="font-size:1.8em; font-weight:bold; color:${reworkColor}; margin:5px 0;">${combinedReworkRatio.toFixed(1)}%</div>
-                    <div style="font-size:0.75em; color:#95a5a6;">QC Bugs: ${stats.reworkTime.toFixed(1)}h | Reviews: ${stats.reviewTime.toFixed(1)}h</div>
-                </div>
-
-                <div style="border:1px solid #e1e8ed; padding:15px; border-radius:8px; border-left:4px solid #8e44ad;">
-                    <div style="font-size:0.85em; color:#7f8c8d; font-weight:600;">Avg Cycle Time</div>
-                    <div style="font-size:1.8em; font-weight:bold; color:#8e44ad; margin:5px 0;">${avgCycleTime} <span style="font-size:0.5em; font-weight:normal;">Days</span></div>
-                    <div style="font-size:0.75em; color:#95a5a6;">Closed / Total: ${stats.closedStoriesCount} / ${stats.totalStories} Stories</div>
-                </div>
-
-                <div style="border:1px solid #e1e8ed; padding:15px; border-radius:8px; border-left:4px solid ${ipqColor};">
-                    <div style="font-size:0.85em; color:#7f8c8d; font-weight:600;">Iteration Process Quality (IPQ)</div>
-                    <div style="font-size:1.8em; font-weight:bold; color:${ipqColor}; margin:5px 0;">${ipqValue}%</div>
-                    <div style="font-size:0.75em; color:#95a5a6; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${stats.nonClosedBugIDs.length > 0 ? 'Bug IDs: ' + stats.nonClosedBugIDs.join(', ') : 'No leaked bugs'}">
-                        Leaked QC Bugs: <b>${stats.nonClosedBugs}</b> ${stats.nonClosedBugIDs.length > 0 ? '(' + stats.nonClosedBugIDs.slice(0,3).join(',') + '...)' : ''}
-                    </div>
-                </div>
+            <div style="display:flex; gap:15px; margin-bottom:25px; background:#f8f9fa; padding:12px; border-radius:8px; font-size:0.9em; color:#57606f; border:1px solid #edeec4;">
+                <span>👥 <b>FTE Dev Capacity:</b> ${devCountCount.toFixed(2)}</span> | 
+                <span>🧪 <b>FTE Tester Capacity:</b> ${testerCountCount.toFixed(2)}</span> | 
+                <span>🗄️ <b>FTE DB Capacity:</b> ${dbCountCount.toFixed(2)}</span>
             </div>
 
-            <div style="margin-top:20px; border:1px solid #e1e8ed; border-radius:8px; overflow:hidden;">
-                <div style="background:#f8f9fa; padding:12px 20px; font-weight:bold; color:#2c3e50; border-bottom:1px solid #e1e8ed; font-size:1em; display:flex; justify-content:between; align-items:center;">
-                    <span>⚖️ Quality Streams Comparative Analysis (QC vs. Peer Reviews)</span>
-                </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:20px; margin-bottom:30px;">
                 
-                <div style="display:flex; flex-wrap:wrap; background:#fff;">
-                    <div style="flex:1; min-width:280px; padding:20px; border-right:1px solid #e1e8ed; background-color: #fffafb;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #ffccd2; padding-bottom:8px;">
-                            <span style="font-weight:bold; color:#c0392b; font-size:1.05em;">🛡️ Formal QC Stage Defects</span>
-                            <span style="background:#c0392b; color:#fff; font-size:0.8em; padding:2px 8px; border-radius:12px; font-weight:bold;">Total: ${stats.bugsCount}</span>
-                        </div>
-                        <div style="margin-top:10px; font-size:0.9em; color:#555;">
-                            Time Expended on Rework: <b style="color:#c0392b;">${stats.reworkTime.toFixed(1)} Hours</b>
-                        </div>
-                        ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
-                    </div>
-
-                    <div style="flex:1; min-width:280px; padding:20px; background-color: #fbfbfe;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #d6d4f0; padding-bottom:8px;">
-                            <span style="font-weight:bold; color:#5b21b6; font-size:1.05em;">🔎 Peer Review Track Items</span>
-                            <span style="background:#5b21b6; color:#fff; font-size:0.8em; padding:2px 8px; border-radius:12px; font-weight:bold;">Total: ${stats.reviewCount}</span>
-                        </div>
-                        <div style="margin-top:10px; font-size:0.9em; color:#555;">
-                            Time Expended on Verification: <b style="color:#5b21b6;">${stats.reviewTime.toFixed(1)} Hours</b>
-                        </div>
-                        ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
-                    </div>
+                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid ${varianceColor}; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+                    <div style="font-size:0.85em; color:#747d8c; text-transform:uppercase; font-weight:600;">Effort Variance</div>
+                    <div style="font-size:1.8em; font-weight:700; color:${varianceColor}; margin:5px 0;">${effortVariance.toFixed(1)}%</div>
+                    <div style="font-size:0.8em; color:#57606f;">Est: <b>${stats.totalEst.toFixed(1)}h</b> | Act: <b>${stats.totalAct.toFixed(1)}h</b></div>
                 </div>
 
-                <div style="background: #faf9ff; padding: 20px; border-top: 1px solid #e1e8ed;">
-                    <h4 style="margin: 0 0 12px 0; color: #4c1d95; font-size: 1.1em; display: flex; align-items: center; gap: 8px;">
-                        <span>🧠 Data-Driven QC & Review Analytics Report</span>
-                    </h4>
-                    <ul style="margin: 0; padding-left: 20px; color: #34495e; font-size: 0.92em; line-height: 1.6;">
-                        ${advancedAnalysisReport}
-                    </ul>
+                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid ${reworkColor}; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+                    <div style="font-size:0.85em; color:#747d8c; text-transform:uppercase; font-weight:600;">Rework & Review Ratio</div>
+                    <div style="font-size:1.8em; font-weight:700; color:${reworkColor}; margin:5px 0;">${combinedReworkRatio.toFixed(1)}%</div>
+                    <div style="font-size:0.8em; color:#57606f;">Bugs: <b>${stats.reworkTime.toFixed(1)}h</b> | Revs: <b>${stats.reviewTime.toFixed(1)}h</b></div>
                 </div>
+
+                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid ${adherenceColor}; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+                    <div style="font-size:0.85em; color:#747d8c; text-transform:uppercase; font-weight:600;">Adherence Ratio</div>
+                    <div style="font-size:1.8em; font-weight:700; color:${adherenceColor}; margin:5px 0;">${adherenceValue}%</div>
+                    <div style="font-size:0.8em; color:#57606f;">UAT: <b>${stats.totalUatBugs}</b> / Iteration: <b>${stats.totalIterationBugs}</b></div>
+                </div>
+
+                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid #8e44ad; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+                    <div style="font-size:0.85em; color:#747d8c; text-transform:uppercase; font-weight:600;">Avg Cycle Time</div>
+                    <div style="font-size:1.8em; font-weight:700; color:#8e44ad; margin:5px 0;">${avgCycleTime} Days</div>
+                    <div style="font-size:0.8em; color:#57606f;">Total Net Days: <b>${stats.totalCycleTime}</b></div>
+                </div>
+
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:25px; margin-bottom:20px;">
+                <div style="background:#fff; border:1px solid #eaeed8; border-radius:10px; padding:18px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-weight:600; color:#2c3e50; border-bottom:1px solid #f1f2f6; padding-bottom:8px;">
+                        <span>🐞 Execution Bugs Detail</span>
+                        <span style="background:#ffebee; color:#c62828; font-size:0.8em; padding:2px 8px; border-radius:10px;">Count: ${stats.bugsCount}</span>
+                    </div>
+                    ${getSevBadges(stats.bugsCrit, stats.bugsHigh, stats.bugsMed, stats.bugsLow, stats.bugsCount)}
+                </div>
+
+                <div style="background:#fff; border:1px solid #eaeed8; border-radius:10px; padding:18px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-weight:600; color:#2c3e50; border-bottom:1px solid #f1f2f6; padding-bottom:8px;">
+                        <span>🔎 Shift-Left Reviews Detail</span>
+                        <span style="background:#f3e5f5; color:#6a1b9a; font-size:0.8em; padding:2px 8px; border-radius:10px;">Count: ${stats.reviewCount}</span>
+                    </div>
+                    ${getSevBadges(stats.revCrit, stats.revHigh, stats.revMed, stats.revLow, stats.reviewCount)}
+                </div>
+            </div>
+
+            <div style="margin-top:25px;">
+                <h4 style="color:#2c3e50; font-size:1.1em; border-bottom:1px solid #f1f2f6; padding-bottom:8px; margin-bottom:12px;">📋 User Stories Breakdown</h4>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.9em; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8f9fa; border-bottom:2px solid #dee2e6; color:#495057;">
+                                <th style="padding:10px;">ID / Title</th>
+                                <th style="padding:10px;">Status</th>
+                                <th style="padding:10px;">Dev Lead</th>
+                                <th style="padding:10px;">Tester Lead</th>
+                                <th style="padding:10px; text-align:right;">Est (h)</th>
+                                <th style="padding:10px; text-align:right;">Act (h)</th>
+                                <th style="padding:10px; text-align:right;">Bugs (UAT/Iter)</th>
+                                <th style="padding:10px; text-align:right;">Cycle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${grouped[area].map(us => {
+                                const uEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
+                                const uAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + (us.reviewStats.totalActual || 0);
+                                return `
+                                <tr style="border-bottom:1px solid #eee;">
+                                    <td style="padding:10px; max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                        <b style="color:#2980b9;">${us.id}</b><br><span style="font-size:0.85em; color:#666;">${us.title || 'No Title'}</span>
+                                    </td>
+                                    <td style="padding:10px;"><span style="background:#e1f5fe; color:#0288d1; padding:2px 6px; border-radius:4px; font-size:0.8em;">${us.status}</span></td>
+                                    <td style="padding:10px; color:#555;">${us.devLead || 'N/A'}</td>
+                                    <td style="padding:10px; color:#555;">${us.testerLead || 'N/A'}</td>
+                                    <td style="padding:10px; text-align:right; font-weight:600;">${uEst.toFixed(1)}</td>
+                                    <td style="padding:10px; text-align:right; font-weight:600; color:#27ae60;">${uAct.toFixed(1)}</td>
+                                    <td style="padding:10px; text-align:right; color:#e74c3c; font-weight:600;">
+                                        ${us.rework.uatBugsCount || 0} / ${us.rework.iterationBugsCount || 0}
+                                    </td>
+                                    <td style="padding:10px; text-align:right; font-weight:600; color:#8e44ad;">${us.cycleTime || 0}d</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="margin-top:25px; background:#f9f9fb; border-radius:8px; padding:20px; border:1px solid #eccc68; box-shadow:inset 0 1px 3px rgba(0,0,0,0.02);">
+                <h4 style="margin:0 0 12px 0; color:#ffa502; font-size:1.05em; font-weight:700; display:flex; align-items:center; gap:8px;">
+                    🧠 AI & CMMI Engineering Quality Insights
+                </h4>
+                <ul style="margin:0; padding-left:20px; font-size:0.92em; color:#2c3e50; line-height:1.6;">
+                    ${generateAdvancedQualityAnalysis(stats)}
+                </ul>
             </div>
 
         </div>`;
@@ -1296,6 +1138,7 @@ function getSevBadges(crit, high, med, low, total) {
     html += `</div>`;
     container.innerHTML = html;
 }
+
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!container) return;
@@ -1774,4 +1617,3 @@ function removeHoliday(date) {
 }
 
 renderHolidays();
-
