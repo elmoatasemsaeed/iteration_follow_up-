@@ -969,10 +969,12 @@ function renderTeamView() {
         const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
 
-        // حساب مؤشر الـ Adherence الجديد بدلاً من IPQ
-        const adherenceValueNum = stats.totalIterationBugs > 0 ? ((stats.totalUatBugs / stats.totalIterationBugs) * 100) : 0;
-        const adherenceValue = adherenceValueNum.toFixed(1);
-        const adherenceColor = adherenceValueNum <= 85 ? '#2e7d32' : '#d32f2f';
+        // حساب مؤشر الـ DRE الجديد بدلاً من Adherence Ratio
+        const dreValueNum = stats.totalIterationBugs > 0 ? ((stats.totalUatBugs / stats.totalIterationBugs) * 100) : 0;
+        const dreValue = dreValueNum.toFixed(1);
+        
+        // تعديل الثريشولد ليصبح 15% (أقل من أو يساوي 15% لون أخضر، وإذا تخطاها يظهر باللون الأحمر)
+        const dreColor = dreValueNum <= 15 ? '#2e7d32' : '#d32f2f';
 
         const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
         const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
@@ -1050,9 +1052,9 @@ function renderTeamView() {
                     <div style="font-size:0.8em; color:#57606f;">Bugs: <b>${stats.reworkTime.toFixed(1)}h</b> | Revs: <b>${stats.reviewTime.toFixed(1)}h</b></div>
                 </div>
 
-                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid ${adherenceColor}; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
-                    <div style="font-size:0.85em; color:#747d8c; text-transform:uppercase; font-weight:600;">Adherence Ratio</div>
-                    <div style="font-size:1.8em; font-weight:700; color:${adherenceColor}; margin:5px 0;">${adherenceValue}%</div>
+                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid ${dreColor}; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+                    <div style="font-size:0.85em; color:#747d8c; text-transform:uppercase; font-weight:600;">DRE</div>
+                    <div style="font-size:1.8em; font-weight:700; color:${dreColor}; margin:5px 0;">${dreValue}%</div>
                     <div style="font-size:0.8em; color:#57606f;">UAT: <b>${stats.totalUatBugs}</b> / Iteration: <b>${stats.totalIterationBugs}</b></div>
                 </div>
 
@@ -1138,7 +1140,6 @@ function renderTeamView() {
     html += `</div>`;
     container.innerHTML = html;
 }
-
 function renderPeopleView() {
     const container = document.getElementById('people-view');
     if (!container) return;
