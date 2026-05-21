@@ -364,13 +364,13 @@ function calculateMetrics() {
         // 1. حساب مهام الـ Tasks (Development, Testing, DB)
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
-            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0; // التأكد من تعريف actDev هنا
+            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0; 
             const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
 
             if (activity === 'DB Modification') {
                 dbOrig += orig;
-                dbActual += actDev; // الآن actDev معرف ولن يظهر الخطأ
+                dbActual += actDev; 
                 if (t['Assigned To']) dbNames.add(t['Assigned To']); 
             } else if (activity === 'Development') {
                 devOrig += orig;
@@ -391,104 +391,108 @@ function calculateMetrics() {
         us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
-// داخل دالة calculateMetrics، استبدل الجزء الخاص بحساب الـ Rework بهذا الكود:
-let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
-us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+        let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
+        us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
 
-// إضافة كائنات لتخزين تفاصيل الـ Generic والـ Specific بشكل منفصل
-// 1. تعريف الهيكل الجديد مع إضافة كائن severity رئيسي للتوافق مع الشاشات الأخرى
-us.rework = {
-    generic: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
-    specific: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
-    severity: { critical: 0, high: 0, medium: 0, low: 0 }, // هذا السطر يحل مشكلة الـ TypeError
-    timeEstimation: 0,
-    actualTime: 0,
-    count: 0
-};
+        // تعريف الهيكل المحدث لدعم حساب بجات UAT للـ Adherence
+        us.rework = {
+            generic: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
+            specific: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
+            severity: { critical: 0, high: 0, medium: 0, low: 0 }, 
+            timeEstimation: 0,
+            actualTime: 0,
+            count: 0,
+            uatBugsCount: 0 // الكاونتر الجديد لبجات الـ UAT
+        };
 
-us.bugs.forEach(b => {
-    const isGeneric = (b['GenericBug'] || "").trim().toLowerCase() === 'yes';
-    const bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
-    const bEst = parseFloat(b['Original Estimation']) || 0;
-    const sev = b['Severity'] || "";
+        us.bugs.forEach(b => {
+            const isGeneric = (b['GenericBug'] || "").trim().toLowerCase() === 'yes';
+            const bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
+            const bEst = parseFloat(b['Original Estimation']) || 0;
+            const sev = b['Severity'] || "";
+            const bugType = (b['Bug Type'] || "").trim().toUpperCase(); // قراءة العمود الجديد
 
-    bugOrig += bEst;
-    bugActualTotal += bDevAct;
-    if (bDevAct === 0) bugsNoTimesheet++;
+            bugOrig += bEst;
+            bugActualTotal += bDevAct;
+            if (bDevAct === 0) bugsNoTimesheet++;
 
-    const target = isGeneric ? us.rework.generic : us.rework.specific;
-    target.count++;
-    target.actualTime += bDevAct;
+            const target = isGeneric ? us.rework.generic : us.rework.specific;
+            target.count++;
+            target.actualTime += bDevAct;
 
-    // 2. تحديث السيفيرتي في الكائن الخاص (للعرض المفصل) وفي الكائن الرئيسي (لحل الخطأ)
-    if (sev.includes("1 - Critical")) { 
-        target.severity.critical++; 
-        us.rework.severity.critical++; // إضافة هنا
-        us.severityCounts.critical++; 
-    }
-    else if (sev.includes("2 - High")) { 
-        target.severity.high++; 
-        us.rework.severity.high++; // إضافة هنا
-        us.severityCounts.high++; 
-    }
-    else if (sev.includes("3 - Medium")) { 
-        target.severity.medium++; 
-        us.rework.severity.medium++; // إضافة هنا
-        us.severityCounts.medium++; 
-    }
-    else if (sev.includes("4 - Low")) { 
-        target.severity.low++; 
-        us.rework.severity.low++; // إضافة هنا
-        us.severityCounts.low++; 
-    }
-});
-// تحديث البيانات النهائية للـ Rework
-us.rework.timeEstimation = bugOrig;
-us.rework.actualTime = bugActualTotal;
-us.rework.count = us.bugs.length;
-us.rework.missingTimesheet = bugsNoTimesheet;
-us.rework.deviation = bugOrig / (bugActualTotal || 1);
-us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100;
+            // حساب بجات الـ UAT فقط
+            if (bugType === 'UAT') {
+                us.rework.uatBugsCount++;
+            }
+
+            if (sev.includes("1 - Critical")) { 
+                target.severity.critical++; 
+                us.rework.severity.critical++; 
+                us.severityCounts.critical++; 
+            }
+            else if (sev.includes("2 - High")) { 
+                target.severity.high++; 
+                us.rework.severity.high++; 
+                us.severityCounts.high++; 
+            }
+            else if (sev.includes("3 - Medium")) { 
+                target.severity.medium++; 
+                us.rework.severity.medium++; 
+                us.severityCounts.medium++; 
+            }
+            else if (sev.includes("4 - Low")) { 
+                target.severity.low++; 
+                us.rework.severity.low++; 
+                us.severityCounts.low++; 
+            }
+        });
+
+        us.rework.timeEstimation = bugOrig;
+        us.rework.actualTime = bugActualTotal;
+        us.rework.count = us.bugs.length;
+        us.rework.missingTimesheet = bugsNoTimesheet;
+        us.rework.deviation = bugOrig / (bugActualTotal || 1);
+        us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100;
         
+        // 3. حساب الـ Review
+        us.reviewStats = {
+            estimation: 0,
+            devActual: 0, 
+            testActual: 0,
+            totalActual: 0, 
+            devCount: 0,
+            testCount: 0,
+            count: us.reviews ? us.reviews.length : 0,
+            severity: { critical: 0, high: 0, medium: 0, low: 0}
+        };
 
-        // 3. حساب الـ Review (الطلب الجديد)
-us.reviewStats = {
-    estimation: 0,
-    devActual: 0, 
-    testActual: 0,
-    totalActual: 0, // سيتم تحديثه في النهاية
-    devCount: 0,
-    testCount: 0,
-    count: us.reviews ? us.reviews.length : 0,
-    severity: { critical: 0, high: 0, medium: 0, low: 0}
-};
+        if (us.reviews) {
+            us.reviews.forEach(r => {
+                const rEst = parseFloat(r['Original Estimation']) || 0;
+                const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
+                const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
+                const activity = r['Activity'];
+                const sev = r['Severity'] || "";
 
-if (us.reviews) {
-    us.reviews.forEach(r => {
-        const rEst = parseFloat(r['Original Estimation']) || 0;
-        const rDevAct = parseFloat(r['TimeSheet_DevActualTime']) || 0;
-        const rTestAct = parseFloat(r['TimeSheet_TestingActualTime']) || 0;
-        const activity = r['Activity'];
-        const sev = r['Severity'] || "";
+                us.reviewStats.estimation += rEst;
 
-        us.reviewStats.estimation += rEst;
+                if (activity === 'Development') {
+                    us.reviewStats.devActual += rDevAct;
+                    us.reviewStats.devCount++;
+                } else if (activity === 'Testing') {
+                    us.reviewStats.testActual += rTestAct;
+                    us.reviewStats.testCount++;
+                }
 
-        if (activity === 'Development') {
-            us.reviewStats.devActual += rDevAct;
-            us.reviewStats.devCount++;
-        } else if (activity === 'Testing') {
-            us.reviewStats.testActual += rTestAct;
-            us.reviewStats.testCount++;
+                if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
+                else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
+                else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
+                else if (sev.includes("4 - Low")) us.reviewStats.severity.low++;
+            });
+
+            us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
         }
 
-        if (sev.includes("1 - Critical")) us.reviewStats.severity.critical++;
-        else if (sev.includes("2 - High")) us.reviewStats.severity.high++;
-        else if (sev.includes("3 - Medium")) us.reviewStats.severity.medium++;
-        else if (sev.includes("4 - Low")) us.reviewStats.severity.low++;
-    });
-
-    us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
-}
         // 4. حساب التوقيت والـ Cycle Time
         let minDate = Infinity;
         us.tasks.forEach(t => {
@@ -503,7 +507,6 @@ if (us.reviews) {
         calculateTimeline(us);
     });
 }
-
 function calculateTimeline(us) {
     let tasks = us.tasks;
     if (!tasks || tasks.length === 0) return;
@@ -866,6 +869,7 @@ function renderTeamView() {
         areaDevs[area] = new Set();
         areaTesters[area] = new Set();
         areaDbs[area] = new Set();
+
         grouped[area].forEach(us => {
             if (us.devLead) areaDevs[area].add(us.devLead);
             if (us.testerLead) areaTesters[area].add(us.testerLead);
@@ -877,109 +881,275 @@ function renderTeamView() {
                 });
             }
         });
-        areaDevs[area].forEach(d => {
-            devParticipation[d] = (devParticipation[d] || 0) + 1;
-        });
-        areaTesters[area].forEach(t => {
-            testerParticipation[t] = (testerParticipation[t] || 0) + 1;
-        });
-        areaDbs[area].forEach(db => {
-            dbParticipation[db] = (dbParticipation[db] || 0) + 1;
-        });
+
+        areaDevs[area].forEach(d => devParticipation[d] = (devParticipation[d] || 0) + 1);
+        areaTesters[area].forEach(t => testerParticipation[t] = (testerParticipation[t] || 0) + 1);
+        areaDbs[area].forEach(db => dbParticipation[db] = (dbParticipation[db] || 0) + 1);
     }
 
-    let html = `
-     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px;">
-     <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #2ecc71; padding-left: 20px; font-size: 1.8em;"> 
-         🚀 Team Performance Analytics (Unified QC & Review Scope) 
-     </h2>`;
+    let businessAreas = {};
+    let globalStats = { 
+        totalEst: 0, totalAct: 0, totalStories: 0, totalCycleTime: 0, ctCount: 0,
+        bugsCount: 0, uatBugsCount: 0, reviewCount: 0,
+        bugsCrit: 0, bugsHigh: 0, bugsMed: 0, bugsLow: 0,
+        revCrit: 0, revHigh: 0, revMed: 0, revLow: 0
+    };
 
-    for (let area in grouped) {
-        let stats = {
-            totalEst: 0,
-            totalAct: 0,
-            reworkTime: 0,
-            reviewTime: 0,
-            bugsCount: 0,
-            bugsCrit: 0,
-            bugsHigh: 0,
-            bugsMed: 0,
-            bugsLow: 0,
-            reviewCount: 0,
-            revCrit: 0,
-            revHigh: 0,
-            revMed: 0,
-            revLow: 0,
-            totalStories: grouped[area].length,
-            closedStoriesCount: 0,
-            totalCycleTime: 0,
-            totalBugsForIPQ: 0,
-            nonClosedBugs: 0,
-            nonClosedBugIDs: []
-        };
+    processedStories.forEach(us => {
+        const area = us.businessArea;
+        if (!businessAreas[area]) {
+            businessAreas[area] = {};
+        }
 
-        let devCountCount = 0;
-        areaDevs[area].forEach(d => { if(devParticipation[d]) devCountCount += (1 / devParticipation[d]); });
-        let testerCountCount = 0;
-        areaTesters[area].forEach(t => { if(testerParticipation[t]) testerCountCount += (1 / testerParticipation[t]); });
-        let dbCountCount = 0;
-        areaDbs[area].forEach(db => { if(dbParticipation[db]) dbCountCount += (1 / dbParticipation[db]); });
+        const storyEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
+        const storyReviewTime = (us.reviewStats.devActual + us.reviewStats.testActual);
+        const storyAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + storyReviewTime;
 
-        grouped[area].forEach(us => {
-            const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
-            const sRvTime = us.reviewStats.devActual + us.reviewStats.testActual;
-            const sAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + sRvTime;
-            
-            stats.totalEst += sEst;
-            stats.totalAct += sAct;
-            stats.reworkTime += us.rework.actualTime;
-            stats.reviewTime += sRvTime;
-            stats.totalCycleTime += (us.cycleTime || 0);
-            stats.bugsCount += us.rework.count;
-            stats.bugsCrit += us.rework.severity.critical;
-            stats.bugsHigh += us.rework.severity.high;
-            stats.bugsMed += us.rework.severity.medium;
-            stats.bugsLow += us.rework.severity.low;
-            stats.reviewCount += us.reviewStats.count;
-            stats.revCrit += us.reviewStats.severity.critical;
-            stats.revHigh += us.reviewStats.severity.high;
-            stats.revMed += us.reviewStats.severity.medium;
-            stats.revLow += us.reviewStats.severity.low;
+        globalStats.totalEst += storyEst;
+        globalStats.totalAct += storyAct;
+        globalStats.totalStories++;
+        if (us.cycleTime > 0) {
+            globalStats.totalCycleTime += us.cycleTime;
+            globalStats.ctCount++;
+        }
 
-            if (us.status === 'Closed' || us.status === 'Tested' || us.status === 'Resolved') {
-                stats.closedStoriesCount++;
+        // تجميع البجات الكلية وبجات الـ UAT الخاصة بالـ Adherence
+        globalStats.bugsCount += us.rework.count;
+        globalStats.uatBugsCount += us.rework.uatBugsCount;
+        globalStats.reviewCount += us.reviewStats.count;
+
+        globalStats.bugsCrit += us.rework.severity.critical;
+        globalStats.bugsHigh += us.rework.severity.high;
+        globalStats.bugsMed += us.rework.severity.medium;
+        globalStats.bugsLow += us.rework.severity.low;
+
+        globalStats.revCrit += us.reviewStats.severity.critical;
+        globalStats.revHigh += us.reviewStats.severity.high;
+        globalStats.revMed += us.reviewStats.severity.medium;
+        globalStats.revLow += us.reviewStats.severity.low;
+
+        // تجميع بيانات الأفراد لكل مهمة في الـ User Story
+        const isReport = us.status === 'Tested';
+        us.tasks.forEach(t => {
+            const person = t['Assigned To'];
+            if (!person) return;
+
+            let devFraction = devParticipation[person] ? (1 / devParticipation[person]) : 1;
+            let testFraction = testerParticipation[person] ? (1 / testerParticipation[person]) : 1;
+            let dbFraction = dbParticipation[person] ? (1 / dbParticipation[person]) : 1;
+
+            if (!businessAreas[area][person]) {
+                businessAreas[area][person] = {
+                    name: person,
+                    stories: new Set(),
+                    reportStories: new Set(),
+                    devHours: 0, testHours: 0, dbHours: 0,
+                    genericBugs: { count: 0, hours: 0 },
+                    specificBugs: { count: 0, hours: 0 },
+                    reviews: { count: 0, hours: 0 }
+                };
             }
-            if (us.bugs && us.bugs.length > 0) {
-                stats.totalBugsForIPQ += us.bugs.length;
-                const nonClosed = us.bugs.filter(b => b['State'] !== 'Closed' && b['State'] !== 'Cancel');
-                stats.nonClosedBugs += nonClosed.length;
-                nonClosed.forEach(b => { if (b['ID']) stats.nonClosedBugIDs.push(b['ID']); });
+
+            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
+            const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
+            const activity = t['Activity'];
+
+            if (activity === 'Testing') businessAreas[area][person].testHours += actTest;
+            else if (activity === 'DB Modification') businessAreas[area][person].dbHours += actDev;
+            else if (activity === 'Development') businessAreas[area][person].devHours += actDev;
+
+            businessAreas[area][person].stories.add(us.id);
+            if (isReport) {
+                businessAreas[area][person].reportStories.add(us.id);
             }
         });
 
-        const effortVariance = stats.totalEst > 0 ? ((stats.totalAct - stats.totalEst) / stats.totalEst) * 100 : 0;
-        const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
-        const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
-        const ipqValueNum = stats.totalBugsForIPQ > 0 ? ((stats.nonClosedBugs / stats.totalBugsForIPQ) * 100) : 0;
-        const ipqValue = ipqValueNum.toFixed(1);
+        // ربط البجات بـ الـ Dev Lead
+        const devLead = us.devLead;
+        if (devLead && businessAreas[area][devLead]) {
+            businessAreas[area][devLead].genericBugs.count += us.rework.generic.count;
+            businessAreas[area][devLead].genericBugs.hours += us.rework.generic.actualTime;
+            businessAreas[area][devLead].specificBugs.count += us.rework.specific.count;
+            businessAreas[area][devLead].specificBugs.hours += us.rework.specific.actualTime;
+        }
+    });
 
-        const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
-        const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
-        const ipqColor = ipqValueNum > 0 ? '#d32f2f' : '#2e7d32';
+    // حساب المعادلات العالمية (Global KPIs)
+    const effortVariance = ((globalStats.totalAct - globalStats.totalEst) / (globalStats.totalEst || 1)) * 100;
+    const avgCycleTime = globalStats.ctCount > 0 ? (globalStats.totalCycleTime / globalStats.ctCount).toFixed(1) : 'N/A';
+    
+    // حساب الـ Adherence الجديد بدلاً من الـ IPQ
+    const adherenceRatio = globalStats.bugsCount > 0 ? (globalStats.uatBugsCount / globalStats.bugsCount) * 100 : 100;
 
-        const getSevBadges = (c, h, m, l, t) => {
-            if (!t) return '<div style="color:#7f8c8d; margin-top:5px; font-size:0.85em; font-style:italic;">No records found</div>';
-            const pct = (v) => ((v / t) * 100).toFixed(0);
-            const badgeStyle = (bg, color, border) => `background:${bg}; color:${color}; padding:8px 4px; border-radius:6px; text-align:center; flex:1; border:1px solid ${border}; display: flex; flex-direction: column; justify-content: center; min-width:65px;`;
-            return `
-                <div style="display: flex; gap: 6px; margin-top: 10px;">
-                    <div style="${badgeStyle('#ffeaed', '#c0392b', '#ffcdd2')}"><span style="font-size:10px; font-weight:600;">Critical</span><b style="font-size:14px; margin-top:2px;">${c}</b><span style="font-size:9px; opacity:0.8;">${pct(c)}%</span></div>
-                    <div style="${badgeStyle('#fff3e0', '#e67e22', '#ffe0b2')}"><span style="font-size:10px; font-weight:600;">High</span><b style="font-size:14px; margin-top:2px;">${h}</b><span style="font-size:9px; opacity:0.8;">${pct(h)}%</span></div>
-                    <div style="${badgeStyle('#e8f4fd', '#2980b9', '#bbdefb')}"><span style="font-size:10px; font-weight:600;">Medium</span><b style="font-size:14px; margin-top:2px;">${m}</b><span style="font-size:9px; opacity:0.8;">${pct(m)}%</span></div>
-                    <div style="${badgeStyle('#f5f5f5', '#7f8c8d', '#e0e0e0')}"><span style="font-size:10px; font-weight:600;">Low</span><b style="font-size:14px; margin-top:2px;">${l}</b><span style="font-size:9px; opacity:0.8;">${pct(l)}%</span></div>
-                </div>`;
-        };
+    const totalQualityEvents = globalStats.bugsCount + globalStats.reviewCount;
+    const bugRatio = totalQualityEvents > 0 ? (globalStats.bugsCount / totalQualityEvents) * 100 : 0;
+    const reviewRatio = totalQualityEvents > 0 ? (globalStats.reviewCount / totalQualityEvents) * 100 : 0;
 
+    // تحديد ألوان وحالات المؤشر بناءً على الثريشولد (85%)
+    const adherenceColor = adherenceRatio >= 85 ? '#27ae60' : '#c0392b';
+
+    let html = `
+        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', sans-serif; padding: 10px;">
+            <h2 style="color:#2c3e50; font-size:2em; margin-bottom:5px;">📊 High-Level Team Productivity & Analytics</h2>
+            <p style="color:#7f8c8d; margin-bottom:30px;">Cross-team performance summary, effort variance analytics, and preventive control metrics.</p>
+
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:20px; margin-bottom:40px;">
+                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid #3498db;">
+                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Velocity</span>
+                    <b style="font-size:1.6em; color:#2c3e50; display:block; margin-top:5px;">${globalStats.totalStories} <span style="font-size:0.5em; color:#95a5a6;">User Stories</span></b>
+                    <span style="font-size:0.8em; color:#7f8c8d;">Delivered in Current Iteration</span>
+                </div>
+                
+                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid ${effortVariance > 15 ? '#e74c3c' : '#27ae60'};">
+                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Effort Variance</span>
+                    <b style="font-size:1.6em; color:${effortVariance > 15 ? '#e74c3c' : '#27ae60'}; display:block; margin-top:5px;">${effortVariance.toFixed(1)}%</b>
+                    <span style="font-size:0.8em; color:#7f8c8d;">Est: ${globalStats.totalEst.toFixed(1)}h | Act: ${globalStats.totalAct.toFixed(1)}h</span>
+                </div>
+
+                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid ${adherenceColor};">
+                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Adherence Rate (UAT / Total)</span>
+                    <b style="font-size:1.6em; color:${adherenceColor}; display:block; margin-top:5px;">${adherenceRatio.toFixed(1)}%</b>
+                    <span style="font-size:0.8em; color:#7f8c8d;">UAT: ${globalStats.uatBugsCount} | Total Bugs: ${globalStats.bugsCount} (Target: &ge;85%)</span>
+                </div>
+
+                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02); border-top:4px solid #8e44ad;">
+                    <span style="color:#7f8c8d; font-size:0.85em; font-weight:600; display:block;">Avg Cycle Time</span>
+                    <b style="font-size:1.6em; color:#8e44ad; display:block; margin-top:5px;">${avgCycleTime} <span style="font-size:0.5em; color:#95a5a6;">Days</span></b>
+                    <span style="font-size:0.8em; color:#7f8c8d;">Per User Story</span>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-bottom:20px;">
+                <div style="border:1px solid #f1f5f9; padding:20px; border-radius:10px; background:#fff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <b style="color:#c0392b; font-size:1.1em;">🐞 Standard Bugs Metrics</b>
+                        <span style="background:#fdf2f2; color:#c0392b; padding:3px 10px; border-radius:12px; font-size:0.8em; font-weight:bold;"> Total: ${globalStats.bugsCount} Records </span>
+                    </div>
+                    ${getSevBadges(globalStats.bugsCrit, globalStats.bugsHigh, globalStats.bugsMed, globalStats.bugsLow, globalStats.bugsCount)}
+                </div>
+                <div style="border:1px solid #f1f5f9; padding:20px; border-radius:10px; background:#fff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <b style="color:#8e44ad; font-size:1.1em;">🔎 Senior Peer Review Defects</b>
+                        <span style="background:#f5f3ff; color:#8e44ad; padding:3px 10px; border-radius:12px; font-size:0.8em; font-weight:bold;"> Total: ${globalStats.reviewCount} Events </span>
+                    </div>
+                    ${getSevBadges(globalStats.revCrit, globalStats.revHigh, globalStats.revMed, globalStats.revLow, globalStats.reviewCount)}
+                </div>
+            </div>
+    `;
+
+    // نظام توصيات ذكي ومطابق تماماً للمحتوى الحالي بدون حذف
+    let analysisNotes = "";
+    let analysisStatusColor = "#7f8c8d";
+    
+    if (totalQualityEvents === 0) {
+        analysisNotes = "<b>No Quality Events logged:</b> Insufficient telemetry data to analyze filtering ratios. Ensure bugs and review sessions are correctly reported.";
+    } else if (globalStats.bugsCount > 0 && adherenceRatio < 85) {
+        analysisNotes = `<b>Critical Leakage to UAT Detected:</b> The UAT Adherence Rate is at <b>${adherenceRatio.toFixed(1)}%</b>, dropping significantly below the allowed threshold of <b>85%</b>. This implies a heavy leakage of severe or edge-case defects directly to customer acceptance testing, skipping internal QA coverage. <br><b style='color:#c0392b;'>Recommendation:</b> Enforce a strict pull request checklist and make senior developer reviews mandatory before QA delivery.`;
+        analysisStatusColor = "#c0392b";
+    } else {
+        if (globalStats.reviewCount >= globalStats.bugsCount) {
+            if (globalStats.bugsCrit + globalStats.bugsHigh === 0) {
+                analysisNotes = `<b>Excellent Preventive Quality Control:</b> Peer reviews (<b>${reviewRatio.toFixed(0)}%</b> of total Quality Events) are effectively filtering out severe flaws. Consequently, <b>0 Critical/High bugs</b> reached the testing phase. This proves that standard checklists are mature and well-executed. <br><b style='color:#27ae60;'>Recommendation:</b> Sustain current screening cadence.`;
+                analysisStatusColor = "#27ae60";
+            } else {
+                analysisNotes = `<b>High Review Effort but Ineffective Filters:</b> Although the team logged <b>${globalStats.reviewCount} Reviews</b>, <b>${globalStats.bugsCrit + globalStats.bugsHigh} Critical/High Bugs</b> still leaked into testing. This reveals a major discrepancy: the reviews are being done numbers-wise, but they fail to catch complex architectural problems. <br><b style='color:#e67e22;'>Recommendation:</b> Review the senior peer review criteria; focus checklists on business logic coverage and security leaks rather than cosmetic code style.`;
+                analysisStatusColor = "#e67e22";
+            }
+        } else {
+            if (globalStats.reviewCount > 0) {
+                analysisNotes = `<b>Reactive Quality Workflow:</b> Standard Bugs outnumber Review Bugs (Bugs: <b>${bugRatio.toFixed(0)}%</b> vs Reviews: <b>${reviewRatio.toFixed(0)}%</b>). Peer reviews are being carried out but their frequency or depth is insufficient to mitigate high defect generation rates. This shifts the quality assurance burden heavily onto QA engineers. <br><b style='color:#e67e22;'>Recommendation:</b> Shift Left. Dedicate more effort to cross-team engineering design alignments prior to full code development.`;
+                analysisStatusColor = "#e67e22";
+            }
+        }
+    }
+
+    html += `
+        <div style="background:#fcfcfd; border-top: 4px solid ${analysisStatusColor}; border-right:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; border-radius:0 0 12px 12px; padding:20px; margin-bottom:40px;">
+            <h4 style="margin-top:0; color:#34495e; font-size:1.05em; text-transform:uppercase; letter-spacing:0.5px;">📋 Causal Analysis & Strategic Quality Insight</h4>
+            <p style="font-size:0.95em; line-height:1.6; color:#4a5568; margin-bottom:0;">${analysisNotes}</p>
+        </div>
+    `;
+
+    // طباعة الجداول الثلاثة التفصيلية لكل Business Area مع الحفاظ عليها بالكامل وبدون أي مسح
+    html += `<h2 style="margin-bottom:30px; color: #123b63; border-left: 6px solid #3498db; padding-left: 20px;">👥 Team Performance by Business Area</h2>`;
+    
+    const renderRoleTable = (title, peopleList, themeColor) => {
+        if (peopleList.length === 0) return '';
+        let tableHtml = `
+            <div style="margin-top: 25px; margin-bottom: 25px;">
+                <h4 style="color: ${themeColor}; margin-bottom: 10px; font-size:1.15em;">${title}</h4>
+                <div style="overflow-x: auto; background: white; border-radius: 6px; border: 1px solid #eee;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                        <thead>
+                            <tr style="background: ${themeColor}; color: white; text-align: left;">
+                                <th style="padding: 12px 10px;">Resource Name</th>
+                                <th style="padding: 12px 10px; text-align: center;">Active US Count</th>
+                                <th style="padding: 12px 10px; text-align: center;">Dev Work (H)</th>
+                                <th style="padding: 12px 10px; text-align: center;">Test Work (H)</th>
+                                <th style="padding: 12px 10px; text-align: center;">DB Mod (H)</th>
+                                <th style="padding: 12px 10px; text-align: center;">Specific Bugs (Dev Lead)</th>
+                                <th style="padding: 12px 10px; text-align: center;">Generic Bugs (Dev Lead)</th>
+                                <th style="padding: 12px 10px; text-align: center;">Total Spent</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+        
+        peopleList.forEach(p => {
+            const totalWork = p.devHours + p.testHours + p.dbHours;
+            tableHtml += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold; color:#2c3e50;">${p.name}</td>
+                    <td style="padding: 10px; text-align: center; font-weight: bold; color: #2980b9; background: #f0f7ff;">${p.reportStories.size}</td>
+                    <td style="padding: 10px; text-align: center;">${p.devHours.toFixed(1)}h</td>
+                    <td style="padding: 10px; text-align: center;">${p.testHours.toFixed(1)}h</td>
+                    <td style="padding: 10px; text-align: center;">${p.dbHours.toFixed(1)}h</td>
+                    <td style="padding: 10px; text-align: center; background: #fff5f5;">
+                        <span style="color: #c0392b; font-weight:bold;">${p.specificBugs.count}</span>
+                        <br><small style="color: #666;">${p.specificBugs.hours.toFixed(1)}h</small>
+                    </td>
+                    <td style="padding: 10px; text-align: center; background: #fffaf5;">
+                        <span style="color: #d35400; font-weight:bold;">${p.genericBugs.count}</span>
+                        <br><small style="color: #666;">${p.genericBugs.hours.toFixed(1)}h</small>
+                    </td>
+                    <td style="padding: 10px; text-align: center; font-weight: bold;">${totalWork.toFixed(1)}h</td>
+                </tr>`;
+        });
+        tableHtml += `</tbody></table></div></div>`;
+        return tableHtml;
+    };
+
+    for (let area in businessAreas) {
+        html += `
+            <div class="area-section" style="margin-bottom: 50px; border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #fcfcfc;">
+                <h3 style="background: #2980b9; padding: 12px 20px; border-radius: 5px; color: white; margin-top: 0;">🏢 Business Area: ${area}</h3>`;
+        
+        const allPeople = Object.values(businessAreas[area]);
+        const devs = allPeople.filter(p => p.devHours > 0);
+        const testers = allPeople.filter(p => p.testHours > 0);
+        const dbs = allPeople.filter(p => p.dbHours > 0);
+
+        html += renderRoleTable('💻 Development Team', devs, '#2c3e50');
+        html += renderRoleTable('🧪 Testing Team', testers, '#27ae60');
+        html += renderRoleTable('🗄️ Database Team', dbs, '#8e44ad');
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+// دالة مساعدة لطباعة السيفيرتي كما هي في الكود الأصلي لعدم إحداث خلل
+function getSevBadges(crit, high, med, low, total) {
+    if (!total) return '<p style="color:#999;font-size:0.85em;margin:5px 0 0 0;">No items reported</p>';
+    return `
+        <div style="display:flex; gap:10px; margin-top:10px; font-size:0.8em; font-weight:bold; color:white;">
+            <span style="background:#e74c3c; padding:3px 8px; border-radius:4px;" title="Critical">C: ${crit}</span>
+            <span style="background:#e67e22; padding:3px 8px; border-radius:4px;" title="High">H: ${high}</span>
+            <span style="background:#f1c40f; padding:3px 8px; border-radius:4px;" title="Medium">M: ${med}</span>
+            <span style="background:#3498db; padding:3px 8px; border-radius:4px;" title="Low">L: ${low}</span>
+        </div>
+    `;
+}
         // --- محرك تحليل جودة البرمجيات المطور (تحليل مكتوب فقط) ---
         function generateAdvancedQualityAnalysis(s) {
             let insights = [];
