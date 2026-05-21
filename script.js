@@ -1013,7 +1013,7 @@ function renderTeamView() {
                 
                 <div style="display: flex; gap: 15px; font-size: 0.85em; background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px;">
                     <div>👥 <b>Devs:</b> ${devCountCount.toFixed(2)}</div>
-                    <div>🧪 <b>QA:</b> ${testerCountCount.toFixed(2)}</div>
+                    <div>🧪 <b>QC:</b> ${testerCountCount.toFixed(2)}</div>
                     <div>🗄️ <b>DB:</b> ${dbCountCount.toFixed(2)}</div>
                     <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 10px;">
                         🎯 <b>Stories (Done/Total):</b> ${stats.closedStoriesCount} / ${stats.totalStories}
