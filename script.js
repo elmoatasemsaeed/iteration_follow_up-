@@ -411,7 +411,7 @@ function calculateMetrics() {
             const bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
             const bEst = parseFloat(b['Original Estimation']) || 0;
             const sev = b['Severity'] || "";
-            const bugType = (b['Bug Type'] || "").trim().toUpperCase(); // قراءة العمود الجديد
+            const bugType = (b['BugType'] || "").trim().toUpperCase(); // قراءة العمود الجديد
 
             // تصنيف وتحديد البجز بناءً على الـ Bug Type
             if (bugType === 'UAT') {
