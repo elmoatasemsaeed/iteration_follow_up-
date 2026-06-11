@@ -898,7 +898,12 @@ function renderTeamView() {
     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px;">
         <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #2ecc71; padding-left: 20px; font-size: 1.8em;"> 
             🚀 Team Performance Analytics (Unified QC & Review Scope) 
-        </h2>`;
+        </h2>
+        <div style="background:#fef9e6; padding:12px; border-radius:8px; margin-bottom:20px; border-left:4px solid #f39c12;">
+            <strong>📊 Business Area – Cycle Time Thresholds:</strong><br/>
+            • Registration / Internal lab → Max <strong>18 days</strong><br/>
+            • Front / Financial → Max <strong>9 days</strong>
+        </div>`;
 
     for (let area in grouped) {
         let stats = {
@@ -969,12 +974,28 @@ function renderTeamView() {
         const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
 
-        // تصحيح حساب الـ DRE: الأخطاء الداخلية المتكتشفة تقسيم إجمالي الأخطاء (داخلي + خارجي)
+        // ======================= THRESHOLDS LOGIC =======================
+        let thresholdDays = null;
+        let areaLower = area.toLowerCase();
+        if (areaLower.includes('registration') || areaLower.includes('internal lab')) {
+            thresholdDays = 18;
+        } else if (areaLower.includes('front') || areaLower.includes('financial')) {
+            thresholdDays = 9;
+        }
+        let isExceeded = false;
+        let thresholdMsg = '';
+        if (thresholdDays !== null && parseFloat(avgCycleTime) > thresholdDays) {
+            isExceeded = true;
+            thresholdMsg = `⚠️ Exceeds threshold (${thresholdDays}d max)`;
+        } else if (thresholdDays !== null) {
+            thresholdMsg = `✅ Within threshold (≤${thresholdDays}d)`;
+        }
+        // ================================================================
+
         const totalAllBugs = stats.bugsCount + stats.totalUatBugs;
         const dreValueNum = totalAllBugs > 0 ? (stats.bugsCount / totalAllBugs) * 100 : 100;
         const dreValue = dreValueNum.toFixed(1);
         
-        // تصحيح الألوان: DRE الممتازة تكون مرتفعة (أكبر من 85%)
         const dreColor = dreValueNum >= 85 ? '#2e7d32' : '#d32f2f';
         const varianceColor = effortVariance <= 15 ? '#2e7d32' : '#d32f2f';
         const reworkColor = combinedReworkRatio > 15 ? '#d32f2f' : '#2e7d32';
@@ -1005,7 +1026,6 @@ function renderTeamView() {
             const combinedReworkRatio = ((s.reworkTime + s.reviewTime) / (s.totalAct || 1)) * 100;
             const avgCycleTime = s.totalStories > 0 ? (s.totalCycleTime / s.totalStories) : 0;
             
-            // إصلاح الحسابات الداخلية لدالة التحليل المتقدم
             const totalAllBugsLocal = s.bugsCount + (s.totalUatBugs || 0);
             const calculatedDre = totalAllBugsLocal > 0 ? (s.bugsCount / totalAllBugsLocal) * 100 : 100;
 
@@ -1029,7 +1049,6 @@ function renderTeamView() {
                 insights.push(`<li><b>⚡ Aggressive Coding & Velocity Risk:</b> The area delivered within/under the estimated budget (Variance: <span style="color:#27ae60; font-weight:bold;">${effortVariance.toFixed(1)}%</span>), yet rework density is critical (<span style="color:#e74c3c; font-weight:bold;">${combinedReworkRatio.toFixed(1)}%</span>). This pattern alerts to "aggressive rushing" to meet deadlines, causing technical debt that will likely trigger regressions.</li>`);
             }
 
-            // تعديل شروط فحص DRE والتحذير من تسريب الـ UAT بناءً على النسب الجديدة الصحيحة
             if (calculatedDre < 85 && (s.totalUatBugs || 0) > 0) {
                 insights.push(`<li><b>🛑 Degraded Quality Shield (Low DRE):</b> Defect Removal Efficiency dropped to <span style="color:#e74c3c; font-weight:bold;">${calculatedDre.toFixed(1)}%</span> due to <span style="color:#e74c3c; font-weight:bold;">${s.totalUatBugs} UAT Leakages</span>. The internal verification tracks (Testing & Reviews) are bypassing critical end-user business scenarios; staging integration tests require alignment with production workflows.</li>`);
             } else if (calculatedDre >= 85 && s.bugsCount > 0) {
@@ -1131,9 +1150,12 @@ function renderTeamView() {
                     <div style="font-size:0.8em; color:#57606f;">UAT: <b>${stats.totalUatBugs}</b> / Iteration: <b>${stats.bugsCount}</b></div>
                 </div>
 
-                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid #8e44ad; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+                <div style="background:#fafafa; border-radius:10px; padding:20px; border-left:4px solid ${isExceeded ? '#e74c3c' : '#8e44ad'}; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
                     <div style="font-size:0.85em; color:#747d8c; text-transform:uppercase; font-weight:600;">Avg Cycle Time</div>
-                    <div style="font-size:1.8em; font-weight:700; color:#8e44ad; margin:5px 0;">${avgCycleTime} Days</div>
+                    <div style="font-size:1.8em; font-weight:700; color:${isExceeded ? '#c0392b' : '#8e44ad'}; margin:5px 0;">${avgCycleTime} Days</div>
+                    <div style="font-size:0.75em; margin-top:6px; color:${isExceeded ? '#e74c3c' : '#2e7d32'};">
+                        ${thresholdMsg}
+                    </div>
                     <div style="font-size:0.8em; color:#57606f;">Total Net Days: <b>${stats.totalCycleTime}</b></div>
                 </div>
 
