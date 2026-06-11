@@ -898,12 +898,7 @@ function renderTeamView() {
     <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px;">
         <h2 style="margin-bottom:30px; color: #2c3e50; border-left: 6px solid #2ecc71; padding-left: 20px; font-size: 1.8em;"> 
             🚀 Team Performance Analytics (Unified QC & Review Scope) 
-        </h2>
-        <div style="background:#fef9e6; padding:12px; border-radius:8px; margin-bottom:20px; border-left:4px solid #f39c12;">
-            <strong>📊 Business Area – Cycle Time Thresholds:</strong><br/>
-            • Registration / Internal lab → Max <strong>18 days</strong><br/>
-            • Front / Financial → Max <strong>9 days</strong>
-        </div>`;
+        </h2>`;
 
     for (let area in grouped) {
         let stats = {
