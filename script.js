@@ -356,15 +356,6 @@ function processData() {
     calculateMetrics();
 }
 
-function classifyBugTitle(title) {
-    const t = title.toLowerCase();
-    if (t.includes('ui') || t.includes('design') || t.includes('screen') || t.includes('button') || t.includes('layout')) return 'UI';
-    if (t.includes('db') || t.includes('data') || t.includes('sql') || t.includes('table') || t.includes('column')) return 'DB';
-    if (t.includes('perform') || t.includes('slow') || t.includes('timeout') || t.includes('load')) return 'Performance';
-    if (t.includes('logic') || t.includes('rule') || t.includes('calculation') || t.includes('business')) return 'Logic';
-    return 'Other';
-}
-
 function classifyReviewTitle(title) {
     const t = title.toLowerCase();
     if (t.includes('code') || t.includes('standard') || t.includes('naming') || t.includes('architecture') || t.includes('refactor') || t.includes('style')) return 'Code Standards';
@@ -391,32 +382,34 @@ function calculateMetrics() {
                 status: row['State'],
                 tasks: [],
                 bugs: [],
-                reviews: []
+                reviews: [],
+                testCases: []
             };
             processedStories.push(currentStory);
         } else if (currentStory) {
             if (type === 'Task') currentStory.tasks.push(row);
-            if (type === 'Bug') currentStory.bugs.push(row);
-            if (type === 'Review') currentStory.reviews.push(row);
+            else if (type === 'Bug') currentStory.bugs.push(row);
+            else if (type === 'Review') currentStory.reviews.push(row);
+            else if (type === 'Test Case') currentStory.testCases.push(row);
         }
     });
 
     // --- Process each story with enhanced metrics ---
     processedStories.forEach(us => {
         let devOrig = 0, devActual = 0, testOrig = 0, testActual = 0;
-        let dbOrig = 0, dbActual = 0, dbNames = new Set(); 
+        let dbOrig = 0, dbActual = 0, dbNames = new Set();
 
-        // 1. Task calculations (Development, Testing, DB)
+        // 1. Task calculations
         us.tasks.forEach(t => {
             const orig = parseFloat(t['Original Estimation']) || 0;
-            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0; 
+            const actDev = parseFloat(t['TimeSheet_DevActualTime']) || 0;
             const actTest = parseFloat(t['TimeSheet_TestingActualTime']) || 0;
             const activity = t['Activity'];
 
             if (activity === 'DB Modification') {
                 dbOrig += orig;
-                dbActual += actDev; 
-                if (t['Assigned To']) dbNames.add(t['Assigned To']); 
+                dbActual += actDev;
+                if (t['Assigned To']) dbNames.add(t['Assigned To']);
             } else if (activity === 'Development') {
                 devOrig += orig;
                 devActual += actDev;
@@ -426,9 +419,9 @@ function calculateMetrics() {
             }
         });
 
-        us.dbEffort = { 
-            orig: dbOrig, 
-            actual: dbActual, 
+        us.dbEffort = {
+            orig: dbOrig,
+            actual: dbActual,
             dev: dbOrig / (dbActual || 1),
             names: Array.from(dbNames).join(', ') || 'N/A'
         };
@@ -441,7 +434,7 @@ function calculateMetrics() {
         us.rework = {
             generic: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
             specific: { count: 0, actualTime: 0, severity: { critical: 0, high: 0, medium: 0, low: 0 } },
-            severity: { critical: 0, high: 0, medium: 0, low: 0 }, 
+            severity: { critical: 0, high: 0, medium: 0, low: 0 },
             timeEstimation: 0,
             actualTime: 0,
             count: 0,
@@ -449,24 +442,24 @@ function calculateMetrics() {
             iterationBugsCount: 0
         };
 
-        // --- NEW: Arrays for storing titles and categories ---
         us.bugTitles = [];
         us.bugCategories = [];
         us.reviewTitles = [];
         us.reviewActivities = [];
         us.reviewCategories = [];
 
+        // ===== معالجة البج (Bugs) مع استخدام BugType =====
         us.bugs.forEach(b => {
             const isGeneric = (b['GenericBug'] || "").trim().toLowerCase() === 'yes';
             const bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
             const bEst = parseFloat(b['Original Estimation']) || 0;
             const sev = b['Severity'] || "";
-            const bugType = (b['BugType'] || "").trim().toUpperCase();
+            const bugType = (b['BugType'] || "").trim().toUpperCase();  // استخراج النوع
 
-            // Store title and category
             const title = b['Title'] || '';
             us.bugTitles.push(title);
-            us.bugCategories.push(classifyBugTitle(title));
+            // التصنيف يعتمد على bugType، وإذا كان فارغاً نضع 'UNKNOWN'
+            us.bugCategories.push(bugType || 'UNKNOWN');
 
             if (bugType === 'UAT') {
                 us.rework.uatBugsCount++;
@@ -482,25 +475,22 @@ function calculateMetrics() {
             target.count++;
             target.actualTime += bDevAct;
 
-            if (sev.includes("1 - Critical")) { 
-                target.severity.critical++; 
-                us.rework.severity.critical++; 
-                us.severityCounts.critical++; 
-            }
-            else if (sev.includes("2 - High")) { 
-                target.severity.high++; 
-                us.rework.severity.high++; 
-                us.severityCounts.high++; 
-            }
-            else if (sev.includes("3 - Medium")) { 
-                target.severity.medium++; 
-                us.rework.severity.medium++; 
-                us.severityCounts.medium++; 
-            }
-            else if (sev.includes("4 - Low")) { 
-                target.severity.low++; 
-                us.rework.severity.low++; 
-                us.severityCounts.low++; 
+            if (sev.includes("1 - Critical")) {
+                target.severity.critical++;
+                us.rework.severity.critical++;
+                us.severityCounts.critical++;
+            } else if (sev.includes("2 - High")) {
+                target.severity.high++;
+                us.rework.severity.high++;
+                us.severityCounts.high++;
+            } else if (sev.includes("3 - Medium")) {
+                target.severity.medium++;
+                us.rework.severity.medium++;
+                us.severityCounts.medium++;
+            } else if (sev.includes("4 - Low")) {
+                target.severity.low++;
+                us.rework.severity.low++;
+                us.severityCounts.low++;
             }
         });
 
@@ -511,16 +501,16 @@ function calculateMetrics() {
         us.rework.deviation = bugOrig / (bugActualTotal || 1);
         us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100;
 
-        // 3. Reviews
+        // 3. Reviews (بدون تعديل هنا)
         us.reviewStats = {
             estimation: 0,
-            devActual: 0, 
+            devActual: 0,
             testActual: 0,
-            totalActual: 0, 
+            totalActual: 0,
             devCount: 0,
             testCount: 0,
             count: us.reviews ? us.reviews.length : 0,
-            severity: { critical: 0, high: 0, medium: 0, low: 0}
+            severity: { critical: 0, high: 0, medium: 0, low: 0 }
         };
 
         if (us.reviews) {
@@ -533,11 +523,10 @@ function calculateMetrics() {
 
                 us.reviewStats.estimation += rEst;
 
-                // Store review title and activity/category
                 const title = r['Title'] || '';
                 us.reviewTitles.push(title);
                 us.reviewActivities.push(activity || '');
-                us.reviewCategories.push(classifyReviewTitle(title));
+                us.reviewCategories.push(classifyReviewTitle(title)); // تبقى كما هي
 
                 if (activity === 'Development') {
                     us.reviewStats.devActual += rDevAct;
@@ -555,6 +544,26 @@ function calculateMetrics() {
 
             us.reviewStats.totalActual = us.reviewStats.devActual + us.reviewStats.testActual;
         }
+
+        // Test Cases
+        us.testCases = us.testCases || [];
+        us.testCaseStats = {
+            total: us.testCases.length,
+            byStatus: {}
+        };
+
+        us.testCases.forEach(tc => {
+            const status = tc['State'] || tc['Status'] || 'Unknown';
+            if (status) {
+                us.testCaseStats.byStatus[status] = (us.testCaseStats.byStatus[status] || 0) + 1;
+            }
+        });
+
+        us.testCaseStats.designCount = us.testCaseStats.byStatus['Design'] || 0;
+        us.testCaseStats.executedCount = us.testCaseStats.total - us.testCaseStats.designCount;
+        us.testCaseStats.executionRate = us.testCaseStats.total > 0
+            ? (us.testCaseStats.executedCount / us.testCaseStats.total) * 100
+            : 0;
 
         // 4. Timeline and Cycle Time
         let minDate = Infinity;
@@ -979,7 +988,6 @@ function renderTeamView() {
             totalCycleTime: 0,
             totalUatBugs: 0,
             totalIterationBugs: 0,
-            // --- NEW fields for enhanced analysis ---
             genericBugCount: 0,
             specificBugCount: 0,
             bugDistributionByDev: {},
@@ -993,7 +1001,12 @@ function renderTeamView() {
             maxCycleTime: 0,
             maxCycleTimeStoryId: null,
             maxCycleTimeStoryEst: 0,
-            maxCycleTimeStoryRework: 0
+            maxCycleTimeStoryRework: 0,
+            // NEW: Test Cases fields
+            testCaseTotal: 0,
+            testCaseDesign: 0,
+            testCaseExecuted: 0,
+            testCaseStatusCounts: {}
         };
 
         let devCountCount = 0;
@@ -1008,7 +1021,6 @@ function renderTeamView() {
         areaDbs[area].forEach(db => {
             if(dbParticipation[db]) dbCountCount += (1 / dbParticipation[db]);
         });
-        // Store for use in insights
         stats.devCountCount = devCountCount;
         stats.testerCountCount = testerCountCount;
         stats.dbCountCount = dbCountCount;
@@ -1037,20 +1049,15 @@ function renderTeamView() {
             stats.totalUatBugs += (us.rework.uatBugsCount || 0);
             stats.totalIterationBugs += (us.rework.iterationBugsCount || 0);
 
-            // --- NEW: Aggregation of additional metrics ---
-            // Generic vs Specific
             stats.genericBugCount += (us.rework.generic ? us.rework.generic.count : 0);
             stats.specificBugCount += (us.rework.specific ? us.rework.specific.count : 0);
 
-            // Bug distribution by Developer
             const dev = us.devLead || 'Unassigned';
             stats.bugDistributionByDev[dev] = (stats.bugDistributionByDev[dev] || 0) + us.bugs.length;
 
-            // Bug distribution by Story (ID)
             const storyId = us.id || 'Unknown';
             stats.bugDistributionByStory[storyId] = (stats.bugDistributionByStory[storyId] || 0) + us.bugs.length;
 
-            // Bug severity by Story
             if (!stats.bugSeverityByStory[storyId]) {
                 stats.bugSeverityByStory[storyId] = { critical: 0, high: 0, medium: 0, low: 0 };
             }
@@ -1062,7 +1069,6 @@ function renderTeamView() {
                 else if (sev.includes('4 - Low')) stats.bugSeverityByStory[storyId].low++;
             });
 
-            // Collect titles and categories for bugs and reviews
             if (us.bugTitles) {
                 stats.bugTitles = stats.bugTitles.concat(us.bugTitles);
                 stats.bugCategories = stats.bugCategories.concat(us.bugCategories || []);
@@ -1072,20 +1078,31 @@ function renderTeamView() {
                 stats.reviewActivities = stats.reviewActivities.concat(us.reviewActivities || []);
                 stats.reviewCategories = stats.reviewCategories.concat(us.reviewCategories || []);
             }
-                    // --- NEW: Track highest cycle time story ---
-const storyTotalEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
-const storyReviewTime = us.reviewStats.devActual + us.reviewStats.testActual;
-const storyTotalAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + storyReviewTime;
 
-if (us.cycleTime > (stats.maxCycleTime || 0)) {
-    stats.maxCycleTime = us.cycleTime;
-    stats.maxCycleTimeStoryId = us.id || 'Unknown';
-    stats.maxCycleTimeStoryEst = storyTotalEst;
-    stats.maxCycleTimeStoryRework = us.rework.actualTime || 0;
-    // NEW: Store cycle hours using 5-hour workday
-    stats.maxCycleTimeStoryHours = us.cycleTime * 5;
-}
-// --- END NEW ---
+            // NEW: Test Cases aggregation
+            if (us.testCaseStats) {
+                stats.testCaseTotal += us.testCaseStats.total || 0;
+                stats.testCaseDesign += us.testCaseStats.designCount || 0;
+                stats.testCaseExecuted += us.testCaseStats.executedCount || 0;
+                if (us.testCaseStats.byStatus) {
+                    Object.keys(us.testCaseStats.byStatus).forEach(status => {
+                        stats.testCaseStatusCounts[status] = 
+                            (stats.testCaseStatusCounts[status] || 0) + us.testCaseStats.byStatus[status];
+                    });
+                }
+            }
+
+            const storyTotalEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
+            const storyReviewTime = us.reviewStats.devActual + us.reviewStats.testActual;
+            const storyTotalAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + storyReviewTime;
+
+            if (us.cycleTime > (stats.maxCycleTime || 0)) {
+                stats.maxCycleTime = us.cycleTime;
+                stats.maxCycleTimeStoryId = us.id || 'Unknown';
+                stats.maxCycleTimeStoryEst = storyTotalEst;
+                stats.maxCycleTimeStoryRework = us.rework.actualTime || 0;
+                stats.maxCycleTimeStoryHours = us.cycleTime * 5;
+            }
 
             if (us.status === 'Closed' || us.status === 'Tested' || us.status === 'Resolved' || us.status === 'To Be Reviewed') {
                 stats.closedStoriesCount++;
@@ -1096,7 +1113,6 @@ if (us.cycleTime > (stats.maxCycleTime || 0)) {
         const combinedReworkRatio = ((stats.reworkTime + stats.reviewTime) / (stats.totalAct || 1)) * 100;
         const avgCycleTime = (stats.totalCycleTime / stats.totalStories).toFixed(1);
 
-        // ======================= THRESHOLDS LOGIC =======================
         let thresholdDays = null;
         let areaLower = area.toLowerCase();
         if (areaLower.includes('registration') || areaLower.includes('internal lab')) {
@@ -1112,7 +1128,6 @@ if (us.cycleTime > (stats.maxCycleTime || 0)) {
         } else if (thresholdDays !== null) {
             thresholdMsg = `✅ Within threshold (≤${thresholdDays}d)`;
         }
-        // ================================================================
 
         const totalAllBugs = stats.bugsCount + stats.totalUatBugs;
         const dreValueNum = totalAllBugs > 0 ? (stats.bugsCount / totalAllBugs) * 100 : 100;
@@ -1201,7 +1216,7 @@ if (us.cycleTime > (stats.maxCycleTime || 0)) {
 
             <div style="margin-top:25px; background:#f9f9fb; border-radius:8px; padding:20px; border:1px solid #eccc68; box-shadow:inset 0 1px 3px rgba(0,0,0,0.02);">
                 <h4 style="margin:0 0 12px 0; color:#ffa502; font-size:1.05em; font-weight:700; display:flex; align-items:center; gap:8px;">
-                    🧠 Defect Analyses
+                    🧠 Execution Analyses
                 </h4>
                 <ul style="margin:0; padding-left:20px; font-size:0.92em; color:#2c3e50; line-height:1.6;">
                     ${generateAdvancedQualityAnalysis(stats)}
@@ -1214,141 +1229,56 @@ if (us.cycleTime > (stats.maxCycleTime || 0)) {
     html += `</div>`;
     container.innerHTML = html;
 }
+
+
 function generateAdvancedQualityAnalysis(s) {
     let insights = [];
 
-    // ========== Existing calculations (kept) ==========
-    const totalIssues = s.bugsCount + s.reviewCount;
-    const reviewCatchRate = totalIssues > 0 ? (s.reviewCount / totalIssues) * 100 : 0;
-    const highSevBugs = s.bugsCrit + s.bugsHigh;
-    const highSevReviews = s.revCrit + s.revHigh;
-    const avgTimePerBug = s.bugsCount > 0 ? (s.reworkTime / s.bugsCount) : 0;
-    const effortVariance = s.totalEst > 0 ? ((s.totalAct - s.totalEst) / s.totalEst) * 100 : 0;
-    const combinedReworkRatio = ((s.reworkTime + s.reviewTime) / (s.totalAct || 1)) * 100;
-    const avgCycleTime = s.totalStories > 0 ? (s.totalCycleTime / s.totalStories) : 0;
-    const totalAllBugsLocal = s.bugsCount + (s.totalUatBugs || 0);
-    const calculatedDre = totalAllBugsLocal > 0 ? (s.bugsCount / totalAllBugsLocal) * 100 : 100;
-    const bugSeverityRatio = s.bugsCount > 0 ? (highSevBugs / s.bugsCount) * 100 : 0;
-    const reviewSeverityRatio = s.reviewCount > 0 ? (highSevReviews / s.reviewCount) * 100 : 0;
-    const uatLeakageRatio = totalAllBugsLocal > 0 ? ((s.totalUatBugs || 0) / totalAllBugsLocal) * 100 : 0;
-
-    // Helper to create a tooltip icon with explanation
+    // ===== Helper for info icon (keep) =====
     const infoIcon = (text) => `<span style="cursor:help; font-size:0.8em; color:#888; margin-left:4px;" title="${text}">ⓘ</span>`;
 
-    // ========== Existing insights (kept, with tooltips) ==========
-    // 1. Shift-Left
-    const shiftLeftExplanation = `Reviews / (Bugs + Reviews) * 100 = ${s.reviewCount} / ${totalIssues} * 100 = ${reviewCatchRate.toFixed(1)}%`;
-    insights.push(`<li><b>Shift-Left Strategy Efficiency</b> ${infoIcon(shiftLeftExplanation)}: Peer Reviews intercepted ${reviewCatchRate.toFixed(1)}% of total issues (${s.reviewCount} reviews out of ${totalIssues} total issues).</li>`);
+    // ============================================================
+    // 1. Test Cases Execution Coverage (no icon)
+    // ============================================================
+    const tcTotal = s.testCaseTotal || 0;
+    const tcDesign = s.testCaseDesign || 0;
+    const tcExecuted = s.testCaseExecuted || 0;
+    const tcRate = tcTotal > 0 ? (tcExecuted / tcTotal) * 100 : 0;
 
-    // 2. Effort & Rework Correlations
-    if (effortVariance > 15 && combinedReworkRatio > 15) {
-        const explanation = `Effort Variance = (Actual - Estimate)/Estimate * 100 = ${((s.totalAct - s.totalEst) / s.totalEst * 100).toFixed(1)}%, Rework Ratio = (ReworkTime+ReviewTime)/Actual * 100 = ${combinedReworkRatio.toFixed(1)}%`;
-        insights.push(`<li><b>Rework-Driven Slippage</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}% and Rework Ratio is ${combinedReworkRatio.toFixed(1)}%.</li>`);
-    } else if (effortVariance > 15 && combinedReworkRatio <= 15) {
-        const explanation = `Effort Variance = ${effortVariance.toFixed(1)}% (Actual ${s.totalAct.toFixed(1)}h vs Estimate ${s.totalEst.toFixed(1)}h), Rework/Review = ${combinedReworkRatio.toFixed(1)}%`;
-        insights.push(`<li><b>Estimation Model Baseline Flaw</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}% while Rework/Review metrics are ${combinedReworkRatio.toFixed(1)}%.</li>`);
-    } else if (effortVariance <= 0 && combinedReworkRatio > 20) {
-        const explanation = `Effort Variance = ${effortVariance.toFixed(1)}% (under budget), Rework Density = ${combinedReworkRatio.toFixed(1)}%`;
-        insights.push(`<li><b>Aggressive Coding & Velocity Risk</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}% and Rework Density is ${combinedReworkRatio.toFixed(1)}%.</li>`);
-    }
+    if (tcTotal > 0) {
+        let tcMsg = `<b>Test Cases Execution Coverage</b> (${tcTotal} total): `;
+        tcMsg += `Design (Not Executed): ${tcDesign} (${((tcDesign/tcTotal)*100).toFixed(1)}%), `;
+        tcMsg += `Executed: ${tcExecuted} (${tcRate.toFixed(1)}%). `;
 
-    // 3. DRE & UAT Leakage
-    if (calculatedDre < 85 && (s.totalUatBugs || 0) > 0) {
-        const explanation = `DRE = Bugs / (Bugs+UAT) * 100 = ${s.bugsCount} / ${totalAllBugsLocal} * 100 = ${calculatedDre.toFixed(1)}%, UAT Leakages = ${s.totalUatBugs}`;
-        insights.push(`<li><b>Degraded Quality Shield (Low DRE)</b> ${infoIcon(explanation)}: DRE is ${calculatedDre.toFixed(1)}% with ${s.totalUatBugs} UAT Leakages out of ${totalAllBugsLocal} total defects.</li>`);
-    }
-
-    // 4. Bug Severity
-    if (s.bugsCount > 0) {
-        if (bugSeverityRatio > 30) {
-            const explanation = `High/Critical Bugs / Total Bugs * 100 = ${highSevBugs} / ${s.bugsCount} * 100 = ${bugSeverityRatio.toFixed(1)}%`;
-            insights.push(`<li><b>Defect Severity Alert</b> ${infoIcon(explanation)}: High/Critical bugs constitute ${bugSeverityRatio.toFixed(1)}% of total bugs (${highSevBugs} out of ${s.bugsCount} bugs).</li>`);
-            if (highSevReviews === 0) {
-                insights.push(`<li><b>Review Blind Spot Diagnosis</b> ${infoIcon('High/Critical bugs detected by Testing = ' + highSevBugs + ', by Reviews = 0')}: Testing detected ${highSevBugs} High/Critical bugs, while Peer Reviews detected 0.</li>`);
+        const statusCounts = s.testCaseStatusCounts || {};
+        let statusParts = [];
+        for (let status in statusCounts) {
+            const count = statusCounts[status];
+            if (status !== 'Design') {
+                const pct = ((count / tcTotal) * 100).toFixed(1);
+                statusParts.push(`${status}: ${count} (${pct}%)`);
             }
+        }
+        if (statusParts.length) {
+            tcMsg += `Distribution: ${statusParts.join(', ')}.`;
+        }
+
+        if (tcRate >= 100) {
+            tcMsg += ` ✅ All test cases executed.`;
+        } else if (tcRate >= 90) {
+            tcMsg += ` ✅ High execution rate (≥90%).`;
+        } else if (tcRate >= 70) {
+            tcMsg += ` ⚠️ Moderate execution rate, consider executing remaining tests.`;
         } else {
-            const explanation = `High/Critical Bugs / Total Bugs * 100 = ${bugSeverityRatio.toFixed(1)}%`;
-            insights.push(`<li><b>Defect Profile Stability</b> ${infoIcon(explanation)}: High-severity bugs are ${bugSeverityRatio.toFixed(1)}% of total bugs.</li>`);
+            tcMsg += ` ❌ Low execution rate, need immediate attention.`;
         }
+
+        insights.push(`<li>${tcMsg}</li>`);
     }
 
-    // 5. MTTR & Cycle Time
-    if (avgTimePerBug > 4 && s.bugsCount > 0) {
-        const explanation = `MTTR = ReworkTime / Bugs = ${s.reworkTime.toFixed(1)}h / ${s.bugsCount} = ${avgTimePerBug.toFixed(1)}h/bug`;
-        insights.push(`<li><b>Rework Friction</b> ${infoIcon(explanation)}: Mean Time to Resolve (MTTR) is ${avgTimePerBug.toFixed(1)}h/bug (total rework ${s.reworkTime.toFixed(1)}h / ${s.bugsCount} bugs).</li>`);
-        if (avgCycleTime > 5) {
-            const explanation2 = `Cycle Time = ${avgCycleTime.toFixed(1)} days, MTTR = ${avgTimePerBug.toFixed(1)}h/bug`;
-            insights.push(`<li><b>Blocked Cycle Time Correlation</b> ${infoIcon(explanation2)}: Cycle Time is ${avgCycleTime.toFixed(1)} days, MTTR is ${avgTimePerBug.toFixed(1)}h.</li>`);
-        }
-    }
-
-    // 6. Review vs Testing Severity
-    if (reviewSeverityRatio > 40 && bugSeverityRatio < 15 && s.reviewCount > 0) {
-        const explanation = `High-Sev Review = ${reviewSeverityRatio.toFixed(1)}% (${highSevReviews} reviews), High-Sev Testing = ${bugSeverityRatio.toFixed(1)}%`;
-        insights.push(`<li><b>High-Fidelity Pre-Emptive Review</b> ${infoIcon(explanation)}: High-Sev Review is ${reviewSeverityRatio.toFixed(1)}%, High-Sev Testing Bugs is ${bugSeverityRatio.toFixed(1)}%.</li>`);
-    }
-
-    if (s.reviewCount > 10 && highSevReviews === 0 && bugSeverityRatio > 40) {
-        const explanation = `Reviews = ${s.reviewCount}, High-Sev Reviews = 0, Testing High-Sev = ${bugSeverityRatio.toFixed(1)}%`;
-        insights.push(`<li><b>Superficial Peer-Review Pattern</b> ${infoIcon(explanation)}: ${s.reviewCount} Peer Reviews, 0 high-sev issues detected, while Testing high-sev is ${bugSeverityRatio.toFixed(1)}%.</li>`);
-    }
-
-    // 7. Hidden Rework
-    if (effortVariance > 25 && combinedReworkRatio < 5 && s.bugsCount > 0) {
-        const explanation = `Effort Variance = ${effortVariance.toFixed(1)}%, logged Rework/Review = ${combinedReworkRatio.toFixed(1)}%`;
-        insights.push(`<li><b>Hidden Rework & Timesheet Inaccuracy</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}%, logged Rework/Review is ${combinedReworkRatio.toFixed(1)}%.</li>`);
-    }
-
-    // 8. Architectural Coupling
-    if (s.bugsCount > 0 && s.bugsCount <= 3 && avgTimePerBug > 8) {
-        const explanation = `Bugs = ${s.bugsCount}, MTTR = ${avgTimePerBug.toFixed(1)}h`;
-        insights.push(`<li><b>Severe Architectural Coupling</b> ${infoIcon(explanation)}: ${s.bugsCount} bugs, MTTR is ${avgTimePerBug.toFixed(1)}h.</li>`);
-    }
-
-    // 9. Quality Gate Escape
-    if (uatLeakageRatio > 25 && s.bugsCount > 0) {
-        const explanation = `UAT Leakages / Total Defects * 100 = ${s.totalUatBugs} / ${totalAllBugsLocal} * 100 = ${uatLeakageRatio.toFixed(1)}%`;
-        insights.push(`<li><b>Severe Quality Gate Escape</b> ${infoIcon(explanation)}: UAT Leakages are ${uatLeakageRatio.toFixed(1)}% of total defects (${s.totalUatBugs} UAT / ${totalAllBugsLocal} total).</li>`);
-    }
-
-    // 10. Resource Skew
-    if (s.devCountCount > 0 && s.testerCountCount > 0) {
-        const devToTesterRatio = s.devCountCount / s.testerCountCount;
-        if (devToTesterRatio > 3 && s.totalUatBugs > 2) {
-            const explanation = `Dev FTE = ${s.devCountCount.toFixed(2)}, Tester FTE = ${s.testerCountCount.toFixed(2)}, Ratio = ${devToTesterRatio.toFixed(1)}:1, UAT = ${s.totalUatBugs}`;
-            insights.push(`<li><b>Resource Skew & Test Bottleneck</b> ${infoIcon(explanation)}: Dev-to-Tester ratio is ${devToTesterRatio.toFixed(1)}:1, UAT bugs is ${s.totalUatBugs}.</li>`);
-        }
-    }
-
-    // ========== Existing statistical insights (with tooltips) ==========
-
-    // 11. Generic vs Specific Bugs
-    const genericCount = s.genericBugCount || 0;
-    const specificCount = s.specificBugCount || 0;
-    const totalBugsGenSpec = genericCount + specificCount;
-    if (totalBugsGenSpec > 0) {
-        const genericRatio = (genericCount / totalBugsGenSpec) * 100;
-        const specificRatio = (specificCount / totalBugsGenSpec) * 100;
-        const explanation = `Generic = ${genericCount} (${genericRatio.toFixed(1)}%), Specific = ${specificCount} (${specificRatio.toFixed(1)}%)`;
-        insights.push(`<li><b>Generic vs Specific Bugs</b> ${infoIcon(explanation)}: Generic: ${genericCount} (${genericRatio.toFixed(1)}%), Specific: ${specificCount} (${specificRatio.toFixed(1)}%).</li>`);
-    }
-
-    // 12. Repeated Bug Titles
-    if (s.bugTitles && s.bugTitles.length > 0) {
-        const titleFreq = {};
-        s.bugTitles.forEach(title => {
-            const key = title.trim().toLowerCase();
-            titleFreq[key] = (titleFreq[key] || 0) + 1;
-        });
-        const duplicates = Object.keys(titleFreq).filter(key => titleFreq[key] > 1);
-        if (duplicates.length > 0) {
-            const dupSummary = duplicates.slice(0, 3).map(key => `"${key}" (${titleFreq[key]}x)`).join(', ');
-            const explanation = `Total titles = ${s.bugTitles.length}, duplicates = ${duplicates.length}`;
-            insights.push(`<li><b>Repeated Bug Titles</b> ${infoIcon(explanation)}: ${duplicates.length} duplicate titles found. Top repeats: ${dupSummary}.</li>`);
-        }
-    }
-
-    // 13. Bug Categories
+    // ============================================================
+    // 2. Bug Categories
+    // ============================================================
     if (s.bugCategories && s.bugCategories.length > 0) {
         const categoryCount = {};
         s.bugCategories.forEach(cat => {
@@ -1367,17 +1297,39 @@ function generateAdvancedQualityAnalysis(s) {
         }
     }
 
-    // 14. High-Severity MTTR
-    const highSevCount = s.bugsCrit + s.bugsHigh;
-    if (highSevCount > 0 && s.reworkTime > 0) {
-        const avgTimePerHighBug = s.reworkTime / highSevCount;
-        const explanation = `Total rework time = ${s.reworkTime.toFixed(1)}h, High-sev bugs = ${highSevCount}, Avg = ${avgTimePerHighBug.toFixed(1)}h`;
-        insights.push(`<li><b>High-Severity MTTR</b> ${infoIcon(explanation)}: Average resolution time for Critical/High bugs is ${avgTimePerHighBug.toFixed(1)}h (total rework ${s.reworkTime.toFixed(1)}h / ${highSevCount} high-sev bugs).</li>`);
+    // ============================================================
+    // 3. Bug Severity Distribution (merged with Defect Severity Alert, no threshold mention)
+    // ============================================================
+    const totalBugs = s.bugsCrit + s.bugsHigh + s.bugsMed + s.bugsLow;
+    if (totalBugs > 0) {
+        let bugDist = `<b>Bug Severity Distribution</b>: Critical: ${s.bugsCrit} (${((s.bugsCrit/totalBugs)*100).toFixed(1)}%), High: ${s.bugsHigh} (${((s.bugsHigh/totalBugs)*100).toFixed(1)}%), Medium: ${s.bugsMed} (${((s.bugsMed/totalBugs)*100).toFixed(1)}%), Low: ${s.bugsLow} (${((s.bugsLow/totalBugs)*100).toFixed(1)}%)`;
+        const highSevBugs = s.bugsCrit + s.bugsHigh;
+        if (highSevBugs > 0 && s.bugsCount > 0) {
+            bugDist += ` — High/Critical bugs: ${((highSevBugs/s.bugsCount)*100).toFixed(1)}%`;
+            const highSevReviews = s.revCrit + s.revHigh;
+            if (highSevReviews === 0 && s.reviewCount > 0) {
+                bugDist += ` (Review Blind Spot: Testing detected ${highSevBugs} High/Critical bugs, while Peer Reviews detected 0).`;
+            }
+        }
+        insights.push(`<li>${bugDist}</li>`);
     }
 
-    // ========== Story-level bug concentration ==========
+    // ============================================================
+    // 4. Generic vs Specific Bugs
+    // ============================================================
+    const genericCount = s.genericBugCount || 0;
+    const specificCount = s.specificBugCount || 0;
+    const totalBugsGenSpec = genericCount + specificCount;
+    if (totalBugsGenSpec > 0) {
+        const genericRatio = (genericCount / totalBugsGenSpec) * 100;
+        const specificRatio = (specificCount / totalBugsGenSpec) * 100;
+        const explanation = `Generic = ${genericCount} (${genericRatio.toFixed(1)}%), Specific = ${specificCount} (${specificRatio.toFixed(1)}%)`;
+        insights.push(`<li><b>Generic vs Specific Bugs</b> ${infoIcon(explanation)}: Generic: ${genericCount} (${genericRatio.toFixed(1)}%), Specific: ${specificCount} (${specificRatio.toFixed(1)}%).</li>`);
+    }
 
-    // 15. User Story with Highest Total Bugs
+    // ============================================================
+    // 5. Top Story by Total Bugs
+    // ============================================================
     if (s.bugDistributionByStory) {
         const storyIds = Object.keys(s.bugDistributionByStory);
         if (storyIds.length > 0) {
@@ -1400,7 +1352,9 @@ function generateAdvancedQualityAnalysis(s) {
         }
     }
 
-    // 16. User Story with Highest Critical/High Bugs
+    // ============================================================
+    // 6. Top Story by Critical/High Bugs
+    // ============================================================
     if (s.bugSeverityByStory) {
         const storyIds = Object.keys(s.bugSeverityByStory);
         if (storyIds.length > 0) {
@@ -1424,21 +1378,129 @@ function generateAdvancedQualityAnalysis(s) {
         }
     }
 
-// ========== NEW: Highest Cycle Time Story with Comparisons ==========
+    // ============================================================
+    // 7. Highest Cycle Time Story
+    // ============================================================
+    if (s.maxCycleTimeStoryId && s.maxCycleTime > 0) {
+        const cycleDays = s.maxCycleTime;
+        const estHours = s.maxCycleTimeStoryEst || 0;
+        const reworkHours = s.maxCycleTimeStoryRework || 0;
+        const cycleHours = cycleDays * 5;
+        const estVsCycleRatio = estHours > 0 ? ((cycleHours / estHours) * 100).toFixed(1) : 'N/A';
+        const reworkVsCycleRatio = cycleHours > 0 ? ((reworkHours / cycleHours) * 100).toFixed(1) : 'N/A';
+        const explanation = `Story '${s.maxCycleTimeStoryId}': Cycle Time = ${cycleDays} days (${cycleHours}h), Estimation = ${estHours.toFixed(1)}h, Rework = ${reworkHours.toFixed(1)}h. Cycle/Est = ${estVsCycleRatio}%, Rework/Cycle = ${reworkVsCycleRatio}%.`;
+        insights.push(`<li><b>Highest Cycle Time Story</b> ${infoIcon(explanation)}: Story <b>${s.maxCycleTimeStoryId}</b> has the highest cycle time (${cycleDays} days, ${cycleHours}h). Total Estimation = ${estHours.toFixed(1)}h, Rework = ${reworkHours.toFixed(1)}h. Cycle/Est = ${estVsCycleRatio}%, Rework/Cycle = ${reworkVsCycleRatio}%.</li>`);
+    }
 
-// 17. Highest Cycle Time Story (compared to Estimation and Rework)
-if (s.maxCycleTimeStoryId && s.maxCycleTime > 0) {
-    const cycleDays = s.maxCycleTime;
-    const estHours = s.maxCycleTimeStoryEst || 0;
-    const reworkHours = s.maxCycleTimeStoryRework || 0;
-    // Convert days to hours using 5-hour workday (as requested)
-    const cycleHours = cycleDays * 5;
-    const estVsCycleRatio = estHours > 0 ? ((cycleHours / estHours) * 100).toFixed(1) : 'N/A';
-    const reworkVsCycleRatio = cycleHours > 0 ? ((reworkHours / cycleHours) * 100).toFixed(1) : 'N/A';
-    const explanation = `Story '${s.maxCycleTimeStoryId}': Cycle Time = ${cycleDays} days (${cycleHours}h), Estimation = ${estHours.toFixed(1)}h, Rework = ${reworkHours.toFixed(1)}h. Cycle/Est = ${estVsCycleRatio}%, Rework/Cycle = ${reworkVsCycleRatio}%.`;
-    insights.push(`<li><b>Highest Cycle Time Story</b> ${infoIcon(explanation)}: Story <b>${s.maxCycleTimeStoryId}</b> has the highest cycle time (${cycleDays} days, ${cycleHours}h). Total Estimation = ${estHours.toFixed(1)}h, Rework = ${reworkHours.toFixed(1)}h. Cycle/Est = ${estVsCycleRatio}%, Rework/Cycle = ${reworkVsCycleRatio}%.</li>`);
-}
-    // Fallback if no insights at all
+    // ============================================================
+    // Now all other analyses (remaining) – in their original order, but we keep them all.
+    // ============================================================
+
+    // ---- Review Severity Distribution (if not already included, but we can add it here) ----
+    const totalReviews = s.revCrit + s.revHigh + s.revMed + s.revLow;
+    if (totalReviews > 0) {
+        const revDist = `<b>Review Severity Distribution</b>: Critical: ${s.revCrit} (${((s.revCrit/totalReviews)*100).toFixed(1)}%), High: ${s.revHigh} (${((s.revHigh/totalReviews)*100).toFixed(1)}%), Medium: ${s.revMed} (${((s.revMed/totalReviews)*100).toFixed(1)}%), Low: ${s.revLow} (${((s.revLow/totalReviews)*100).toFixed(1)}%)`;
+        insights.push(`<li>${revDist}</li>`);
+    }
+
+    // ---- Other existing analyses (kept) ----
+    const totalIssues = s.bugsCount + s.reviewCount;
+    const reviewCatchRate = totalIssues > 0 ? (s.reviewCount / totalIssues) * 100 : 0;
+    const highSevBugs = s.bugsCrit + s.bugsHigh;
+    const highSevReviews = s.revCrit + s.revHigh;
+    const avgTimePerBug = s.bugsCount > 0 ? (s.reworkTime / s.bugsCount) : 0;
+    const effortVariance = s.totalEst > 0 ? ((s.totalAct - s.totalEst) / s.totalEst) * 100 : 0;
+    const combinedReworkRatio = ((s.reworkTime + s.reviewTime) / (s.totalAct || 1)) * 100;
+    const avgCycleTime = s.totalStories > 0 ? (s.totalCycleTime / s.totalStories) : 0;
+    const totalAllBugsLocal = s.bugsCount + (s.totalUatBugs || 0);
+    const calculatedDre = totalAllBugsLocal > 0 ? (s.bugsCount / totalAllBugsLocal) * 100 : 100;
+    const bugSeverityRatio = s.bugsCount > 0 ? (highSevBugs / s.bugsCount) * 100 : 0;
+    const reviewSeverityRatio = s.reviewCount > 0 ? (highSevReviews / s.reviewCount) * 100 : 0;
+    const uatLeakageRatio = totalAllBugsLocal > 0 ? ((s.totalUatBugs || 0) / totalAllBugsLocal) * 100 : 0;
+
+    // Rework-Driven Slippage
+    if (effortVariance > 15 && combinedReworkRatio > 15) {
+        const explanation = `Effort Variance = (Actual - Estimate)/Estimate * 100 = ${((s.totalAct - s.totalEst) / s.totalEst * 100).toFixed(1)}%, Rework Ratio = (ReworkTime+ReviewTime)/Actual * 100 = ${combinedReworkRatio.toFixed(1)}%`;
+        insights.push(`<li><b>Rework-Driven Slippage</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}% and Rework Ratio is ${combinedReworkRatio.toFixed(1)}%.</li>`);
+    } else if (effortVariance > 15 && combinedReworkRatio <= 15) {
+        const explanation = `Effort Variance = ${effortVariance.toFixed(1)}% (Actual ${s.totalAct.toFixed(1)}h vs Estimate ${s.totalEst.toFixed(1)}h), Rework/Review = ${combinedReworkRatio.toFixed(1)}%`;
+        insights.push(`<li><b>Estimation Model Baseline Flaw</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}% while Rework/Review metrics are ${combinedReworkRatio.toFixed(1)}%.</li>`);
+    } else if (effortVariance <= 0 && combinedReworkRatio > 20) {
+        const explanation = `Effort Variance = ${effortVariance.toFixed(1)}% (under budget), Rework Density = ${combinedReworkRatio.toFixed(1)}%`;
+        insights.push(`<li><b>Aggressive Coding & Velocity Risk</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}% and Rework Density is ${combinedReworkRatio.toFixed(1)}%.</li>`);
+    }
+
+    // Degraded Quality Shield
+    if (calculatedDre < 85 && (s.totalUatBugs || 0) > 0) {
+        const explanation = `DRE = Bugs / (Bugs+UAT) * 100 = ${s.bugsCount} / ${totalAllBugsLocal} * 100 = ${calculatedDre.toFixed(1)}%, UAT Leakages = ${s.totalUatBugs}`;
+        insights.push(`<li><b>Degraded Quality Shield (Low DRE)</b> ${infoIcon(explanation)}: DRE is ${calculatedDre.toFixed(1)}% with ${s.totalUatBugs} UAT Leakages out of ${totalAllBugsLocal} total defects.</li>`);
+    }
+
+    // Rework Friction
+    if (avgTimePerBug > 4 && s.bugsCount > 0) {
+        const explanation = `MTTR = ReworkTime / Bugs = ${s.reworkTime.toFixed(1)}h / ${s.bugsCount} = ${avgTimePerBug.toFixed(1)}h/bug`;
+        insights.push(`<li><b>Rework Friction</b> ${infoIcon(explanation)}: Mean Time to Resolve (MTTR) is ${avgTimePerBug.toFixed(1)}h/bug (total rework ${s.reworkTime.toFixed(1)}h / ${s.bugsCount} bugs).</li>`);
+        if (avgCycleTime > 5) {
+            const explanation2 = `Cycle Time = ${avgCycleTime.toFixed(1)} days, MTTR = ${avgTimePerBug.toFixed(1)}h/bug`;
+            insights.push(`<li><b>Blocked Cycle Time Correlation</b> ${infoIcon(explanation2)}: Cycle Time is ${avgCycleTime.toFixed(1)} days, MTTR is ${avgTimePerBug.toFixed(1)}h.</li>`);
+        }
+    }
+
+    // High-Fidelity Pre-Emptive Review
+    if (reviewSeverityRatio > 40 && bugSeverityRatio < 15 && s.reviewCount > 0) {
+        const explanation = `High-Sev Review = ${reviewSeverityRatio.toFixed(1)}% (${highSevReviews} reviews), High-Sev Testing = ${bugSeverityRatio.toFixed(1)}%`;
+        insights.push(`<li><b>High-Fidelity Pre-Emptive Review</b> ${infoIcon(explanation)}: High-Sev Review is ${reviewSeverityRatio.toFixed(1)}%, High-Sev Testing Bugs is ${bugSeverityRatio.toFixed(1)}%.</li>`);
+    }
+
+    // Superficial Peer-Review Pattern
+    if (s.reviewCount > 10 && highSevReviews === 0 && bugSeverityRatio > 40) {
+        const explanation = `Reviews = ${s.reviewCount}, High-Sev Reviews = 0, Testing High-Sev = ${bugSeverityRatio.toFixed(1)}%`;
+        insights.push(`<li><b>Superficial Peer-Review Pattern</b> ${infoIcon(explanation)}: ${s.reviewCount} Peer Reviews, 0 high-sev issues detected, while Testing high-sev is ${bugSeverityRatio.toFixed(1)}%.</li>`);
+    }
+
+    // Hidden Rework & Timesheet Inaccuracy
+    if (effortVariance > 25 && combinedReworkRatio < 5 && s.bugsCount > 0) {
+        const explanation = `Effort Variance = ${effortVariance.toFixed(1)}%, logged Rework/Review = ${combinedReworkRatio.toFixed(1)}%`;
+        insights.push(`<li><b>Hidden Rework & Timesheet Inaccuracy</b> ${infoIcon(explanation)}: Effort Variance is ${effortVariance.toFixed(1)}%, logged Rework/Review is ${combinedReworkRatio.toFixed(1)}%.</li>`);
+    }
+
+    // Severe Architectural Coupling
+    if (s.bugsCount > 0 && s.bugsCount <= 3 && avgTimePerBug > 8) {
+        const explanation = `Bugs = ${s.bugsCount}, MTTR = ${avgTimePerBug.toFixed(1)}h`;
+        insights.push(`<li><b>Severe Architectural Coupling</b> ${infoIcon(explanation)}: ${s.bugsCount} bugs, MTTR is ${avgTimePerBug.toFixed(1)}h.</li>`);
+    }
+
+    // Severe Quality Gate Escape
+    if (uatLeakageRatio > 25 && s.bugsCount > 0) {
+        const explanation = `UAT Leakages / Total Defects * 100 = ${s.totalUatBugs} / ${totalAllBugsLocal} * 100 = ${uatLeakageRatio.toFixed(1)}%`;
+        insights.push(`<li><b>Severe Quality Gate Escape</b> ${infoIcon(explanation)}: UAT Leakages are ${uatLeakageRatio.toFixed(1)}% of total defects (${s.totalUatBugs} UAT / ${totalAllBugsLocal} total).</li>`);
+    }
+
+    // Resource Skew & Test Bottleneck
+    if (s.devCountCount > 0 && s.testerCountCount > 0) {
+        const devToTesterRatio = s.devCountCount / s.testerCountCount;
+        if (devToTesterRatio > 3 && s.totalUatBugs > 2) {
+            const explanation = `Dev FTE = ${s.devCountCount.toFixed(2)}, Tester FTE = ${s.testerCountCount.toFixed(2)}, Ratio = ${devToTesterRatio.toFixed(1)}:1, UAT = ${s.totalUatBugs}`;
+            insights.push(`<li><b>Resource Skew & Test Bottleneck</b> ${infoIcon(explanation)}: Dev-to-Tester ratio is ${devToTesterRatio.toFixed(1)}:1, UAT bugs is ${s.totalUatBugs}.</li>`);
+        }
+    }
+
+    // Repeated Bug Titles
+    if (s.bugTitles && s.bugTitles.length > 0) {
+        const titleFreq = {};
+        s.bugTitles.forEach(title => {
+            const key = title.trim().toLowerCase();
+            titleFreq[key] = (titleFreq[key] || 0) + 1;
+        });
+        const duplicates = Object.keys(titleFreq).filter(key => titleFreq[key] > 1);
+        if (duplicates.length > 0) {
+            const dupSummary = duplicates.slice(0, 3).map(key => `"${key}" (${titleFreq[key]}x)`).join(', ');
+            const explanation = `Total titles = ${s.bugTitles.length}, duplicates = ${duplicates.length}`;
+            insights.push(`<li><b>Repeated Bug Titles</b> ${infoIcon(explanation)}: ${duplicates.length} duplicate titles found. Top repeats: ${dupSummary}.</li>`);
+        }
+    }
+
+    // ===== Fallback =====
     if (insights.length === 0) {
         return "<li><b>Balanced Quality Lifecycle</b> <span style=\"cursor:help; font-size:0.8em; color:#888; margin-left:4px;\" title=\"No metrics exceeded thresholds\">ⓘ</span>: No anomalies detected. All metrics are within typical ranges.</li>";
     }
