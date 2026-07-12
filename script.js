@@ -1608,7 +1608,7 @@ function renderTeamView() {
             </div>`;
         };
 
-        html += `
+html += `
         <div class="card" style="background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);padding:25px;margin-bottom:35px;border-top:4px solid #2ccc71;">
             <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f1f2f6;padding-bottom:15px;margin-bottom:20px;">
                 <h3 style="margin:0;color:#2c3e50;font-size:1.4em;font-weight:700;">📂 Business Area: ${area}</h3>
@@ -1660,14 +1660,9 @@ function renderTeamView() {
                     ${getSevBadges(stats.revCrit,stats.revHigh,stats.revMed,stats.revLow,stats.reviewCount)}
                 </div>
             </div>
-            <div style="margin-top:25px;background:#f9f9fb;border-radius:8px;padding:20px;border:1px solid #eccc68;box-shadow:inset 0 1px 3px rgba(0,0,0,0.02);">
-                <h4 style="margin:0 0 12px 0;color:#ffa502;font-size:1.05em;font-weight:700;display:flex;align-items:center;gap:8px;">🧠 Execution Analyses</h4>
-                <ul style="margin:0;padding-left:20px;font-size:0.92em;color:#2c3e50;line-height:1.6;">
-                    ${generateAdvancedQualityAnalysis(stats)}
-                </ul>
-            </div>
         </div>`;
-    }
+    });
+
     html += `</div>`;
     container.innerHTML = html;
 }
