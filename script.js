@@ -1661,7 +1661,7 @@ html += `
                 </div>
             </div>
         </div>`;
-    });
+    }
 
     html += `</div>`;
     container.innerHTML = html;
