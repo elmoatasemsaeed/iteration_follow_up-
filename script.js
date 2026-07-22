@@ -2171,11 +2171,8 @@ function renderIterationView() {
     processedStories.forEach(us => {
         // حساب المخطط الشامل (Dev + Test + DB)
         const storyEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig || 0);
-        
-        // حساب الفعلي الشامل (Actual + Rework + Reviews)
         const storyReviewTime = (us.reviewStats.devActual + us.reviewStats.testActual);
-        const storyAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + 
-                         us.rework.actualTime + storyReviewTime;
+        const storyAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual || 0) + us.rework.actualTime + storyReviewTime;
 
         globalStats.totalEst += storyEst;
         globalStats.totalAct += storyAct;
@@ -2267,7 +2264,7 @@ function renderIterationView() {
         let a = { est: 0, act: 0, rw: 0, rv: 0 };
         
         areaStories.forEach(s => {
-            const sEst = s.devEffort.orig + s.testEffort.orig + (s.dbEffort?.orig || 0);
+            const sEst = s.devEffort.orig + s.testEffort.orig + (s.dbEffort?.orig || 0) + s.rework.timeEstimation + s.reviewStats.estimation;
             const sRv = (s.reviewStats.devActual + s.reviewStats.testActual);
             const sAct = s.devEffort.actual + s.testEffort.actual + (s.dbEffort?.actual || 0) + s.rework.actualTime + sRv;
             
