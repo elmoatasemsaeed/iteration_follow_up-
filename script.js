@@ -1514,7 +1514,7 @@ function renderTeamView() {
         stats.devCountCount=devCountCount; stats.testerCountCount=testerCountCount; stats.dbCountCount=dbCountCount;
 
         grouped[area].forEach(us => {
-            const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig||0);
+            const sEst = us.devEffort.orig + us.testEffort.orig + (us.dbEffort?.orig||0) + us.rework.timeEstimation + us.reviewStats.estimation;
             const sRvTime = us.reviewStats.devActual + us.reviewStats.testActual;
             const sAct = us.devEffort.actual + us.testEffort.actual + (us.dbEffort?.actual||0) + us.rework.actualTime + sRvTime;
             stats.totalEst += sEst; stats.totalAct += sAct; stats.reworkTime += us.rework.actualTime; stats.reviewTime += sRvTime;
