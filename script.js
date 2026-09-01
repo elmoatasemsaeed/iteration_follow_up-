@@ -428,7 +428,7 @@ function calculateMetrics() {
         us.devEffort = { orig: devOrig, actual: devActual, dev: devOrig / (devActual || 1) };
         us.testEffort = { orig: testOrig, actual: testActual, dev: testOrig / (testActual || 1) };
 
-        let bugOrig = 0, bugActualTotal = 0, bugsNoTimesheet = 0;
+        let bugActualTotal = 0, bugsNoTimesheet = 0;
         us.severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
 
         us.rework = {
@@ -452,7 +452,7 @@ function calculateMetrics() {
         us.bugs.forEach(b => {
             const isGeneric = (b['GenericBug'] || "").trim().toLowerCase() === 'yes';
             const bDevAct = parseFloat(b['TimeSheet_DevActualTime']) || 0;
-            const bEst = parseFloat(b['Original Estimation']) || 0;
+            // تم إزالة: const bEst = parseFloat(b['Original Estimation']) || 0;
             const sev = b['Severity'] || "";
             const bugType = (b['BugType'] || "").trim().toUpperCase();  // استخراج النوع
 
@@ -467,7 +467,6 @@ function calculateMetrics() {
                 us.rework.iterationBugsCount++;
             }
 
-            bugOrig += bEst;
             bugActualTotal += bDevAct;
             if (bDevAct === 0) bugsNoTimesheet++;
 
@@ -494,11 +493,15 @@ function calculateMetrics() {
             }
         });
 
-        us.rework.timeEstimation = bugOrig;
+        // حساب تقدير البج كنسبة 15% من إجمالي تقدير التاسكات الأساسية
+        const totalBaseEst = us.devEffort.orig + us.dbEffort.orig + us.testEffort.orig;
+        const bugEstimate = totalBaseEst * 0.15;
+
+        us.rework.timeEstimation = bugEstimate;
         us.rework.actualTime = bugActualTotal;
         us.rework.count = us.bugs.length;
         us.rework.missingTimesheet = bugsNoTimesheet;
-        us.rework.deviation = bugOrig / (bugActualTotal || 1);
+        us.rework.deviation = bugEstimate / (bugActualTotal || 1);
         us.rework.percentage = (bugActualTotal / (us.devEffort.actual || 1)) * 100;
 
         // 3. Reviews (بدون تعديل هنا)
